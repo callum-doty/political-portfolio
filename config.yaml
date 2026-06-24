@@ -1,0 +1,80 @@
+# ─── Backtest Configuration ───────────────────────────────────────────────────
+# All model parameters and pipeline toggles live here.
+# Scripts read this file via src/backtest/config.py — nothing is hard-coded.
+
+# ─── Data paths ───────────────────────────────────────────────────────────────
+paths:
+  raw:
+    fec:          data/raw/fec
+    mit:          data/raw/mit_elections
+    cook:         data/raw/cook_pvi
+    census:       data/raw/census
+    rcp:          data/raw/rcp
+    presidential: data/raw/presidential
+  processed:      data/processed
+  outputs:        outputs
+
+# ─── Universe filters ─────────────────────────────────────────────────────────
+universe:
+  min_total_spend:        100_000          # at least one candidate above this
+  exclude_states:         ["AK"]           # ranked-choice incompatibility
+  competitive_ratings:                     # used for MSG rank-correlation test
+    - "Toss-Up"
+    - "Lean D"
+    - "Lean R"
+  # Races where redistricting produced fundamentally new seats — review manually
+  redistricting_flag_districts: []         # populated after data review
+
+# ─── Historical panel ─────────────────────────────────────────────────────────
+panel:
+  cycles:   [2012, 2014, 2016, 2018, 2020, 2022]
+  min_repeat_challenger_pairs: 40          # below this, widen tau
+
+# ─── Generic ballot (2024 pre-election RCP average, D − R) ───────────────────
+generic_ballot_2024: -1.2                  # update with final pre-Nov-5 average
+
+# ─── Spending response surface ────────────────────────────────────────────────
+# β_RC is estimated from the historical panel and carried forward.
+# These are populated by scripts/run_estimation.py and stored in
+# data/processed/beta_rc.yaml; the values below are placeholders until estimated.
+beta_rc:
+  estimate: null
+  se:       null
+  n_pairs:  null
+
+# ─── Uncertainty propagation ─────────────────────────────────────────────────
+uncertainty:
+  n_draws:         1000
+  credible_interval: 0.83                  # 83% CI (≈ ±1 SE)
+
+# ─── Optimizer ────────────────────────────────────────────────────────────────
+optimizer:
+  # Risk-aversion levels.  γ_mid calibrated so 1 SD variance costs 0.5 seats;
+  # γ_high calibrated so 1 SD costs 1.0 seat.  Set after σ[Seats] is known.
+  gamma_values: [0.0, null, null]          # [risk_neutral, mid, high] — nulls filled post-estimation
+  cap_regimes:  [0.05, 0.10, 0.15]        # fraction of total budget
+  min_allocation: 0.0                      # no negative spending
+
+# ─── Validation gate thresholds ───────────────────────────────────────────────
+validation:
+  spending_completeness_min: 0.80          # ~36 safe D seats have no R spend → one-sided OK
+  margin_model_r2_pass:      0.40
+  margin_model_r2_stretch:   0.60
+  sigma_ordering_frac_min:   0.00          # D challengers run in R-leaning districts (selection
+                                           # effect) → lower σ; empirical incumb≈open>chall is correct
+  brier_tolerance:           0.05          # model Brier ≤ Cook Brier + 0.05
+
+# ─── Cook rating → win probability conversion ─────────────────────────────────
+cook_win_probs:
+  "Safe D":    0.97
+  "Likely D":  0.85
+  "Lean D":    0.70
+  "Toss-Up":   0.50
+  "Lean R":    0.30
+  "Likely R":  0.15
+  "Safe R":    0.03
+
+# ─── Output ───────────────────────────────────────────────────────────────────
+outputs:
+  material_divergence_threshold: 0.01     # |difference| > 1% of budget = material
+  concentration_flag_threshold:  0.15     # flag any race receiving > 15% of budget
