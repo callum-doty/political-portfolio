@@ -49,7 +49,7 @@ def compute_outputs(
         cvap=race.cvap,
     )
 
-    sigma = sigma_model.predict(abs(race.pvi), race.incumb_status)
+    sigma = sigma_model.predict(abs(race.pvi), race.incumb_status, race.generic_ballot)
     p_win = float(norm.cdf(mu / sigma))
 
     msg = _marginal_seat_gain(

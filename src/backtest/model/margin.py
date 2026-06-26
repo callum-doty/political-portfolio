@@ -32,9 +32,13 @@ class MarginModelCoefficients:
     alpha2: float         # incumbency (Incumbent dummy)
     alpha3: float         # generic ballot
     alpha4: float = 0.0   # log((D+R)/CVAP) — total spending intensity per voter
-    beta1:  float = 0.0   # β_RC — log(ratio)
+    beta1:  float = 0.0   # β_RC — log(ratio) base spending elasticity
     beta2:  float = 0.0   # log(ratio) × |PVI|
     beta3:  float = 0.0   # log(ratio) × Incumbent
+    # Open-seat calibration (§8.3): Bayesian-shrunk spending elasticity for open seats.
+    # When set, replaces beta1 for open seats in optimizer and MSG computation.
+    # None = use beta1 for all race types (pre-calibration behavior).
+    beta1_open: float | None = None
 
 
 def estimate_from_panel(
@@ -89,19 +93,28 @@ def estimate_from_panel(
     # Impose β_RC via offset: y* = margin − β_RC·log(ratio)
     df["y_offset"] = df["margin_pp"] - beta_rc_estimate * df["log_ratio"]
 
+    df["is_open"] = (df["incumb_status"] == "Open").astype(float)
     df["log_ratio_x_abs_pvi"] = df["log_ratio"] * df["abs_pvi"]
     df["log_ratio_x_incumb"] = df["log_ratio"] * df["is_incumb"]
-    # Note: log_total_per_voter is computed above but excluded from the regression.
-    # OLS on the panel picks up endogeneity — high-spending races are structurally
-    # more competitive (lower D margin conditional on PVI), producing a spuriously
-    # large negative alpha4 that degrades out-of-sample calibration. The variable
-    # is available in the dataframe for future instrumented estimation.
+    df["log_ratio_x_open"] = df["log_ratio"] * df["is_open"]
+    # Note: log_total_per_voter excluded — endogeneity; see note in code.
     feature_cols = ["pvi", "is_incumb", "gb",
-                    "log_ratio_x_abs_pvi", "log_ratio_x_incumb"]
+                    "log_ratio_x_abs_pvi", "log_ratio_x_incumb",
+                    "log_ratio_x_open"]
 
     X = sm.add_constant(df[feature_cols])
     y = df["y_offset"]
     fit = sm.OLS(y, X).fit(cov_type="HC3")
+
+    # beta4_panel: additional spending elasticity for open seats above beta_RC.
+    # beta_panel_OS = beta_RC + beta4_panel (raw panel estimate for open seats).
+    beta4_panel = float(fit.params.get("log_ratio_x_open", 0.0))
+    beta4_se = float(fit.bse.get("log_ratio_x_open", float("inf")))
+    beta_panel_os = beta_rc_estimate + beta4_panel
+    logger.info(
+        f"Open-seat panel spending elasticity: β_RC={beta_rc_estimate:.3f}, "
+        f"β₄={beta4_panel:.3f} (SE={beta4_se:.3f}), β_panel_OS={beta_panel_os:.3f}"
+    )
 
     coef = MarginModelCoefficients(
         alpha0=float(fit.params["const"]),
@@ -112,20 +125,21 @@ def estimate_from_panel(
         beta1=beta_rc_estimate,
         beta2=float(fit.params["log_ratio_x_abs_pvi"]),
         beta3=float(fit.params["log_ratio_x_incumb"]),
+        beta1_open=None,   # filled by calibrate_open_seat() in run_estimation.py
     )
 
     # R² on competitive subset
-    df["fitted"] = predict_batch(df, coef)  # df already has log_total_per_voter
-    competitive_mask = df["abs_pvi"] <= 10   # rough competitive proxy for panel
+    df["fitted"] = predict_batch(df, coef)
+    competitive_mask = df["abs_pvi"] <= 10
     ss_res = ((df.loc[competitive_mask, "margin_pp"] - df.loc[competitive_mask, "fitted"]) ** 2).sum()
     ss_tot = ((df.loc[competitive_mask, "margin_pp"] - df.loc[competitive_mask, "margin_pp"].mean()) ** 2).sum()
     r2 = 1 - ss_res / ss_tot
 
     logger.info(f"Margin model R² (competitive subset): {r2:.3f}")
     for name, val in coef.__dict__.items():
-        logger.info(f"  {name}: {val:.4f}")
+        logger.info(f"  {name}: {val}")
 
-    return coef, r2
+    return coef, r2, {"beta_panel_os": beta_panel_os, "beta4_se": beta4_se}
 
 
 def predict(
@@ -148,7 +162,12 @@ def predict(
     total_spend     : D + R total spending ($); used for spending intensity term
     cvap            : citizen voting age population; used for per-voter normalization
     """
-    b1 = beta1_override if beta1_override is not None else coef.beta1
+    if beta1_override is not None:
+        b1 = beta1_override
+    elif coef.beta1_open is not None and incumb_status == "Open":
+        b1 = coef.beta1_open
+    else:
+        b1 = coef.beta1
     is_incumb = 1.0 if incumb_status == "Incumbent" else 0.0
     log_ratio = np.log(ratio)
     abs_pvi = abs(pvi)

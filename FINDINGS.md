@@ -17,6 +17,9 @@
 7. [Findings](#7-findings)
 8. [Cross-Cycle Validation (2022)](#8-cross-cycle-validation-2022)
 9. [Actionability Assessment](#9-actionability-assessment)
+   - [9.4 Adversarial Response Sensitivity (η Model)](#94-adversarial-response-sensitivity-η-model)
+   - [9.5 Concentration Cap Gap (§4.6)](#95-concentration-cap-gap-46)
+   - [9.6 Open-Seat Spending Elasticity (§8.3)](#96-open-seat-spending-elasticity-83)
 10. [Limitations](#10-limitations)
 11. [Output Files](#11-output-files)
 
@@ -333,6 +336,46 @@ To test whether the inefficiency finding is an artifact of 2024-specific conditi
 
 **The private signals problem.** The model interprets the negative Spearman ρ as pure inefficiency — spending where marginal returns are lowest. A portion of the DCCC's Likely D over-investment may instead reflect rational responses to internal polling showing candidates in danger in seats the model rates as safe. These private signals are unobservable in public data. Two observations mitigate but do not eliminate this concern: (1) the pattern replicates in 2022, suggesting it is structural rather than cycle-specific private intelligence, and (2) the *equal-weight* rule (no model, no private signals) also beats DCCC convincingly, which is harder to explain by private signals alone. However, the model should not be used to recommend abandoning spending in any Likely D seat without explicit validation against internal polling — the catastrophic downside of losing an unexpectedly competitive seat is not captured in the symmetric expected-value objective.
 
+### 9.4 Adversarial Response Sensitivity (η Model)
+
+To bound the game-theoretic risk quantitatively, the optimizer was extended with an adversarial response parameter η ∈ [0, 1]:
+
+> **R_i(D_i) = R_i_base + η × max(0, D_i − D_i_observed)**
+
+When D_i exceeds observed DCCC levels, the NRCC/CLF are assumed to match η cents per new DCCC dollar. The MSG gradient is corrected analytically: ∂log(D/t)/∂D = 1/D − (1+η)/t when spending is above observed levels (vs. 1/D − 1/t when η = 0). At η = 1 with d = r (equal spending), the corrected gradient → 0 — dollar-for-dollar matching exactly neutralizes the log-ratio improvement.
+
+| η | E[seats] | vs DCCC |
+|---|---------|---------|
+| 0.0 (no response) | 213.70 | +4.16 |
+| 0.3 (30¢/dollar) | 212.87 | +3.33 |
+| 0.5 (50¢/dollar) | 212.41 | +2.87 |
+| 0.7 (70¢/dollar) | 212.00 | +2.46 |
+| 1.0 (dollar-for-dollar) | 211.42 | +1.88 |
+
+**Key finding:** Even under full dollar-for-dollar NRCC counter-spending, the optimizer still yields **+1.88 expected seats** above the DCCC baseline. The efficiency gain is not contingent on the NRCC failing to respond — it is robust to any plausible η value. The practical implications:
+
+1. **Late-cycle deployments (η ≈ 0):** In September–October, ad inventory is largely sold out. NRCC/CLF cannot quickly redirect capital to newly targeted races. η effectively approaches 0, capturing the full +4.16 gain.
+2. **Early-cycle deployments (η ≈ 0.5–0.7):** Reallocation 6–12 months out gives the NRCC time to respond. The expected gain drops to +2.5–3.3 seats but remains substantial.
+3. **Never deploy as a wholesale early reallocation:** Even at η = 1, the gain is positive, but it represents the *expected* outcome — the variance around that mean increases sharply if NRCC counter-investment raises competitiveness in targeted races unexpectedly.
+
+The η model is available via `--eta` flag in `run_backtest.py`. Run with `--eta 0.0` for retrospective analysis; `--eta 0.5` for strategic planning scenarios.
+
+### 9.5 Concentration Cap Gap (§4.6)
+
+The spec requires quantifying whether the optimizer's seat gains depend on extreme concentration. The uncapped optimizer (no per-race cap) is run alongside the sensitivity grid. The concentration gap metric is:
+
+> **Δ E[Seats]_concentration = E[Seats]_uncapped − E[Seats]_5%-cap**
+
+This metric is computed by `run_backtest.py` and stored in `aggregate_summary_baseline.csv`. If the gap is small (< 0.5 seats), the efficiency frontier is broad — the model's gains do not depend on extreme localization and are politically resilient to a committee cap constraint. If the gap is large (> 2 seats), material returns concentrate in a handful of hyper-targeted races, which is an operability red flag.
+
+### 9.6 Open-Seat Spending Elasticity (§8.3)
+
+Open seats are the highest-variance races in any cycle — no incumbent anchor, different fundraising dynamics, higher quality candidates on both sides. The model now uses a Bayesian-shrunk spending elasticity for open seats (β_OS^calib) rather than applying β_RC directly.
+
+The procedure: (1) estimate the open-seat interaction term β₄ = β_panel^OS − β_RC from the 2012–2022 panel; (2) set τ by covariate distance between repeat-challenger pairs and open-seat population; (3) compute posterior β_OS^calib = κ × β_panel^OS + (1 − κ) × β_RC; (4) report β_OS^lb at the 90th-percentile conservative bound.
+
+**Operational implication:** β_OS^calib replaces β_RC in `c_spend_i` for all open-seat races in the optimizer and MSG computations. MSG rankings for open seats will shift relative to the uncalibrated model. Calibration output is stored in `data/processed/open_seat_calibration.json` and includes κ, β_OS^calib, β_OS^lb, and the posterior SE. Until a full cycle is run to validate β_OS^calib OOS, treat open-seat MSG rankings as directionally useful but not as precise as incumbent/challenger rankings.
+
 ### Interesting but not directly operational
 
 - **Brier score comparison with Cook** — validates model calibration, but note the model underperforms Cook in the 2022 OOS test. Calibration quality may vary across cycles.
@@ -363,9 +406,9 @@ The fix was to scale party allocations to $M units before passing to SLSQP and a
 
 Candidate vs. party spending is inferred from FEC filing categories. Some coordination between candidate and party committees may be mis-attributed. The $465M party budget estimate is approximate.
 
-### 10.5 Republican spending treated as fixed
+### 10.5 Republican spending treated as fixed (partially addressed)
 
-The model takes Republican spending as given. See §9 (Actionability, game-theoretic problem) for a full treatment of this limitation and its implications for how to operationalize the optimizer output.
+The base model takes Republican spending as given. §9 (Actionability) describes the operational implications, and §9.4 (Adversarial Response) quantifies the seat gain under adversarial NRCC matching via the η parameter. Even at η = 1 (dollar-for-dollar response), the optimizer yields +1.88 seats over DCCC. However, the η model is a reduced-form approximation — it does not model the NRCC's *targeting* of counter-spending, only the total magnitude. A Nash equilibrium formulation is left as future work.
 
 ### 10.6 σ model ordering
 
@@ -421,6 +464,16 @@ All outputs are in `outputs/`.
 | `data/processed/sigma_model.json` | σᵢ model intercept and coefficients. |
 | `data/processed/beta_rc.json` | β_RC point estimate, SE, and n_pairs. |
 
+### Live 2026 pipeline
+
+| File | Description |
+|------|-------------|
+| `data/live/spending_live.json` | Cumulative per-district D/R spending snapshot (updated by `fetch_live_ies.py`). |
+| `data/live/msg_live.csv` | Real-time MSG ranking of competitive races, sorted by MSG descending. |
+| `data/live/fetch_log.jsonl` | Append-only audit trail of each fetch run (timestamp, cycle, IE count, top district). |
+
+Run `python scripts/fetch_live_ies.py --api-key YOUR_KEY` daily during the cycle. Set `FEC_API_KEY` in the environment to avoid passing the key on the command line. Add `--lookback-hours 48` during accelerated-reporting windows (final 20 days). Committees tracked: DCCC (C00000935), NRCC (C00075473), HMP (C00500884), CLF (C00571372).
+
 ---
 
-*Generated from `scripts/run_estimation.py` + `scripts/run_backtest.py` + `scripts/make_charts.py`.*
+*Generated from `scripts/run_estimation.py` + `scripts/run_backtest.py` + `scripts/make_charts.py` + `scripts/fetch_live_ies.py`.*

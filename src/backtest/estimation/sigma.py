@@ -45,8 +45,15 @@ def estimate_sigma(residuals: pd.DataFrame) -> SigmaModel:
     df["log_abs_resid"] = np.log(df["margin_residual"].abs())
     df["is_open"] = (df["incumb_status"] == "Open").astype(float)
     df["is_challenger"] = (df["incumb_status"] == "Challenger").astype(float)
+    # |GB| captures wave-year amplification of forecast error — high polarization
+    # cycles (2018, 2020) produce larger residuals independent of district type.
+    df["abs_gb"] = df["gb"].abs() if "gb" in df.columns else 0.0
 
-    X = sm.add_constant(df[["abs_pvi", "is_open", "is_challenger"]])
+    feature_cols = ["abs_pvi", "is_open", "is_challenger"]
+    if "gb" in df.columns:
+        feature_cols.append("abs_gb")
+
+    X = sm.add_constant(df[feature_cols])
     y = df["log_abs_resid"]
     fit = sm.OLS(y, X).fit()
 
@@ -55,11 +62,13 @@ def estimate_sigma(residuals: pd.DataFrame) -> SigmaModel:
         "abs_pvi":       float(fit.params["abs_pvi"]),
         "is_open":       float(fit.params["is_open"]),
         "is_challenger": float(fit.params["is_challenger"]),
+        "abs_gb":        float(fit.params.get("abs_gb", 0.0)),
     }
 
     logger.info(
         f"σ model: intercept={coef['intercept']:.3f}, abs_pvi={coef['abs_pvi']:.3f}, "
-        f"is_open={coef['is_open']:.3f}, is_challenger={coef['is_challenger']:.3f}"
+        f"is_open={coef['is_open']:.3f}, is_challenger={coef['is_challenger']:.3f}, "
+        f"abs_gb={coef['abs_gb']:.4f}"
     )
 
     _check_sigma_ordering(SigmaModel(_coef=coef))
@@ -154,4 +163,4 @@ def compute_residuals_from_panel(
 
     df["margin_residual"] = df["margin_pp"] - df["mu_hat"]
 
-    return df[["district_id", "cycle", "abs_pvi", "incumb_status", "margin_residual"]]
+    return df[["district_id", "cycle", "abs_pvi", "incumb_status", "margin_residual", "gb"]]

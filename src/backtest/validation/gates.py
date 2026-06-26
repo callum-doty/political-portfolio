@@ -82,9 +82,9 @@ def run_all_gates(
     pvi_bins = np.arange(0, 25, 5)
     ok_count = 0
     for pvi in pvi_bins:
-        s_open = sigma_model.predict(float(pvi), "Open")
-        s_chall = sigma_model.predict(float(pvi), "Challenger")
-        s_incumb = sigma_model.predict(float(pvi), "Incumbent")
+        s_open = sigma_model.predict(float(pvi), "Open", generic_ballot=0.0)
+        s_chall = sigma_model.predict(float(pvi), "Challenger", generic_ballot=0.0)
+        s_incumb = sigma_model.predict(float(pvi), "Incumbent", generic_ballot=0.0)
         if s_open > s_chall > s_incumb:
             ok_count += 1
     frac_ordered = ok_count / len(pvi_bins)

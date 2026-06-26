@@ -30,6 +30,7 @@ from backtest import config
 from backtest.data import fec, elections, incumbency, census
 from backtest.estimation import beta_rc as beta_rc_module
 from backtest.estimation import sigma as sigma_module
+from backtest.estimation import open_seat as open_seat_module
 from backtest.model import margin as margin_module
 
 logging.basicConfig(
@@ -123,7 +124,7 @@ def main() -> None:
     cvap_df = census.load_cvap()
 
     logger.info("Fitting margin model on panel…")
-    coef, r2 = margin_module.estimate_from_panel(
+    coef, r2, os_stats = margin_module.estimate_from_panel(
         panel_results=panel_results,
         panel_spend=panel_spend,
         panel_incumb=panel_incumb,
@@ -133,6 +134,34 @@ def main() -> None:
         cvap_df=cvap_df,
     )
 
+    # ── Step 2b: Open-seat κ calibration (§8.3) ──────────────────────────────
+    logger.info("Running open-seat Bayesian shrinkage (§8.3)…")
+    # Count open-seat observations in the panel for the sample-size penalty
+    n_open = int(panel_incumb[panel_incumb["incumb_status"] == "Open"].shape[0])
+    os_cal = open_seat_module.calibrate_open_seat(
+        beta_rc=beta_rc.estimate,
+        beta_rc_se=beta_rc.se,
+        beta_panel_os=os_stats["beta_panel_os"],
+        beta4_se=os_stats["beta4_se"],
+        n_open_seats=n_open,
+    )
+    # Wire calibrated open-seat β into the coefficient set
+    coef.beta1_open = os_cal.beta_os_calib
+
+    os_path = processed / "open_seat_calibration.json"
+    with open(os_path, "w") as f:
+        json.dump({
+            "beta_rc":       os_cal.beta_rc,
+            "beta_panel_os": os_cal.beta_panel_os,
+            "beta4_se":      os_cal.beta4_se,
+            "tau":           os_cal.tau,
+            "kappa":         os_cal.kappa,
+            "beta_os_calib": os_cal.beta_os_calib,
+            "posterior_se":  os_cal.posterior_se,
+            "beta_os_lb":    os_cal.beta_os_lb,
+        }, f, indent=2)
+    logger.info(f"Open-seat calibration saved to {os_path}")
+
     coef_path = processed / "margin_model_coef.json"
     with open(coef_path, "w") as f:
         json.dump({
@@ -141,6 +170,7 @@ def main() -> None:
             "alpha4": coef.alpha4,
             "beta1":  coef.beta1,  "beta2":  coef.beta2,
             "beta3":  coef.beta3,
+            "beta1_open": coef.beta1_open,
             "r2_competitive": r2,
         }, f, indent=2)
     logger.info(f"Margin model coefficients saved to {coef_path}")

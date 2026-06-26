@@ -41,8 +41,20 @@ def _precompute_race_arrays(
     races: list[RaceRecord],
     coef: MarginModelCoefficients,
     sigma_model: SigmaModel,
+    eta: float = 0.0,
 ) -> dict:
-    """Pre-compute per-race static arrays for the non-linear optimizer."""
+    """
+    Pre-compute per-race static arrays for the non-linear optimizer.
+
+    Parameters
+    ----------
+    eta : adversarial response coefficient (0 ≤ η ≤ 1).
+          η = 0  → Republican spending fixed (retrospective mode).
+          η = 0.5 → NRCC matches 50¢ per new DCCC dollar above observed.
+          η = 1.0 → dollar-for-dollar matching (MSG → 0 at spending parity).
+          Late-cycle deployments behave as if η ≈ 0 because ad inventory
+          is exhausted and NRCC cannot effectively redirect capital.
+    """
     n = len(races)
     pvi = np.array([r.pvi for r in races])
     abs_pvi = np.abs(pvi)
@@ -54,22 +66,49 @@ def _precompute_race_arrays(
                 + coef.alpha2 * incumb
                 + coef.alpha3 * gb)
     c_spend = coef.beta1 + coef.beta2 * abs_pvi + coef.beta3 * incumb
+    # §8.3: open-seat Bayesian-shrunk elasticity overrides beta1 for open seats.
+    if coef.beta1_open is not None:
+        is_open = np.array([1.0 if r.incumb_status == "Open" else 0.0 for r in races])
+        c_spend = np.where(is_open,
+                           coef.beta1_open + coef.beta2 * abs_pvi,
+                           c_spend)
 
-    sigma = np.array([sigma_model.predict(abs_pvi[i], races[i].incumb_status) for i in range(n)])
+    sigma = np.array([
+        sigma_model.predict(abs_pvi[i], races[i].incumb_status, races[i].generic_ballot)
+        for i in range(n)
+    ])
     r_total = np.array([r.r_total for r in races])
     floors = np.array([r.cand_d_total for r in races])
+    # Observed DCCC party spend per race (used as the η reaction threshold)
+    party_obs = np.maximum(np.array([r.d_total for r in races]) - floors, 0.0)
 
     cvap = np.array([max(r.cvap, 1) for r in races])
     alpha4 = coef.alpha4
 
     return dict(mu_const=mu_const, c_spend=c_spend, sigma=sigma,
-                r_total=r_total, floors=floors, cvap=cvap, alpha4=alpha4)
+                r_total=r_total, floors=floors, cvap=cvap, alpha4=alpha4,
+                party_obs=party_obs, eta=eta)
+
+
+def _reactive_r(party: np.ndarray, arrays: dict) -> np.ndarray:
+    """
+    R_i(D_i) = R_i_base + η × max(0, party_i − party_i_obs)
+
+    When DCCC increases spending above observed levels, the NRCC/CLF are
+    assumed to partially match the increment at rate η.  Spending at or
+    below observed levels draws no adversarial response.
+    """
+    eta = arrays["eta"]
+    if eta == 0.0:
+        return np.maximum(arrays["r_total"], 1.0)
+    increment = np.maximum(party - arrays["party_obs"], 0.0)
+    return np.maximum(arrays["r_total"] + eta * increment, 1.0)
 
 
 def _p_win_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
-    """Return P_win vector given party allocations."""
-    d = np.maximum(arrays["floors"] + party, 1.0)  # guard against d=0
-    r = np.maximum(arrays["r_total"], 1.0)          # guard R=0 races
+    """Return P_win vector given party allocations (with adversarial R if η > 0)."""
+    d = np.maximum(arrays["floors"] + party, 1.0)
+    r = _reactive_r(party, arrays)
     t = d + r
     ratio = np.clip(d / t, 1e-15, 1 - 1e-15)
     log_ratio = np.log(ratio)
@@ -79,9 +118,19 @@ def _p_win_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
 
 
 def _msg_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
-    """Return MSG vector (∂P_win / ∂party_i) given current party allocations."""
-    d = np.maximum(arrays["floors"] + party, 1.0)  # guard against d=0
-    r = np.maximum(arrays["r_total"], 1.0)          # guard R=0 races
+    """
+    Return MSG vector ∂P_win/∂party_i with adversarial R correction.
+
+    With η > 0 and party_i > party_i_obs:
+        ∂R/∂party_i = η  →  ∂t/∂party_i = 1 + η
+        ∂log_ratio/∂party_i = 1/d − (1+η)/t        (vs 1/d − 1/t when η=0)
+
+    At η=1, d=r (equal spending): gradient → 0, correctly capturing that
+    NRCC dollar-for-dollar matching neutralizes log-ratio improvement.
+    """
+    eta = arrays["eta"]
+    d = np.maximum(arrays["floors"] + party, 1.0)
+    r = _reactive_r(party, arrays)
     t = d + r
     ratio = np.clip(d / t, 1e-15, 1 - 1e-15)
     log_ratio = np.log(ratio)
@@ -89,8 +138,14 @@ def _msg_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
     mu = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
     sigma = arrays["sigma"]
     phi = scipy_norm.pdf(mu / sigma)
-    d_log_ratio_d_d = r / (d * t)
-    d_log_total_pv_d_d = 1.0 / t   # ∂log((D+R)/cvap)/∂D = 1/(D+R)
+
+    # η penalty: only applies where party > party_obs (actual new spending)
+    above_obs = (party > arrays["party_obs"]).astype(float)
+    eta_eff = eta * above_obs   # 0 below observed, η above observed
+    dt_dd = 1.0 + eta_eff      # ∂t/∂D = 1 + η (reactive), 1 (at/below obs)
+
+    d_log_ratio_d_d = 1.0 / d - dt_dd / t          # corrected gradient
+    d_log_total_pv_d_d = dt_dd / t                  # ∂log(t/cvap)/∂D = (∂t/∂D)/t
     d_mu_d_d = arrays["c_spend"] * d_log_ratio_d_d + arrays["alpha4"] * d_log_total_pv_d_d
     return (phi / sigma) * d_mu_d_d
 
@@ -104,13 +159,10 @@ def optimize_nonlinear(
     gamma: float,
     cap_fraction: float,
     party_budget: float | None = None,
+    eta: float = 0.0,
 ) -> OptimizerResult:
     """
     Non-linear portfolio optimizer using direct Φ(μ(D)/σ) evaluation.
-
-    Correctly handles diminishing returns from the log-ratio spending model,
-    unlike the linear MSG approximation which breaks down when spending
-    multiples are large (1/D² sensitivity at low spending levels).
 
     Parameters
     ----------
@@ -122,9 +174,13 @@ def optimize_nonlinear(
     gamma         : risk-aversion coefficient (0.0 for pure E[Seats] max)
     cap_fraction  : max fraction of party_budget per race
     party_budget  : DCCC party budget. Defaults to sum(d_total - cand_floor).
+    eta           : adversarial response coefficient (0 ≤ η ≤ 1).
+                    NRCC/CLF match fraction of each new DCCC dollar above
+                    observed spending. Set to 0 for retrospective analysis
+                    or late-cycle deployment where γ ≈ 0 (ad inventory sold).
     """
     n = len(races)
-    arrays = _precompute_race_arrays(races, coef, sigma_model)
+    arrays = _precompute_race_arrays(races, coef, sigma_model, eta=eta)
     floors = arrays["floors"]
 
     pb = party_budget if party_budget is not None else float(np.sum(
@@ -178,7 +234,7 @@ def optimize_nonlinear(
         jac=neg_e_seats_grad,
         bounds=bounds,
         constraints=constraints,
-        options={"maxiter": 500, "ftol": 1e-10},
+        options={"maxiter": 1000 if eta > 0 else 500, "ftol": 1e-10},
     )
 
     party_opt = np.maximum(result.x * SCALE, 0.0)
@@ -250,7 +306,12 @@ def optimize(
         party <= cap,
     ]
 
-    if gamma == 0.0:
+    # If γ × max_var is negligible vs MSG scale, treat as risk-neutral LP.
+    _msg_scale = max(float(np.abs(msg).max()), 1e-12)
+    _var_scale = float(np.abs(cov_matrix).max()) if cov_matrix.size > 0 else 0.0
+    _use_lp = (gamma == 0.0) or (gamma * _var_scale * pb ** 2 < 1e-6 * _msg_scale * pb)
+
+    if _use_lp:
         objective = cp.Maximize(msg @ s)
         prob = cp.Problem(objective, constraints)
         for solver in [cp.SCIPY, cp.CLARABEL, cp.SCS]:
@@ -263,13 +324,27 @@ def optimize(
     else:
         objective = cp.Maximize(msg @ s - gamma * cp.quad_form(s, cov_matrix))
         prob = cp.Problem(objective, constraints)
+        solved = False
         for solver in [cp.CLARABEL, cp.SCS]:
             try:
                 prob.solve(solver=solver, verbose=False)
                 if prob.status in ("optimal", "optimal_inaccurate"):
+                    solved = True
                     break
             except Exception:
                 continue
+        if not solved:
+            # QP degenerate (near-zero γ or ill-conditioned cov) — fall back to LP
+            logger.warning("QP solver infeasible/failed — falling back to LP (γ≈0 degeneracy)")
+            objective = cp.Maximize(msg @ s)
+            prob = cp.Problem(objective, constraints)
+            for solver in [cp.SCIPY, cp.CLARABEL, cp.SCS]:
+                try:
+                    prob.solve(solver=solver, verbose=False)
+                    if prob.status in ("optimal", "optimal_inaccurate"):
+                        break
+                except Exception:
+                    continue
 
     if prob.status not in ("optimal", "optimal_inaccurate"):
         logger.warning(f"Optimizer status: {prob.status}")
@@ -309,6 +384,7 @@ def run_sensitivity_grid(
     races: list[RaceRecord] | None = None,
     coef: MarginModelCoefficients | None = None,
     sigma_model: SigmaModel | None = None,
+    eta: float = 0.0,
 ) -> dict[tuple[float, float], OptimizerResult]:
     """
     Run the optimizer across all (γ, cap) combinations.
@@ -316,6 +392,7 @@ def run_sensitivity_grid(
     Uses optimize_nonlinear for γ=0 (if races/coef/sigma_model provided)
     and optimize (LP/QP) for γ>0.
 
+    eta : adversarial response coefficient passed to optimize_nonlinear.
     Returns dict keyed by (gamma, cap_fraction) → OptimizerResult.
     """
     results = {}
@@ -323,11 +400,12 @@ def run_sensitivity_grid(
         if gamma is None:
             continue
         for cap in cap_fractions:
-            logger.info(f"Running optimizer: γ={gamma}, cap={cap:.0%}")
+            label = f"γ={gamma}, cap={cap:.0%}" + (f", η={eta}" if eta > 0 else "")
+            logger.info(f"Running optimizer: {label}")
             if gamma == 0.0 and races is not None and coef is not None and sigma_model is not None:
                 results[(gamma, cap)] = optimize_nonlinear(
                     races, coef, sigma_model, budget, cov_matrix, gamma, cap,
-                    party_budget=party_budget)
+                    party_budget=party_budget, eta=eta)
             else:
                 results[(gamma, cap)] = optimize(
                     race_outputs, budget, cov_matrix, gamma, cap,

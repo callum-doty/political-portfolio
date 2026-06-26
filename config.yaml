@@ -25,8 +25,28 @@ universe:
     - "Toss-Up"
     - "Lean D"
     - "Lean R"
-  # Races where redistricting produced fundamentally new seats — review manually
-  redistricting_flag_districts: []         # populated after data review
+  # Races where redistricting produced fundamentally new seats — flag but do not exclude.
+  # 2024 cases: NC entire map redrawn by Republicans (2023 ruling); LA-06 court-ordered
+  # new majority-Black district; AL-02 reconfigured by court order; NY court-ordered maps.
+  # These races have no stable historical precedent — treat allocation signals with caution.
+  redistricting_flag_districts:
+    # North Carolina — entirely new 2024 map (Republican gerrymander, Oct 2023)
+    - "NC-01"
+    - "NC-06"
+    - "NC-07"
+    - "NC-10"
+    - "NC-13"
+    - "NC-14"
+    # Louisiana — court-ordered second Black-majority district (new seat)
+    - "LA-06"
+    # Alabama — court-ordered reconfiguration of majority-Black district
+    - "AL-02"
+    # New York — court-imposed new maps (new competitive districts)
+    - "NY-03"
+    - "NY-04"
+    - "NY-17"
+    - "NY-18"
+    - "NY-22"
 
 # ─── Historical panel ─────────────────────────────────────────────────────────
 panel:

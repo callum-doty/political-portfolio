@@ -65,7 +65,8 @@ def load_processed_artifacts(processed: Path) -> tuple[BetaRC, MarginModelCoeffi
         d = json.load(f)
     coef = MarginModelCoefficients(**{k: d[k] for k in
                                       ["alpha0", "alpha1", "alpha2", "alpha3", "alpha4",
-                                       "beta1", "beta2", "beta3"]})
+                                       "beta1", "beta2", "beta3"]},
+                                   beta1_open=d.get("beta1_open"))
 
     with open(processed / "sigma_model.json") as f:
         sigma_coef = json.load(f)
@@ -103,6 +104,11 @@ def main() -> None:
     parser.add_argument("--processed-dir", type=str, default=None,
                         help="Path to estimation artifacts directory "
                              "(default: data/processed). Use with --cycle for OOS runs.")
+    parser.add_argument("--eta", type=float, default=0.0,
+                        help="Adversarial response coefficient η ∈ [0, 1]. "
+                             "Fraction of each new DCCC dollar the NRCC/CLF match "
+                             "(0 = fixed R, retrospective; 1 = dollar-for-dollar). "
+                             "Late-cycle deployments ≈ 0 (ad inventory sold out).")
     args = parser.parse_args()
 
     if args.processed_dir:
@@ -147,9 +153,13 @@ def main() -> None:
     # Run baseline optimizer to get convergence diagnostics for gate 5
     gamma0 = 0.0
     cap_baseline = cap_fractions[-1]   # 15% cap
+    eta = args.eta
+    if eta > 0:
+        logger.info(f"Adversarial response η={eta:.2f}: NRCC/CLF match {eta:.0%} of new DCCC spend")
+
     baseline_result = optimize_nonlinear(
         races, coef, sigma_model, budget, cov_matrix, gamma0, cap_baseline,
-        party_budget=party_budget)
+        party_budget=party_budget, eta=eta)
 
     brier = compute_brier_comparison(races, outputs)
     brier_model = brier.get("model", 0.5)
@@ -184,11 +194,29 @@ def main() -> None:
     grid_results = run_sensitivity_grid(
         outputs, budget, cov_matrix, active_gammas, cap_fractions,
         floor_allocations=cand_floors, party_budget=party_budget,
-        races=races, coef=coef, sigma_model=sigma_model)
+        races=races, coef=coef, sigma_model=sigma_model, eta=eta)
 
     # ── 7. Primary allocation (γ=0, 15% cap) ─────────────────────────────────
     primary_result = grid_results[(0.0, cap_baseline)]
     allocation = build_allocation_results(races, outputs, primary_result, budget)
+
+    # ── 7b. Concentration cap gap (§4.6) ─────────────────────────────────────
+    # Uncapped optimizer (cap=100% of party budget per race = effectively uncapped).
+    # Gap = E[Seats]_uncapped − E[Seats]_5%-cap. Large gap means the optimizer's
+    # gains depend on extreme localized concentration (fragile, politically implausible).
+    logger.info("Running uncapped optimizer for concentration gap (§4.6)…")
+    uncapped_result = optimize_nonlinear(
+        races, coef, sigma_model, budget, cov_matrix, 0.0, 1.0,
+        party_budget=party_budget, eta=eta)
+    five_pct_result = grid_results.get((0.0, 0.05))
+    concentration_cap_gap: float | None = None
+    if five_pct_result is not None:
+        concentration_cap_gap = uncapped_result.expected_seats - five_pct_result.expected_seats
+        logger.info(
+            f"Concentration gap: {uncapped_result.expected_seats:.3f} (uncapped) − "
+            f"{five_pct_result.expected_seats:.3f} (5% cap) = "
+            f"{concentration_cap_gap:+.3f} seats"
+        )
 
     # ── 8. Efficiency tests ───────────────────────────────────────────────────
     logger.info("Running efficiency tests…")
@@ -219,7 +247,9 @@ def main() -> None:
     # ── 11. Outputs ───────────────────────────────────────────────────────────
     logger.info("Building output tables…")
     race_table = build_race_table(races, outputs, allocation, uncertainty)
-    aggregate = build_aggregate_summary(races, outputs, allocation, efficiency, budget)
+    aggregate = build_aggregate_summary(races, outputs, allocation, efficiency, budget,
+                                       concentration_cap_gap=concentration_cap_gap,
+                                       expected_seats_model=primary_result.expected_seats)
     save_outputs(race_table, aggregate, label=f"baseline{suffix}")
 
     # ── 12. Charts ────────────────────────────────────────────────────────────

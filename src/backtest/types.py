@@ -43,16 +43,22 @@ class SigmaModel:
 
     _coef: dict  # internal — use predict()
 
-    def predict(self, abs_pvi: float, incumb_status: str) -> float:
-        """Return fitted σᵢ for a given district type."""
-        # Evaluated as: σ = exp(a0 + a1·|PVI| + a2·is_open + a3·is_chall)
+    def predict(self, abs_pvi: float, incumb_status: str, generic_ballot: float = 0.0) -> float:
+        """Return fitted σᵢ for a given district type.
+
+        generic_ballot: pre-election D−R GB average. Larger |GB| implies more
+        volatile national environment and higher residual scatter.
+        """
         a0 = self._coef["intercept"]
         a1 = self._coef["abs_pvi"]
         a2 = self._coef.get("is_open", 0.0)
         a3 = self._coef.get("is_challenger", 0.0)
+        a4 = self._coef.get("abs_gb", 0.0)
         is_open = 1.0 if incumb_status == "Open" else 0.0
         is_chall = 1.0 if incumb_status == "Challenger" else 0.0
-        return float(np.exp(a0 + a1 * abs_pvi + a2 * is_open + a3 * is_chall))
+        return float(np.exp(
+            a0 + a1 * abs_pvi + a2 * is_open + a3 * is_chall + a4 * abs(generic_ballot)
+        ))
 
 
 @dataclass
