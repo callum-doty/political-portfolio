@@ -10,13 +10,22 @@ Raw data contract (files produced by scripts/fetch_data.py)
     possible (primary losers); load_candidate_disbursements selects the
     top spender per party per district as the general-election nominee proxy.
 
+    IMPORTANT: candidate_disbursements = TTL_DISB (total disbursements, weball
+    col 7). Earlier pipeline versions incorrectly used col 17 (TTL_INDIV_CONTRIB).
+    Run `scripts/fetch_data.py --rebuild-local` to regenerate with the fix.
+
   coordinated_expenditures_{cycle}.csv
     Columns: district_id, party, cycle, coordinated_expenditures
     One row per (district, party) — pre-aggregated by fetch_data.py.
 
   independent_expenditures_{cycle}.csv
-    Columns: district_id, party, cycle, support_oppose, amount
-    One row per IE transaction. support_oppose ∈ {"S", "O"}.
+    Two formats (auto-detected):
+      Comprehensive (from data/raw/independent_expenditure/):
+        Columns: district_id, party [aligned: D or R], cycle, amount
+        Covers ALL outside groups — super PACs, party committees, 527s.
+      Legacy DCCC/NRCC-only:
+        Columns: district_id, party [spender party], cycle, support_oppose, amount
+    load_independent_expenditures handles both formats.
 """
 
 from __future__ import annotations
@@ -135,23 +144,28 @@ def load_coordinated_expenditures(cycle: int) -> pd.DataFrame:
 
 def load_independent_expenditures(cycle: int) -> pd.DataFrame:
     """
-    Return net DCCC / NRCC independent expenditures per race.
+    Return aligned independent expenditures per race (all outside groups).
 
-    Net support = (support transactions) − (opposition transactions from
-    the same party committee). A party that spends against the opponent
-    is credited on the same sign as spending for its own candidate.
+    Handles two file formats:
+      Comprehensive (produced by build_comprehensive_ie):
+        district_id, party [D=D-aligned, R=R-aligned], cycle, amount
+      Legacy DCCC/NRCC-only:
+        district_id, party, cycle, support_oppose, amount
 
     Returns DataFrame with columns:
         district_id, party, cycle, ie_net (float)
     """
     path = config.raw_path("fec") / f"independent_expenditures_{cycle}.csv"
-    df = pd.read_csv(path, dtype={"district_id": str, "support_oppose": str, "party": str})
+    df = pd.read_csv(path, dtype={"district_id": str, "party": str}, low_memory=False)
     df["cycle"] = cycle
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
-    # Both "Support" own candidate and "Oppose" opponent count as positive
-    # spending for the party committee. O:-1 would subtract opposition ads,
-    # giving negative totals in heavy-opposition districts like AZ-01.
-    df["signed_amount"] = df["amount"].abs()
+
+    if "support_oppose" in df.columns:
+        # Legacy format: DCCC/NRCC only, both support and oppose are positive
+        df["signed_amount"] = df["amount"].abs()
+    else:
+        # Comprehensive format: party alignment is already pre-computed
+        df["signed_amount"] = df["amount"].abs()
 
     ie = (
         df.groupby(["district_id", "party", "cycle"])["signed_amount"]

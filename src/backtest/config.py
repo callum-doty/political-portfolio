@@ -50,6 +50,17 @@ def generic_ballot_2024() -> float:
     return float(gb)
 
 
+def generic_ballot_for_cycle(cycle: int) -> float:
+    """Return the final pre-election generic ballot (D − R) for any cycle."""
+    by_cycle = _cfg.get("generic_ballot_by_cycle", {})
+    if cycle in by_cycle:
+        return float(by_cycle[cycle])
+    if cycle == 2024:
+        return generic_ballot_2024()
+    raise ValueError(f"No generic ballot defined for cycle {cycle}. "
+                     f"Add to generic_ballot_by_cycle in config.yaml.")
+
+
 def beta_rc_prior() -> dict:
     return _cfg.get("beta_rc", {})
 

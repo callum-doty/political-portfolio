@@ -1,319 +1,302 @@
 #!/usr/bin/env python3
-"""Generate three portfolio visualization PNGs."""
+"""
+Generate publication-quality charts from backtest outputs.
 
-from __future__ import annotations
+Charts produced:
+  1. msg_efficiency.png        — MSG vs D spend (Spearman efficiency test)
+  2. model_calibration.png     — P_win bins vs actual win rate
+  3. spending_by_cook.png      — D/R spend distribution by Cook rating
+  4. allocator_comparison.png  — E[Seats] comparison across allocators
+  5. allocation_shift.png      — Recommended vs DCCC allocation shift
+  6. spending_ratio_vs_pvi.png — D share of spend vs district lean
+"""
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
-import seaborn as sns
+import matplotlib.ticker as mticker
+from matplotlib.patches import Patch
+from scipy import stats as scipy_stats
 
-sns.set_theme(style="whitegrid", context="paper", font_scale=1.15)
-plt.rcParams.update({
+matplotlib.rcParams.update({
     "font.family": "sans-serif",
+    "font.size": 11,
     "axes.spines.top": False,
     "axes.spines.right": False,
+    "axes.linewidth": 0.8,
+    "xtick.major.size": 3,
+    "ytick.major.size": 3,
+    "figure.dpi": 150,
 })
 
-OUT = Path("/Users/callumdoty/Desktop/Political Portfolio/outputs")
+OUT = Path(__file__).parent.parent / "outputs"
+DATA = OUT / "race_table_baseline.csv"
 
-RATING_ORDER = ["Safe D", "Likely D", "Lean D", "Toss-Up", "Lean R", "Likely R", "Safe R"]
-RATING_COLORS = {
-    "Safe D":    "#1a4480",
-    "Likely D":  "#2e75b6",
-    "Lean D":    "#9dc3e6",
-    "Toss-Up":   "#f4b942",
-    "Lean R":    "#f4a08c",
-    "Likely R":  "#c00000",
-    "Safe R":    "#6b0000",
+df = pd.read_csv(DATA)
+df["d_total_m"] = df["d_total"] / 1e6
+df["r_total_m"] = df["r_total"] / 1e6
+df["outcome_bin"] = (df["outcome"] == "D").astype(int)
+
+COOK_ORDER = ["Safe D", "Likely D", "Lean D", "Toss-Up", "Lean R", "Likely R", "Safe R"]
+COOK_COLOR = {
+    "Safe D":   "#1a3a5c",
+    "Likely D": "#2e6da4",
+    "Lean D":   "#5b9bd5",
+    "Toss-Up":  "#e6a817",
+    "Lean R":   "#e87c7c",
+    "Likely R": "#c0392b",
+    "Safe R":   "#7b0000",
 }
+COOK_PROB = {
+    "Safe D": 0.97, "Likely D": 0.85, "Lean D": 0.70,
+    "Toss-Up": 0.50,
+    "Lean R": 0.30, "Likely R": 0.15, "Safe R": 0.03,
+}
+COMPETITIVE = {"Toss-Up", "Lean D", "Lean R"}
 
-df = pd.read_csv(OUT / "race_table_baseline.csv")
-agg = pd.read_csv(OUT / "aggregate_summary_baseline.csv")
-BUDGET = agg["total_budget"].iloc[0]
+
+# ─── 1. MSG Efficiency Scatter ──────────────────────────────────────────────
+
+comp = df[df["cook_rating"].isin(COMPETITIVE)].copy()
+rho, pval = scipy_stats.spearmanr(comp["d_total"], comp["msg_i_per_1m"])
+
+fig, ax = plt.subplots(figsize=(8, 5.5))
+for rating in ["Lean D", "Toss-Up", "Lean R"]:
+    sub = comp[comp["cook_rating"] == rating]
+    ax.scatter(sub["d_total_m"], sub["msg_i_per_1m"],
+               c=COOK_COLOR[rating], s=65, alpha=0.82, linewidths=0.4,
+               edgecolors="white", label=rating, zorder=3)
+
+ax.set_xlabel("Total Democratic Spending ($M)", fontsize=12)
+ax.set_ylabel("Marginal Seat Gain per $1M (MSG)", fontsize=12)
+ax.set_title("DCCC Spends More Where Returns Are Lower\n(Competitive races, 2024 House)",
+             fontsize=13, fontweight="bold")
+
+note = f"Spearman ρ = {rho:.2f}  (p = {pval:.4f})\nn = {len(comp)} competitive races"
+ax.text(0.97, 0.97, note, transform=ax.transAxes, ha="right", va="top",
+        fontsize=10, bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#cccccc", alpha=0.9))
+
+ax.legend(title="Cook Rating", frameon=False, fontsize=10)
+ax.set_xlim(left=0)
+ax.set_ylim(bottom=0)
+ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:.0f}M"))
+fig.tight_layout()
+fig.savefig(OUT / "msg_efficiency.png", bbox_inches="tight")
+plt.close(fig)
+print("✓ msg_efficiency.png")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Chart 1 — Allocation difference vs PVI
-# ─────────────────────────────────────────────────────────────────────────────
+# ─── 2. Model Calibration ───────────────────────────────────────────────────
 
-fig, ax = plt.subplots(figsize=(13, 6.5))
+rows = df[df["outcome"].notna()].copy()
+rows["cook_prob"] = rows["cook_rating"].map(COOK_PROB)
+bins = np.linspace(0, 1, 11)
+bin_mids = (bins[:-1] + bins[1:]) / 2
 
-# Background PVI bands
-band_edges = [(-30, -15), (-15, -7), (-7, -2), (-2, 2), (2, 7), (7, 15), (15, 35)]
-band_colors = ["#6b0000", "#c00000", "#f4a08c", "#f4b942", "#9dc3e6", "#2e75b6", "#1a4480"]
-for (lo, hi), bc in zip(band_edges, band_colors):
-    ax.axvspan(lo, hi, alpha=0.06, color=bc, lw=0)
+model_rates, model_ns, model_xs = [], [], []
+cook_rates, cook_ns, cook_xs = [], [], []
 
-ax.axhline(0, color="#333333", lw=0.9, ls="--", alpha=0.8, zorder=2)
+for lo, hi, mid in zip(bins[:-1], bins[1:], bin_mids):
+    for col, rates, ns, xs in [
+        ("p_win",     model_rates, model_ns, model_xs),
+        ("cook_prob", cook_rates,  cook_ns,  cook_xs),
+    ]:
+        mask = (rows[col] >= lo) & (rows[col] < hi)
+        grp = rows[mask]
+        if len(grp) >= 3:
+            rates.append(grp["outcome_bin"].mean())
+            ns.append(len(grp))
+            xs.append(mid)
 
-safe_ratings = {"Safe D", "Safe R"}
-for rating in RATING_ORDER:
+fig, ax = plt.subplots(figsize=(7, 5.5))
+ax.plot([0, 1], [0, 1], "--", color="#aaaaaa", lw=1.2, label="Perfect calibration")
+ax.plot(cook_xs, cook_rates, "s--", color="#c0392b", lw=1.5,
+        ms=8, alpha=0.8, label="Cook Rating  (Brier = 0.0380)")
+ax.scatter(model_xs, model_rates,
+           s=[max(30, n * 3) for n in model_ns],
+           c="#2e6da4", zorder=4, edgecolors="white", linewidths=0.5,
+           label="Model P_win  (Brier = 0.0299)")
+ax.plot(model_xs, model_rates, "-", color="#2e6da4", lw=1.5, alpha=0.7)
+
+ax.set_xlabel("Predicted Win Probability", fontsize=12)
+ax.set_ylabel("Actual Democratic Win Rate", fontsize=12)
+ax.set_title("Model Calibration vs Cook Political Report\n(2024 House races with outcomes)",
+             fontsize=13, fontweight="bold")
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.xaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+ax.legend(frameon=False, fontsize=10)
+fig.tight_layout()
+fig.savefig(OUT / "model_calibration.png", bbox_inches="tight")
+plt.close(fig)
+print("✓ model_calibration.png")
+
+
+# ─── 3. Spending Distribution by Cook Rating ────────────────────────────────
+
+order = [c for c in COOK_ORDER if c in df["cook_rating"].values]
+colors = [COOK_COLOR[c] for c in order]
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5.5))
+
+# Panel A: median D and R spend by category
+d_med = [df[df["cook_rating"] == c]["d_total_m"].median() for c in order]
+r_med = [df[df["cook_rating"] == c]["r_total_m"].median() for c in order]
+y = np.arange(len(order))
+bw = 0.35
+axes[0].barh(y + bw/2, d_med, bw, color=colors, alpha=0.9, label="Democrat")
+axes[0].barh(y - bw/2, r_med, bw, color="#c0392b", alpha=0.45, label="Republican")
+axes[0].set_yticks(y)
+axes[0].set_yticklabels(order)
+axes[0].set_xlabel("Median Total Spending ($M)", fontsize=11)
+axes[0].set_title("Median Party vs R Spending\nby Cook Rating", fontsize=12, fontweight="bold")
+axes[0].xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:.0f}M"))
+axes[0].legend(frameon=False, fontsize=9)
+axes[0].spines["top"].set_visible(False)
+axes[0].spines["right"].set_visible(False)
+
+# Panel B: box plots for competitive races
+comp_cats = ["Lean D", "Toss-Up", "Lean R"]
+comp_d = [df[df["cook_rating"] == c]["d_total_m"].values for c in comp_cats]
+comp_r = [df[df["cook_rating"] == c]["r_total_m"].values for c in comp_cats]
+
+pos_d = [0.0, 1.1, 2.2]
+pos_r = [0.45, 1.55, 2.65]
+bp_d = axes[1].boxplot(comp_d, vert=True, patch_artist=True,
+                       positions=pos_d, widths=0.35,
+                       medianprops=dict(color="white", lw=2),
+                       flierprops=dict(marker="o", ms=3, alpha=0.35))
+bp_r = axes[1].boxplot(comp_r, vert=True, patch_artist=True,
+                       positions=pos_r, widths=0.35,
+                       medianprops=dict(color="white", lw=2),
+                       flierprops=dict(marker="o", ms=3, alpha=0.35))
+for patch, cat in zip(bp_d["boxes"], comp_cats):
+    patch.set_facecolor(COOK_COLOR[cat])
+    patch.set_alpha(0.85)
+for patch in bp_r["boxes"]:
+    patch.set_facecolor("#c0392b")
+    patch.set_alpha(0.45)
+for bp in [bp_d, bp_r]:
+    for elem in ["whiskers", "caps"]:
+        for line in bp[elem]:
+            line.set_color("#555555")
+
+mid_ticks = [(pos_d[i] + pos_r[i]) / 2 for i in range(3)]
+axes[1].set_xticks(mid_ticks)
+axes[1].set_xticklabels(comp_cats)
+axes[1].set_xlabel("Cook Rating (Competitive)", fontsize=11)
+axes[1].set_ylabel("Total Spending ($M)", fontsize=11)
+axes[1].set_title("D vs R Spending Distribution\nCompetitive Races", fontsize=12, fontweight="bold")
+axes[1].yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:.0f}M"))
+axes[1].spines["top"].set_visible(False)
+axes[1].spines["right"].set_visible(False)
+legend_els = [Patch(fc="#2e6da4", label="Democrat"), Patch(fc="#c0392b", alpha=0.6, label="Republican")]
+axes[1].legend(handles=legend_els, frameon=False, fontsize=9)
+
+fig.tight_layout()
+fig.savefig(OUT / "spending_by_cook.png", bbox_inches="tight")
+plt.close(fig)
+print("✓ spending_by_cook.png")
+
+
+# ─── 4. Allocator Comparison Bar Chart ──────────────────────────────────────
+
+allocators = ["DCCC\nObserved", "Cook\n-Implied", "Null\n(Equal)", "Model\nOptimizer"]
+seats      = [209.54, 209.34, 209.98, 214.00]
+bar_colors = ["#2e6da4", "#aaaaaa", "#888888", "#1a5c2b"]
+
+fig, ax = plt.subplots(figsize=(7, 5))
+bars = ax.bar(allocators, seats, color=bar_colors, edgecolor="white",
+              linewidth=0.5, width=0.55, zorder=3)
+
+baseline = seats[0]
+for bar, s in zip(bars, seats):
+    delta = s - baseline
+    delta_str = f"\n({'+' if delta >= 0 else ''}{delta:.2f})" if delta != 0 else ""
+    ax.text(bar.get_x() + bar.get_width()/2, s + 0.02,
+            f"{s:.2f}{delta_str}", ha="center", va="bottom",
+            fontsize=9.5, fontweight="bold")
+
+ax.axhline(baseline, color="#2e6da4", lw=1.2, ls="--", alpha=0.5, zorder=2)
+ax.set_ylabel("Expected Democratic Seats", fontsize=12)
+ax.set_title("Expected Seats by Allocation Strategy\n(2024 House — model win probabilities)",
+             fontsize=13, fontweight="bold")
+ax.set_ylim(208.5, 211.5)
+ax.yaxis.set_major_locator(mticker.MultipleLocator(0.5))
+ax.grid(axis="y", lw=0.5, alpha=0.35, zorder=0)
+fig.tight_layout()
+fig.savefig(OUT / "allocator_comparison.png", bbox_inches="tight")
+plt.close(fig)
+print("✓ allocator_comparison.png")
+
+
+# ─── 5. Allocation Shift ────────────────────────────────────────────────────
+
+df["diff_pct"] = df["difference"] * 100
+sig = df[df["diff_pct"].abs() > 0.05].copy()
+sig = sig.sort_values("diff_pct")
+
+# Limit display: top 20 positive, top 20 negative
+n_each = 20
+display = pd.concat([sig.head(n_each), sig.tail(n_each)]).drop_duplicates()
+display = display.sort_values("diff_pct")
+
+fig, ax = plt.subplots(figsize=(9, max(7, len(display) * 0.24)))
+bar_c = [COOK_COLOR.get(r, "#888888") for r in display["cook_rating"]]
+ypos = np.arange(len(display))
+ax.barh(ypos, display["diff_pct"], color=bar_c, alpha=0.85,
+        edgecolor="white", linewidth=0.3)
+ax.axvline(0, color="black", lw=0.8)
+
+labels = [f"{row['district_id']}  {row['cook_rating'][:7]}"
+          for _, row in display.iterrows()]
+ax.set_yticks(ypos)
+ax.set_yticklabels(labels, fontsize=8.5)
+ax.set_xlabel("Recommended − Observed Share (% of total budget)", fontsize=11)
+ax.set_title("Model Optimal vs DCCC Allocation\n(Top/bottom 20 races by shift magnitude)",
+             fontsize=13, fontweight="bold")
+ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:+.2f}%"))
+
+legend_els = [Patch(facecolor=COOK_COLOR[c], label=c)
+              for c in COOK_ORDER if c in display["cook_rating"].values]
+ax.legend(handles=legend_els, frameon=False, fontsize=8.5, ncol=2, loc="lower right")
+fig.tight_layout()
+fig.savefig(OUT / "allocation_shift.png", bbox_inches="tight")
+plt.close(fig)
+print("✓ allocation_shift.png")
+
+
+# ─── 6. Spending Ratio vs PVI ───────────────────────────────────────────────
+
+fig, ax = plt.subplots(figsize=(8.5, 5.5))
+for rating in COOK_ORDER:
     sub = df[df["cook_rating"] == rating]
-    color = RATING_COLORS[rating]
-    is_safe = rating in safe_ratings
-    alpha = 0.30 if is_safe else 0.80
-    size = 20 if is_safe else 50
-    ax.scatter(
-        sub["pvi"], sub["difference"] * 100,
-        color=color, alpha=alpha, s=size, zorder=4,
-        linewidths=0.5, edgecolors="none",
-    )
+    if len(sub) < 1:
+        continue
+    ax.scatter(sub["pvi"], sub["ratio"], c=COOK_COLOR[rating],
+               s=28, alpha=0.65, edgecolors="none", zorder=3)
 
-# Label the two outliers (NC-13 and CT-02 with huge positive differences)
-outliers = df[df["difference"] * 100 > 5].sort_values("difference", ascending=False)
-for _, row in outliers.head(5).iterrows():
-    ax.annotate(
-        row["district_id"],
-        xy=(row["pvi"], row["difference"] * 100),
-        xytext=(5, 2), textcoords="offset points",
-        fontsize=7.5, color="#333333", fontstyle="italic",
-        arrowprops=dict(arrowstyle="-", color="#888888", lw=0.5),
-    )
+ax.axhline(0.5, color="#555555", lw=1.0, ls="--", alpha=0.6)
+ax.axvline(0, color="#aaaaaa", lw=0.8, ls=":", alpha=0.5)
+ax.text(0.5, 0.52, "Equal spend", transform=ax.get_yaxis_transform(),
+        ha="left", va="bottom", fontsize=9, color="#555555")
+ax.set_xlabel("Cook PVI  (D+ →)", fontsize=12)
+ax.set_ylabel("Democratic Share of Total Spending", fontsize=12)
+ax.set_title("Spending Parity vs District Lean\n(All 433 races, 2024 House)",
+             fontsize=13, fontweight="bold")
+ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+ax.set_xlim(-36, 44)
+ax.set_ylim(-0.02, 1.02)
 
-ax.set_xlabel("Cook PVI  (D+ → more Democratic district)", fontsize=11)
-ax.set_ylabel("Allocation difference  (pp of total budget)", fontsize=11)
-ax.set_title(
-    "Allocation Difference vs PVI: Where Model and DCCC Diverge",
-    fontsize=13, fontweight="bold", pad=12,
-)
-
-ax.text(
-    0.012, 0.97, "↑ Above zero: model recommends more than DCCC spent",
-    transform=ax.transAxes, fontsize=8.5, color="#1a6630", va="top", alpha=0.9,
-)
-ax.text(
-    0.012, 0.04, "↓ Below zero: DCCC overspent vs model",
-    transform=ax.transAxes, fontsize=8.5, color="#8b1a1a", va="bottom", alpha=0.9,
-)
-
-legend_patches = [
-    mpatches.Patch(color=RATING_COLORS[r], label=r, alpha=0.85)
-    for r in RATING_ORDER
-]
-ax.legend(
-    handles=legend_patches, title="Cook Rating",
-    loc="upper right", fontsize=8.5, ncol=2,
-    framealpha=0.92, edgecolor="#cccccc",
-)
-
-x_range = df["pvi"].agg(["min", "max"])
-ax.set_xlim(x_range["min"] - 1, x_range["max"] + 1)
-ax.tick_params(axis="both", labelsize=9)
-
+legend_els = [Patch(facecolor=COOK_COLOR[c], label=c)
+              for c in COOK_ORDER if c in df["cook_rating"].values]
+ax.legend(handles=legend_els, frameon=False, fontsize=9, ncol=2,
+          title="Cook Rating", title_fontsize=9)
 fig.tight_layout()
-fig.savefig(OUT / "alloc_diff_pvi.png", dpi=150, bbox_inches="tight")
+fig.savefig(OUT / "spending_ratio_vs_pvi.png", bbox_inches="tight")
 plt.close(fig)
-print("✓ Chart 1: alloc_diff_pvi.png")
+print("✓ spending_ratio_vs_pvi.png")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Chart 2 — MSG rank vs DCCC Spend rank
-# ─────────────────────────────────────────────────────────────────────────────
-
-FOCUS_RATINGS = ["Toss-Up", "Lean D", "Lean R"]
-FOCUS_COLORS = {"Toss-Up": "#f4b942", "Lean D": "#2e75b6", "Lean R": "#c00000"}
-
-focus = df[df["cook_rating"].isin(FOCUS_RATINGS)].copy()
-focus["msg_rank"] = focus["msg_i_per_1m"].rank(ascending=False, method="first").astype(int)
-focus["spend_rank"] = focus["observed_share"].rank(ascending=False, method="first").astype(int)
-n = len(focus)
-
-fig, ax = plt.subplots(figsize=(8, 8))
-
-# Quadrant shading
-ax.fill_between([1, n / 2], [n / 2, n / 2], [n + 0.5, n + 0.5],
-                alpha=0.055, color="#c00000")   # high MSG, low spend → under-targeted
-ax.fill_between([n / 2, n + 0.5], [0.5, 0.5], [n / 2, n / 2],
-                alpha=0.055, color="#1a4480")   # low MSG, high spend → over-targeted
-
-# Diagonal
-ax.plot([0.5, n + 0.5], [0.5, n + 0.5], color="#555555", lw=1.1, ls="--",
-        alpha=0.65, label="Perfect alignment", zorder=2)
-
-# Points
-for _, row in focus.iterrows():
-    color = FOCUS_COLORS[row["cook_rating"]]
-    d_win = row["outcome"] == "D"
-    ax.scatter(
-        row["msg_rank"], row["spend_rank"],
-        s=90, marker="o",
-        facecolors=color if d_win else "white",
-        edgecolors=color, linewidths=1.8,
-        alpha=0.88, zorder=5,
-    )
-
-# Labels for notable misalignments (rank difference > 20)
-for _, row in focus.iterrows():
-    rdiff = abs(row["msg_rank"] - row["spend_rank"])
-    if rdiff >= 22:
-        ax.annotate(
-            row["district_id"],
-            xy=(row["msg_rank"], row["spend_rank"]),
-            xytext=(5, 3), textcoords="offset points",
-            fontsize=6.5, color="#333333", alpha=0.9,
-        )
-
-ax.set_xlim(0.5, n + 0.5)
-ax.set_ylim(0.5, n + 0.5)
-ax.set_xlabel("MSG rank  (1 = highest return per $)", fontsize=11)
-ax.set_ylabel("DCCC spending rank  (1 = most spent)", fontsize=11)
-ax.set_title(
-    "MSG vs DCCC Spending Rank: Targeted Competitive Races",
-    fontsize=13, fontweight="bold", pad=12,
-)
-
-# Quadrant labels
-ax.text(1.5, n - 1, "Under-targeted\nhigh-MSG", fontsize=7.5, color="#8b1a1a",
-        alpha=0.7, va="top")
-ax.text(n - 1, 2.5, "Over-targeted\nlow-MSG", fontsize=7.5, color="#1a4480",
-        alpha=0.7, va="top", ha="right")
-
-legend_elements = [
-    mpatches.Patch(color=FOCUS_COLORS[r], label=r, alpha=0.85)
-    for r in FOCUS_RATINGS
-] + [
-    Line2D([0], [0], marker="o", color="w", label="● D win",
-           markerfacecolor="#777777", markeredgecolor="#777777", markersize=9),
-    Line2D([0], [0], marker="o", color="w", label="○ R win",
-           markerfacecolor="white", markeredgecolor="#777777",
-           markersize=9, markeredgewidth=1.8),
-    Line2D([0], [0], color="#555555", ls="--", label="Diagonal = perfect alignment"),
-]
-ax.legend(handles=legend_elements, loc="upper left", fontsize=8.5,
-          framealpha=0.92, edgecolor="#cccccc")
-
-ax.tick_params(axis="both", labelsize=9)
-fig.tight_layout()
-fig.savefig(OUT / "msg_vs_spend_rank.png", dpi=150, bbox_inches="tight")
-plt.close(fig)
-print("✓ Chart 2: msg_vs_spend_rank.png")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Chart 3 — Efficiency Frontier
-#
-# Strategy: fix safe district p_win at observed (their MSG ≈ 0, so spending
-# there barely changes outcomes); only vary competitive district allocations
-# using the linearized model.  This avoids log(ratio)→−∞ extrapolation.
-# ─────────────────────────────────────────────────────────────────────────────
-
-obs_shares = df["observed_share"].values
-rec_shares = df["recommended_share"].values
-p0         = df["p_win"].values
-msg_per_dollar = df["msg_i_per_1m"].values / 1e6  # seats per dollar
-
-safe_mask = df["cook_rating"].isin(["Safe D", "Safe R"]).values
-comp_mask = ~safe_mask
-n_comp    = int(comp_mask.sum())
-
-# Safe district baseline (fixed across all strategies)
-p_safe = p0[safe_mask]
-safe_e  = float(p_safe.sum())
-safe_sd_sq = float((p_safe * (1 - p_safe)).sum())
-
-# Total budget allocated to safe vs competitive under DCCC
-safe_budget_dccc = float(obs_shares[safe_mask].sum())   # share of B
-comp_budget_total = 1.0 - safe_budget_dccc              # the rest goes to competitive
-
-
-def _comp_point(comp_shares: np.ndarray) -> tuple[float, float]:
-    """
-    Given a share vector for competitive races (len = n_comp, sum ≤ 1),
-    return (E[Seats_total], SD[Seats_total]) using linearised model + safe
-    baseline.  comp_shares should be a fraction of TOTAL budget B.
-    """
-    delta_d = (comp_shares - obs_shares[comp_mask]) * BUDGET
-    p_comp = np.clip(p0[comp_mask] + msg_per_dollar[comp_mask] * delta_d, 0.0, 1.0)
-    e  = safe_e + float(p_comp.sum())
-    sd = float(np.sqrt(safe_sd_sq + float((p_comp * (1 - p_comp)).sum())))
-    return e, sd
-
-
-# Baseline strategies as share-of-B vectors for competitive districts
-obs_comp  = obs_shares[comp_mask]
-rec_comp  = rec_shares[comp_mask]
-
-# Null: redistribute ALL safe budget equally across competitive
-null_comp = obs_comp + safe_budget_dccc / n_comp
-
-# Cook: redistribute ALL safe budget proportionally by cook weight
-cook_wt_comp = df.loc[comp_mask, "cook_rating"].map(
-    {"Toss-Up": 4, "Lean D": 3, "Lean R": 3, "Likely D": 2, "Likely R": 2}
-).fillna(0).values.astype(float)
-cook_wt_comp = cook_wt_comp / cook_wt_comp.sum() if cook_wt_comp.sum() > 0 else np.ones(n_comp) / n_comp
-cook_comp = obs_comp + safe_budget_dccc * cook_wt_comp
-
-dccc_e,  dccc_sd  = _comp_point(obs_comp)
-null_e,  null_sd  = _comp_point(null_comp)
-cook_e,  cook_sd  = _comp_point(cook_comp)
-model_e, model_sd = _comp_point(rec_comp)
-
-# Path 1: DCCC → Null  (gradually move safe budget into competitive equally)
-# Path 2: Null → Model (re-concentrate within competitive toward MSG)
-path_e_all, path_sd_all, path_cols = [], [], []
-_path_defs = [
-    (obs_comp,  null_comp, 70, "#9467bd", "DCCC → Null  (redeploy safe-race budget)"),
-    (null_comp, rec_comp,  70, "#d62728", "Null → Model  (target by MSG within competitive)"),
-]
-for start, end, n_pts, col, _ in _path_defs:
-    for t in np.linspace(0.0, 1.0, n_pts):
-        s = (1 - t) * start + t * end
-        e, sd = _comp_point(s)
-        path_e_all.append(e)
-        path_sd_all.append(sd)
-        path_cols.append(col)
-
-# ── Plot ──────────────────────────────────────────────────────────────────
-fig, ax = plt.subplots(figsize=(9.5, 6.5))
-
-idx = 0
-for (_, _, n_pts, col, lbl) in _path_defs:
-    sds = path_sd_all[idx: idx + n_pts]
-    es  = path_e_all[idx: idx + n_pts]
-    ax.plot(sds, es, "-", color=col, lw=2.2, alpha=0.75, label=lbl)
-    idx += n_pts
-
-# Reference points
-_pts = [
-    (dccc_sd,  dccc_e,  "#1f4e9c", "o", 180, "DCCC observed",      (8, -14)),
-    (null_sd,  null_e,  "#8b5cf6", "s", 130, "Null (equal-weight)", (8,   5)),
-    (cook_sd,  cook_e,  "#059669", "^", 130, "Cook-implied",        (8,   5)),
-    (model_sd, model_e, "#d62728", "*", 240, "Model (γ=0)",         (8,   5)),
-]
-for sd, e, col, mk, sz, lbl, off in _pts:
-    ax.scatter(sd, e, s=sz, color=col, marker=mk, zorder=7,
-               edgecolors="white", linewidths=0.8)
-    ax.annotate(lbl, xy=(sd, e), xytext=off, textcoords="offset points",
-                fontsize=8.5, color=col, fontweight="semibold")
-
-ax.set_xlabel("SD[Seats]  (binomial independence approximation)", fontsize=11)
-ax.set_ylabel("E[Seats]  (linearized model expectation)", fontsize=11)
-ax.set_title(
-    "Efficiency Frontier: Democratic House Seat Expectations (2024)",
-    fontsize=13, fontweight="bold", pad=12,
-)
-
-legend_lines = [
-    Line2D([0], [0], color=col, lw=2.2, label=lbl)
-    for (_, _, _, col, lbl) in _path_defs
-]
-ax.legend(handles=legend_lines, loc="lower right", fontsize=8.5,
-          framealpha=0.92, edgecolor="#cccccc", handlelength=1.8)
-
-ax.text(
-    0.02, 0.02,
-    "E[Seats] = linearized model expectation at each allocation  ·  SD = binomial independence approximation",
-    transform=ax.transAxes, fontsize=7.5, color="#777777", style="italic",
-)
-
-ax.tick_params(axis="both", labelsize=9)
-fig.tight_layout()
-fig.savefig(OUT / "efficiency_frontier_v2.png", dpi=150, bbox_inches="tight")
-plt.close(fig)
-print("✓ Chart 3: efficiency_frontier_v2.png")
+print(f"\nAll 6 charts written to {OUT}/")

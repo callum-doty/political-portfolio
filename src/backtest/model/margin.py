@@ -27,13 +27,14 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MarginModelCoefficients:
     """All estimated coefficients for the spending response surface."""
-    alpha0: float    # intercept
-    alpha1: float    # PVI
-    alpha2: float    # incumbency (Incumbent dummy)
-    alpha3: float    # generic ballot
-    beta1:  float    # β_RC — log(ratio)
-    beta2:  float    # log(ratio) × |PVI|
-    beta3:  float    # log(ratio) × Incumbent
+    alpha0: float         # intercept
+    alpha1: float         # PVI
+    alpha2: float         # incumbency (Incumbent dummy)
+    alpha3: float         # generic ballot
+    alpha4: float = 0.0   # log((D+R)/CVAP) — total spending intensity per voter
+    beta1:  float = 0.0   # β_RC — log(ratio)
+    beta2:  float = 0.0   # log(ratio) × |PVI|
+    beta3:  float = 0.0   # log(ratio) × Incumbent
 
 
 def estimate_from_panel(
@@ -43,6 +44,7 @@ def estimate_from_panel(
     panel_pvi: pd.DataFrame,
     generic_ballot_by_cycle: dict[int, float],
     beta_rc_estimate: float,
+    cvap_df: pd.DataFrame | None = None,
 ) -> tuple[MarginModelCoefficients, float]:
     """
     Fit the margin model on the 2012–2022 panel.
@@ -73,13 +75,29 @@ def estimate_from_panel(
     df["abs_pvi"] = df["pvi"].abs()
     df["is_incumb"] = (df["incumb_status"] == "Incumbent").astype(float)
 
+    # Spending intensity: log((D+R)/CVAP) — total dollars per eligible voter.
+    # Uses 2022 ACS5 CVAP as an approximation for all cycles; districts that
+    # don't match (pre-2022 redistricting) receive median-CVAP imputation.
+    if cvap_df is not None:
+        df = df.merge(cvap_df[["district_id", "cvap"]], on="district_id", how="left")
+        median_cvap = df["cvap"].median()
+        df["cvap"] = df["cvap"].fillna(median_cvap).clip(lower=1)
+    else:
+        df["cvap"] = 500_000   # national median fallback
+    df["log_total_per_voter"] = np.log((df["d_total"] + df["r_total"]) / df["cvap"])
+
     # Impose β_RC via offset: y* = margin − β_RC·log(ratio)
     df["y_offset"] = df["margin_pp"] - beta_rc_estimate * df["log_ratio"]
 
-    feature_cols = ["pvi", "is_incumb", "gb",
-                    "log_ratio_x_abs_pvi", "log_ratio_x_incumb"]
     df["log_ratio_x_abs_pvi"] = df["log_ratio"] * df["abs_pvi"]
     df["log_ratio_x_incumb"] = df["log_ratio"] * df["is_incumb"]
+    # Note: log_total_per_voter is computed above but excluded from the regression.
+    # OLS on the panel picks up endogeneity — high-spending races are structurally
+    # more competitive (lower D margin conditional on PVI), producing a spuriously
+    # large negative alpha4 that degrades out-of-sample calibration. The variable
+    # is available in the dataframe for future instrumented estimation.
+    feature_cols = ["pvi", "is_incumb", "gb",
+                    "log_ratio_x_abs_pvi", "log_ratio_x_incumb"]
 
     X = sm.add_constant(df[feature_cols])
     y = df["y_offset"]
@@ -90,13 +108,14 @@ def estimate_from_panel(
         alpha1=float(fit.params["pvi"]),
         alpha2=float(fit.params["is_incumb"]),
         alpha3=float(fit.params["gb"]),
+        alpha4=0.0,   # constrained to zero; see note above
         beta1=beta_rc_estimate,
         beta2=float(fit.params["log_ratio_x_abs_pvi"]),
         beta3=float(fit.params["log_ratio_x_incumb"]),
     )
 
     # R² on competitive subset
-    df["fitted"] = predict_batch(df, coef)
+    df["fitted"] = predict_batch(df, coef)  # df already has log_total_per_voter
     competitive_mask = df["abs_pvi"] <= 10   # rough competitive proxy for panel
     ss_res = ((df.loc[competitive_mask, "margin_pp"] - df.loc[competitive_mask, "fitted"]) ** 2).sum()
     ss_tot = ((df.loc[competitive_mask, "margin_pp"] - df.loc[competitive_mask, "margin_pp"].mean()) ** 2).sum()
@@ -116,29 +135,32 @@ def predict(
     ratio: float,
     coef: MarginModelCoefficients,
     beta1_override: float | None = None,
+    total_spend: float = 0.0,
+    cvap: int = 0,
 ) -> float:
     """
     Compute fitted expected margin for a single district.
 
     Parameters
     ----------
-    beta1_override : if provided, substitute this value for coef.beta1
-                     (used during β_RC uncertainty draws)
-
-    Returns
-    -------
-    μ̂ᵢ in percentage points.
+    beta1_override  : if provided, substitute this value for coef.beta1
+                      (used during β_RC uncertainty draws)
+    total_spend     : D + R total spending ($); used for spending intensity term
+    cvap            : citizen voting age population; used for per-voter normalization
     """
     b1 = beta1_override if beta1_override is not None else coef.beta1
     is_incumb = 1.0 if incumb_status == "Incumbent" else 0.0
     log_ratio = np.log(ratio)
     abs_pvi = abs(pvi)
 
+    log_total_pv = np.log(max(total_spend, 1.0) / max(cvap, 1)) if cvap > 0 else 0.0
+
     return (
         coef.alpha0
         + coef.alpha1 * pvi
         + coef.alpha2 * is_incumb
         + coef.alpha3 * generic_ballot
+        + coef.alpha4 * log_total_pv
         + b1 * log_ratio
         + coef.beta2 * log_ratio * abs_pvi
         + coef.beta3 * log_ratio * is_incumb
@@ -146,12 +168,17 @@ def predict(
 
 
 def predict_batch(df: pd.DataFrame, coef: MarginModelCoefficients) -> pd.Series:
-    """Vectorised version of predict() for a DataFrame with precomputed columns."""
+    """Vectorised version of predict() for a DataFrame with precomputed columns.
+
+    Requires df to have: pvi, is_incumb, gb, log_ratio, log_total_per_voter
+    """
+    log_tpv = df["log_total_per_voter"] if "log_total_per_voter" in df.columns else 0.0
     return (
         coef.alpha0
         + coef.alpha1 * df["pvi"]
         + coef.alpha2 * df["is_incumb"]
         + coef.alpha3 * df["gb"]
+        + coef.alpha4 * log_tpv
         + coef.beta1 * df["log_ratio"]
         + coef.beta2 * df["log_ratio"] * df["pvi"].abs()
         + coef.beta3 * df["log_ratio"] * df["is_incumb"]

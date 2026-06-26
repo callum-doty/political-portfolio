@@ -21,6 +21,7 @@ class RaceRecord:
     generic_ballot: float     # pre-election 2024 D − R generic ballot average
     redistricting_flagged: bool = False
     outcome: str | None = None  # "D" | "R" | None (filled after results merge)
+    cand_d_total: float = 0.0   # candidate-only D spend (floor; not DCCC-controllable)
 
 
 @dataclass

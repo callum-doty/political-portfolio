@@ -33,6 +33,7 @@ def propagate_beta_rc_uncertainty(
     gamma: float,
     cap_fraction: float,
     rng: np.random.Generator | None = None,
+    party_budget: float | None = None,
 ) -> UncertaintyBundle:
     """
     Run K optimizer iterations, each with a different β_RC draw.
@@ -54,11 +55,13 @@ def propagate_beta_rc_uncertainty(
     n_races = len(races)
     observed_shares = np.array([r.d_total / budget for r in races])
 
+    cand_floors = np.array([r.cand_d_total for r in races])
     recommended_matrix = np.zeros((K, n_races))
 
     for k, beta_draw in enumerate(tqdm(beta_draws, desc="β_RC draws", leave=False)):
         outputs_k = compute_outputs_batch(races, coef, sigma_model, beta1_override=float(beta_draw))
-        result_k = optimize(outputs_k, budget, cov_matrix, gamma, cap_fraction)
+        result_k = optimize(outputs_k, budget, cov_matrix, gamma, cap_fraction,
+                            floor_allocations=cand_floors, party_budget=party_budget)
         recommended_matrix[k] = result_k.shares
 
     return UncertaintyBundle(

@@ -1,5 +1,5 @@
 """
-Construct and filter the 2024 backtest race universe.
+Construct and filter the race universe for a given election cycle.
 
 Applies inclusion/exclusion criteria from Section 2 of the spec and returns
 a list of RaceRecord objects ready for the model.
@@ -15,33 +15,43 @@ from . import fec, elections, cook, census, incumbency
 logger = logging.getLogger(__name__)
 
 
-def build_universe() -> list[RaceRecord]:
+def build_universe(cycle: int = 2024) -> list[RaceRecord]:
     """
-    Assemble the 2024 race universe and apply all inclusion/exclusion filters.
+    Assemble the race universe for a given cycle and apply inclusion/exclusion filters.
+
+    Parameters
+    ----------
+    cycle : election year (2012, 2014, ..., 2024). Defaults to 2024.
 
     Returns a list of RaceRecord objects, one per included district.
-    Logs each exclusion decision and redistricting flags.
     """
     ucfg = config.universe_cfg()
-    gb = config.generic_ballot_2024()
+    gb = config.generic_ballot_for_cycle(cycle)
 
-    # ── Load all 2024 data ────────────────────────────────────────────────────
-    spend = fec.build_total_spend(2024)
-    results = elections.load_results(2024)
-    pvi = cook.load_pvi(2024)
-    ratings = cook.load_ratings_2024()
-    cvap = census.load_cvap()
-    incumb = incumbency.load_incumbency(2024)
+    spend = fec.build_total_spend(cycle)
+    cand_only = fec.load_candidate_disbursements(cycle)
+    results = elections.load_results(cycle)
+    pvi = cook.load_pvi(cycle)
+    ratings = cook.load_ratings(cycle)
+    cvap = census.load_cvap()   # 2022 ACS5; used as static approximation
+    incumb = incumbency.load_incumbency(cycle)
 
     # ── Merge ─────────────────────────────────────────────────────────────────
+    cand_d = (
+        cand_only[cand_only["party"] == "D"][["district_id", "candidate_disbursements"]]
+        .rename(columns={"candidate_disbursements": "cand_d_total"})
+    )
+
     df = (
         spend
+        .merge(cand_d, on="district_id", how="left")
         .merge(results[["district_id", "winner"]], on="district_id", how="left")
         .merge(pvi, on="district_id", how="left")
         .merge(ratings, on="district_id", how="left")
         .merge(cvap, on="district_id", how="left")
         .merge(incumb[["district_id", "incumb_status"]], on="district_id", how="left")
     )
+    df["cand_d_total"] = df["cand_d_total"].fillna(0.0)
 
     df["state"] = df["district_id"].str.split("-").str[0]
     df["district"] = df["district_id"].str.split("-").str[1].astype(int, errors="ignore")
@@ -98,6 +108,7 @@ def build_universe() -> list[RaceRecord]:
             generic_ballot=gb,
             redistricting_flagged=bool(row["redistricting_flagged"]),
             outcome=row.get("winner"),
+            cand_d_total=float(row["cand_d_total"]),
         ))
 
     return records

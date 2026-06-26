@@ -5,15 +5,17 @@ Main backtest pipeline.
 Requires run_estimation.py to have completed successfully first.
 
 Steps:
-  1. Load 2024 race universe
-  2. Apply margin model at observed 2024 allocations
+  1. Load race universe for the target cycle
+  2. Apply margin model at observed allocations
   3. Run validation gates
   4. Run optimizer across (γ, cap) grid
   5. Propagate β_RC uncertainty (K=1000 draws)
   6. Produce per-race table, aggregate summary, efficiency frontier chart
 
 Usage:
-    python scripts/run_backtest.py [--skip-uncertainty] [--gamma-mid 0.1] [--gamma-high 0.2]
+    python scripts/run_backtest.py                              # 2024 standard
+    python scripts/run_backtest.py --skip-uncertainty           # 2024, fast
+    python scripts/run_backtest.py --cycle 2022 --processed-dir data/processed_oos_2020
 """
 
 from __future__ import annotations
@@ -34,7 +36,7 @@ from backtest.model.margin import MarginModelCoefficients
 from backtest.model.win_prob import compute_outputs_batch
 from backtest.types import BetaRC, SigmaModel, FactorModel
 from backtest.optimizer.allocator import (
-    optimize, run_sensitivity_grid, build_allocation_results
+    optimize, optimize_nonlinear, run_sensitivity_grid, build_allocation_results
 )
 from backtest.comparison.efficiency import spearman_efficiency_test, characterize_misallocation
 from backtest.comparison.benchmark import (
@@ -62,7 +64,7 @@ def load_processed_artifacts(processed: Path) -> tuple[BetaRC, MarginModelCoeffi
     with open(processed / "margin_model_coef.json") as f:
         d = json.load(f)
     coef = MarginModelCoefficients(**{k: d[k] for k in
-                                      ["alpha0", "alpha1", "alpha2", "alpha3",
+                                      ["alpha0", "alpha1", "alpha2", "alpha3", "alpha4",
                                        "beta1", "beta2", "beta3"]})
 
     with open(processed / "sigma_model.json") as f:
@@ -89,16 +91,27 @@ def build_dummy_factor_model(races: list, generic_ballot: float) -> FactorModel:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the 2024 House backtest")
+    parser = argparse.ArgumentParser(description="Run the House backtest")
     parser.add_argument("--skip-uncertainty", action="store_true",
                         help="Skip β_RC uncertainty propagation (faster for debugging)")
     parser.add_argument("--gamma-mid",  type=float, default=None,
                         help="Override γ_mid (default: calibrated post-estimation)")
     parser.add_argument("--gamma-high", type=float, default=None,
                         help="Override γ_high")
+    parser.add_argument("--cycle", type=int, default=2024,
+                        help="Election cycle to backtest (default: 2024)")
+    parser.add_argument("--processed-dir", type=str, default=None,
+                        help="Path to estimation artifacts directory "
+                             "(default: data/processed). Use with --cycle for OOS runs.")
     args = parser.parse_args()
 
-    processed = config.processed_path()
+    if args.processed_dir:
+        processed = Path(args.processed_dir)
+    else:
+        processed = config.processed_path()
+
+    cycle = args.cycle
+    suffix = f"_{cycle}" if cycle != 2024 else ""
     out_dir = config.outputs_path()
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -106,12 +119,16 @@ def main() -> None:
     logger.info("Loading estimation artifacts…")
     beta_rc, coef, sigma_model = load_processed_artifacts(processed)
 
-    # ── 2. Build 2024 race universe ───────────────────────────────────────────
-    logger.info("Building 2024 race universe…")
-    races = build_universe()
+    # ── 2. Build race universe ────────────────────────────────────────────────
+    logger.info(f"Building {cycle} race universe…")
+    races = build_universe(cycle=cycle)
     logger.info(f"Universe: {len(races)} races")
     budget = sum(r.d_total for r in races)
+    party_budget = sum(r.d_total - r.cand_d_total for r in races)
     logger.info(f"Total Democratic budget: ${budget:,.0f}")
+    logger.info(f"DCCC party-controlled budget: ${party_budget:,.0f}")
+
+    cand_floors = np.array([r.cand_d_total for r in races])
 
     # ── 3. Compute model outputs at observed 2024 spending ────────────────────
     logger.info("Computing model outputs (observed spending)…")
@@ -130,7 +147,9 @@ def main() -> None:
     # Run baseline optimizer to get convergence diagnostics for gate 5
     gamma0 = 0.0
     cap_baseline = cap_fractions[-1]   # 15% cap
-    baseline_result = optimize(outputs, budget, cov_matrix, gamma0, cap_baseline)
+    baseline_result = optimize_nonlinear(
+        races, coef, sigma_model, budget, cov_matrix, gamma0, cap_baseline,
+        party_budget=party_budget)
 
     brier = compute_brier_comparison(races, outputs)
     brier_model = brier.get("model", 0.5)
@@ -162,7 +181,10 @@ def main() -> None:
     active_gammas = [0.0, gamma_mid, gamma_high]
     logger.info(f"γ values: risk_neutral=0.0, mid={gamma_mid:.4f}, high={gamma_high:.4f}")
 
-    grid_results = run_sensitivity_grid(outputs, budget, cov_matrix, active_gammas, cap_fractions)
+    grid_results = run_sensitivity_grid(
+        outputs, budget, cov_matrix, active_gammas, cap_fractions,
+        floor_allocations=cand_floors, party_budget=party_budget,
+        races=races, coef=coef, sigma_model=sigma_model)
 
     # ── 7. Primary allocation (γ=0, 15% cap) ─────────────────────────────────
     primary_result = grid_results[(0.0, cap_baseline)]
@@ -183,6 +205,7 @@ def main() -> None:
             races=races, beta_rc=beta_rc, coef=coef, sigma_model=sigma_model,
             factor_model=factor_model, budget=budget,
             gamma=0.0, cap_fraction=cap_baseline,
+            party_budget=party_budget,
         )
 
     # ── 10. Benchmark comparisons ─────────────────────────────────────────────
@@ -197,7 +220,7 @@ def main() -> None:
     logger.info("Building output tables…")
     race_table = build_race_table(races, outputs, allocation, uncertainty)
     aggregate = build_aggregate_summary(races, outputs, allocation, efficiency, budget)
-    save_outputs(race_table, aggregate, label="baseline")
+    save_outputs(race_table, aggregate, label=f"baseline{suffix}")
 
     # ── 12. Charts ────────────────────────────────────────────────────────────
     logger.info("Generating charts…")
@@ -220,7 +243,7 @@ def main() -> None:
             sum(o.p_win for o in outputs),  # approximate
             null_sd
         ),
-        save_path=out_dir / "efficiency_frontier.png",
+        save_path=out_dir / f"efficiency_frontier{suffix}.png",
     )
 
     allocation_difference_scatter(
@@ -228,7 +251,7 @@ def main() -> None:
         pvi_vals=[r.pvi for r in races],
         differences=[a.difference for a in allocation],
         cook_ratings=[r.cook_rating for r in races],
-        save_path=out_dir / "allocation_difference.png",
+        save_path=out_dir / f"allocation_difference{suffix}.png",
     )
 
     logger.info(f"All outputs written to {out_dir}/")

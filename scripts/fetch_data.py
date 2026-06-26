@@ -111,13 +111,119 @@ def _cycle_to_yy(cycle: int) -> str:
 
 # ─── Tier 1: Bulk candidate committee totals ──────────────────────────────────
 
-def fetch_candidate_totals_bulk(cycle: int) -> None:
+def _parse_weball_bytes(wb_bytes: bytes) -> "pd.DataFrame":
     """
-    Download and parse FEC bulk candidate + committee files to produce
+    Parse raw weball pipe-delimited bytes into a DataFrame of House candidates.
+
+    weball column layout (0-indexed, verified against FEC bulk spec):
+      col  0: CAND_ID              H… = House, S… = Senate, P… = President
+      col  1: CAND_NAME
+      col  2: CAND_ICI             I=Incumbent, C=Challenger, O=Open
+      col  3: PTY_CD               numeric party code
+      col  4: CAND_PTY_AFFILIATION DEM, REP, …
+      col  5: TTL_RECEIPTS         total receipts
+      col  7: TTL_DISB             ← total disbursements (spend)
+      col  9: COH_BOP              cash on hand beginning of period
+      col 10: COH_COP              cash on hand close of period
+      col 17: TTL_INDIV_CONTRIB    total individual contributions received
+      col 18: CAND_OFFICE_ST       state abbreviation
+      col 19: CAND_OFFICE_DISTRICT two-digit district number
+    """
+    import pandas as pd
+    import io as _io
+    df = pd.read_csv(
+        _io.BytesIO(wb_bytes), sep="|", header=None,
+        names=list(range(31)), dtype=str, on_bad_lines="skip",
+    )
+    return df[df[0].str.startswith("H", na=False)].copy()
+
+
+def _weball_to_disbursements(house: "pd.DataFrame", cycle: int) -> "pd.DataFrame":
+    """Convert parsed weball House rows to the candidate_disbursements schema."""
+    import pandas as pd
+    ici_map = {"I": "Incumbent", "C": "Challenger", "O": "Open seat"}
+    # Map FEC party affiliations to D/R.
+    # DFL = Democratic-Farmer-Labor (Minnesota's Democratic party).
+    # WFP = Working Families Party (NY/CT/etc., nominates Democratic candidates).
+    party_map = {
+        "DEM": "D", "DFL": "D", "WFP": "D",   # Democratic-aligned
+        "REP": "R", "CON": "R",                 # Republican-aligned (CON = NY Conservative)
+    }
+
+    raw_party = house[4].str.strip()
+    mapped_party = raw_party.map(party_map)
+    # Any unmapped code stays as-is (e.g., IND, LIB, GRE) — filtered out later
+    mapped_party = mapped_party.fillna(raw_party)
+
+    out = pd.DataFrame({
+        "fec_candidate_id":        house[0].str.strip(),
+        "candidate_name":          house[1].str.strip(),
+        "incumbent_challenge_full": house[2].str.strip().map(ici_map).fillna("Open seat"),
+        "party":                   mapped_party,
+        "state":                   house[18].str.strip(),
+        "district_num":            house[19].str.strip().str.zfill(2),
+        "candidate_disbursements": pd.to_numeric(house[7], errors="coerce").fillna(0),
+        "cycle":                   cycle,
+    })
+    out["district_id"] = out["state"] + "-" + out["district_num"]
+    return out.drop(columns=["state", "district_num"])
+
+
+def fetch_candidate_totals_local(cycle: int, force: bool = False) -> bool:
+    """
+    Build candidate_disbursements_{cycle}.csv from a locally cached weball file.
+
+    Reads from data/raw/bulk_all/weball{yy}.txt or
+    data/raw/house_senate_current_campaigns/webl{yy}.txt, whichever exists.
+    Returns True if the output was written, False if skipped.
+    """
+    import pandas as pd
+
+    out_path = config.raw_path("fec") / f"candidate_disbursements_{cycle}.csv"
+    if out_path.exists() and not force:
+        logger.info(f"Candidate totals {cycle}: already present, skipping")
+        return False
+
+    yy = _cycle_to_yy(cycle)
+    local_paths = [
+        config.raw_path("bulk_all") if hasattr(config, "raw_path") else None,
+        Path(__file__).parent.parent / "data" / "raw" / "bulk_all" / f"weball{yy}.txt",
+        Path(__file__).parent.parent / "data" / "raw" / "house_senate_current_campaigns" / f"webl{yy}.txt",
+    ]
+    # Resolve: use the first existing local file
+    local_file = None
+    for p in local_paths[1:]:
+        if p and p.exists():
+            local_file = p
+            break
+
+    if local_file is None:
+        logger.info(f"No local bulk file for {cycle}; will download")
+        return False
+
+    logger.info(f"Reading candidate totals for {cycle} from local file: {local_file.name}")
+    with open(local_file, "rb") as f:
+        wb_bytes = f.read()
+
+    house = _parse_weball_bytes(wb_bytes)
+    logger.info(f"  {len(house)} House candidate rows in {local_file.name}")
+    out = _weball_to_disbursements(house, cycle)
+
+    out[[
+        "district_id", "fec_candidate_id", "candidate_name", "party",
+        "cycle", "candidate_disbursements", "incumbent_challenge_full",
+    ]].to_csv(out_path, index=False)
+    logger.info(f"Saved {len(out)} House candidates → {out_path}")
+    return True
+
+
+def fetch_candidate_totals_bulk(cycle: int, force: bool = False) -> None:
+    """
+    Download and parse FEC bulk weball file to produce
     candidate_disbursements_{cycle}.csv with no API key required.
 
-    Joins cn (candidate master) → weball (committee totals) on CAND_PCC.
-    Filters to House candidates (CAND_OFFICE = H) for the relevant cycle.
+    Prefers local weball file (data/raw/bulk_all/ or
+    data/raw/house_senate_current_campaigns/) over download when available.
 
     Output schema:
         district_id, fec_candidate_id, candidate_name, party, cycle,
@@ -126,46 +232,19 @@ def fetch_candidate_totals_bulk(cycle: int) -> None:
     import pandas as pd
 
     out_path = config.raw_path("fec") / f"candidate_disbursements_{cycle}.csv"
-    if out_path.exists():
+    if out_path.exists() and not force:
         logger.info(f"Candidate totals {cycle}: already present, skipping")
         return
 
+    # Prefer local file over download
+    if fetch_candidate_totals_local(cycle, force=force):
+        return
+
     yy = _cycle_to_yy(cycle)
-
-    # weball column layout (verified against live 2024 bulk file — no header row):
-    #   col  0: CAND_ID              (H… = House candidate)
-    #   col  1: CAND_NAME
-    #   col  2: CAND_ICI             (I=Incumbent, C=Challenger, O=Open)
-    #   col  4: CAND_PTY_AFFILIATION (DEM, REP, …)
-    #   col  7: TTL_RECEIPTS
-    #   col 17: TTL_DISB             ← total disbursements
-    #   col 18: CAND_OFFICE_ST
-    #   col 19: CAND_OFFICE_DISTRICT
     wb_bytes = _download_zip(f"{FEC_BULK_BASE}/{cycle}/weball{yy}.zip", f"weball{yy}.txt")
-    df = pd.read_csv(
-        io.BytesIO(wb_bytes), sep="|", header=None,
-        names=list(range(31)), dtype=str, on_bad_lines="skip",
-    )
-
-    # House candidates have CAND_ID starting with "H"
-    house = df[df[0].str.startswith("H", na=False)].copy()
+    house = _parse_weball_bytes(wb_bytes)
     logger.info(f"  {len(house)} House candidate rows in weball{yy}")
-
-    ici_map   = {"I": "Incumbent", "C": "Challenger", "O": "Open seat"}
-    party_map = {"DEM": "D", "REP": "R"}
-
-    out = pd.DataFrame({
-        "fec_candidate_id":        house[0].str.strip(),
-        "candidate_name":          house[1].str.strip(),
-        "incumbent_challenge_full": house[2].str.strip().map(ici_map).fillna("Open seat"),
-        "party":                   house[4].str.strip().map(party_map).fillna(house[4].str.strip()),
-        "state":                   house[18].str.strip(),
-        "district_num":            house[19].str.strip().str.zfill(2),
-        "candidate_disbursements": pd.to_numeric(house[17], errors="coerce").fillna(0),
-        "cycle":                   cycle,
-    })
-    out["district_id"] = out["state"] + "-" + out["district_num"]
-    out = out.drop(columns=["state", "district_num"])
+    out = _weball_to_disbursements(house, cycle)
 
     out[[
         "district_id", "fec_candidate_id", "candidate_name", "party",
@@ -437,6 +516,103 @@ def derive_incumbency(cycle: int) -> None:
     logger.info(f"Saved {len(rows)} districts → {out_path}")
 
 
+# ─── Comprehensive independent expenditures ──────────────────────────────────
+
+def build_comprehensive_ie(cycle: int, force: bool = False) -> None:
+    """
+    Build independent_expenditures_{cycle}.csv from the comprehensive FEC IE file
+    (data/raw/independent_expenditure/independent_expenditure_{cycle}.csv).
+
+    This replaces the DCCC/NRCC-only IE approach with ALL outside group spending,
+    which is especially important for capturing R-aligned spending (super PACs and
+    other Republican-aligned groups that often outspend the NRCC in competitive races).
+
+    Party alignment is computed from candidate party × support/oppose indicator:
+      D-aligned: (candidate is D AND support) OR (candidate is R AND oppose)
+      R-aligned: (candidate is R AND support) OR (candidate is D AND oppose)
+
+    Output schema: district_id, party [D or R aligned], cycle, amount
+    (same schema as the DCCC/NRCC-only file it replaces)
+    """
+    import pandas as pd
+
+    out_path = config.raw_path("fec") / f"independent_expenditures_{cycle}.csv"
+    if out_path.exists() and not force:
+        logger.info(f"Independent expenditures {cycle}: already present, skipping")
+        return
+
+    src_dir = Path(__file__).parent.parent / "data" / "raw" / "independent_expenditure"
+    src_path = src_dir / f"independent_expenditure_{cycle}.csv"
+    if not src_path.exists():
+        logger.warning(
+            f"Comprehensive IE file not found: {src_path}. "
+            "Falling back to DCCC/NRCC-only approach."
+        )
+        return
+
+    logger.info(f"Building comprehensive IEs for {cycle} from {src_path.name}…")
+    df = pd.read_csv(src_path, dtype=str, low_memory=False)
+
+    # Filter to House general election races
+    df = df[(df["can_office"] == "H") & (df["ele_type"] == "G")].copy()
+    logger.info(f"  {len(df)} House general IE rows")
+
+    df["exp_amo"] = pd.to_numeric(df["exp_amo"], errors="coerce").fillna(0).abs()
+
+    # Build district_id
+    df["state"] = df["can_office_state"].str.strip().str.upper()
+    df["dist"]  = df["can_office_dis"].str.strip().str.zfill(2)
+    df["district_id"] = df["state"] + "-" + df["dist"]
+
+    # Determine party alignment
+    is_dem_cand = df["cand_pty_aff"].str.upper().str.contains("DEMOCRAT", na=False)
+    is_rep_cand = df["cand_pty_aff"].str.upper().str.contains("REPUBLICAN", na=False)
+    is_support  = df["sup_opp"].str.upper() == "S"
+    is_oppose   = df["sup_opp"].str.upper() == "O"
+
+    d_aligned = (is_dem_cand & is_support) | (is_rep_cand & is_oppose)
+    r_aligned = (is_rep_cand & is_support) | (is_dem_cand & is_oppose)
+
+    d_ie = (
+        df[d_aligned].groupby("district_id")["exp_amo"].sum()
+        .reset_index().rename(columns={"exp_amo": "amount"})
+    )
+    d_ie["party"] = "D"
+
+    r_ie = (
+        df[r_aligned].groupby("district_id")["exp_amo"].sum()
+        .reset_index().rename(columns={"exp_amo": "amount"})
+    )
+    r_ie["party"] = "R"
+
+    out = pd.concat([d_ie, r_ie], ignore_index=True)
+    out["cycle"] = cycle
+
+    out[["district_id", "party", "cycle", "amount"]].to_csv(out_path, index=False)
+    logger.info(
+        f"Comprehensive IEs saved: {len(d_ie)} D-aligned districts, "
+        f"{len(r_ie)} R-aligned districts → {out_path}"
+    )
+
+
+def rebuild_all_from_local(cycles: list[int]) -> None:
+    """
+    Regenerate candidate_disbursements, independent_expenditures, and incumbency CSVs
+    for all cycles from local bulk files. Use this after adding new data or fixing bugs.
+    """
+    import os
+    for cycle in cycles:
+        logger.info(f"─── Rebuilding cycle {cycle} ───")
+        fetch_candidate_totals_local(cycle, force=True)
+        build_comprehensive_ie(cycle, force=True)
+        # Force-rebuild incumbency by deleting existing file first
+        inc_path = config.raw_path("fec") / f"incumbency_{cycle}.csv"
+        if inc_path.exists():
+            os.remove(inc_path)
+        derive_incumbency(cycle)
+    logger.info("Rebuild complete.")
+
+
 # ─── Census CVAP ─────────────────────────────────────────────────────────────
 
 CVAP_BULK_URL = (
@@ -536,7 +712,20 @@ def main() -> None:
         "--only", choices=["fec", "incumbency", "census", "all"],
         default="all",
     )
+    parser.add_argument(
+        "--rebuild-local", action="store_true",
+        help="Force rebuild of candidate_disbursements and independent_expenditures CSVs "
+             "from locally cached bulk files (data/raw/bulk_all/ and "
+             "data/raw/independent_expenditure/). Use this to apply the corrected "
+             "TTL_DISB column mapping and switch to comprehensive IE data.",
+    )
     args = parser.parse_args()
+
+    # Fast path: rebuild everything from local files
+    if args.rebuild_local:
+        logger.info("Rebuilding all spending CSVs from local bulk files…")
+        rebuild_all_from_local(args.cycles)
+        return
 
     if args.fec_api_key == "DEMO_KEY" and not args.skip_party_spend:
         logger.warning(
@@ -551,14 +740,25 @@ def main() -> None:
         for cycle in args.cycles:
             logger.info(f"─── Cycle {cycle} ───")
             fetch_candidate_totals_bulk(cycle)
+            # Prefer comprehensive IEs from local file; fall back to DCCC/NRCC-only API
+            build_comprehensive_ie(cycle)
+            if not (config.raw_path("fec") / f"independent_expenditures_{cycle}.csv").exists():
+                if args.skip_party_spend:
+                    generate_empty_party_spend_files(cycle)
+                else:
+                    fetch_ie_by_committee(cycle, args.fec_api_key, DCCC_COMMITTEE_ID, "D")
+                    fetch_ie_by_committee(cycle, args.fec_api_key, NRCC_COMMITTEE_ID, "R")
+                    consolidate_fec_files(cycle)
             if args.skip_party_spend:
-                generate_empty_party_spend_files(cycle)
+                coord_path = config.raw_path("fec") / f"coordinated_expenditures_{cycle}.csv"
+                if not coord_path.exists():
+                    generate_empty_party_spend_files(cycle)
             else:
-                fetch_ie_by_committee(cycle, args.fec_api_key, DCCC_COMMITTEE_ID, "D")
-                fetch_ie_by_committee(cycle, args.fec_api_key, NRCC_COMMITTEE_ID, "R")
                 fetch_coordinated_by_committee(cycle, args.fec_api_key, DCCC_COMMITTEE_ID, "D")
                 fetch_coordinated_by_committee(cycle, args.fec_api_key, NRCC_COMMITTEE_ID, "R")
-                consolidate_fec_files(cycle)
+                coord_path = config.raw_path("fec") / f"coordinated_expenditures_{cycle}.csv"
+                if not coord_path.exists():
+                    consolidate_fec_files(cycle)
 
     if args.only in ("fec", "incumbency", "all"):
         for cycle in args.cycles:

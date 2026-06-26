@@ -93,6 +93,7 @@ def compute_residuals_from_panel(
     alpha_coef: dict,
     beta_coef: dict,
     generic_ballot_by_cycle: dict[int, float],
+    cvap_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
     Compute margin residuals for all historical panel observations.
@@ -130,6 +131,13 @@ def compute_residuals_from_panel(
     df["is_incumb"] = (df["incumb_status"] == "Incumbent").astype(float)
     df["is_open"] = (df["incumb_status"] == "Open").astype(float)
 
+    if cvap_df is not None:
+        df = df.merge(cvap_df[["district_id", "cvap"]], on="district_id", how="left")
+        df["cvap"] = df["cvap"].fillna(df["cvap"].median()).clip(lower=1)
+    else:
+        df["cvap"] = 500_000
+    df["log_total_per_voter"] = np.log((df["d_total"] + df["r_total"]) / df["cvap"])
+
     # Fitted margin from the full model
     a = alpha_coef
     b = beta_coef
@@ -138,6 +146,7 @@ def compute_residuals_from_panel(
         + a["pvi"] * df["pvi"]
         + a["incumb"] * df["is_incumb"]
         + a["gb"] * df["gb"]
+        + a.get("alpha4", 0.0) * df["log_total_per_voter"]
         + b["b1"] * df["log_ratio"]
         + b["b2"] * df["log_ratio"] * df["abs_pvi"]
         + b["b3"] * df["log_ratio"] * df["is_incumb"]

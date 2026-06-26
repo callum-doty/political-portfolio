@@ -57,16 +57,16 @@ def load_pvi(cycle: int) -> pd.DataFrame:
     return pvi_module.load_pvi(cycle)
 
 
-def load_ratings_2024() -> pd.DataFrame:
+def load_ratings(cycle: int) -> pd.DataFrame:
     """
-    Return race ratings for 2024.
+    Return race ratings for a given cycle.
 
-    Uses proprietary Cook ratings file if present; otherwise derives ratings
-    from computed PVI + incumbency via data/pvi.py.
+    Uses proprietary Cook ratings file (cook_ratings_{cycle}.csv) if present;
+    otherwise derives ratings from PVI + incumbency thresholds.
 
     Returns DataFrame: district_id, cook_rating (str)
     """
-    cook_path = config.raw_path("cook") / "cook_ratings_2024.csv"
+    cook_path = config.raw_path("cook") / f"cook_ratings_{cycle}.csv"
     if cook_path.exists():
         df = pd.read_csv(cook_path, dtype={"district_id": str, "rating": str})
         return df.rename(columns={"rating": "cook_rating"})[["district_id", "cook_rating"]]
@@ -74,8 +74,8 @@ def load_ratings_2024() -> pd.DataFrame:
     from . import pvi as pvi_module
     from . import incumbency as incumb_module
 
-    pvi_df = pvi_module.load_pvi(2024)
-    incumb_df = incumb_module.load_incumbency(2024)
+    pvi_df = pvi_module.load_pvi(cycle)
+    incumb_df = incumb_module.load_incumbency(cycle)
     merged = pvi_df.merge(
         incumb_df[["district_id", "incumb_status"]], on="district_id", how="left"
     )
@@ -84,3 +84,8 @@ def load_ratings_2024() -> pd.DataFrame:
         lambda row: pvi_module.derive_rating(row["pvi"], row["incumb_status"]), axis=1
     )
     return merged[["district_id", "cook_rating"]]
+
+
+def load_ratings_2024() -> pd.DataFrame:
+    """Backwards-compatible alias for load_ratings(2024)."""
+    return load_ratings(2024)

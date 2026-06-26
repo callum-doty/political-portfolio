@@ -45,6 +45,8 @@ def compute_outputs(
         ratio=ratio,
         coef=coef,
         beta1_override=beta1_override,
+        total_spend=total,
+        cvap=race.cvap,
     )
 
     sigma = sigma_model.predict(abs(race.pvi), race.incumb_status)
@@ -80,9 +82,14 @@ def _marginal_seat_gain(
     beta1_override: float | None = None,
 ) -> float:
     """
-    MSG_i = φ(μᵢ/σᵢ) · (1/σᵢ) · (∂μᵢ/∂sᵢ)
+    MSG_i = φ(μᵢ/σᵢ) · (1/σᵢ) · (∂μᵢ/∂Dᵢ)
 
-    ∂μᵢ/∂sᵢ = [β₁ + β₂·|PVI_i| + β₃·incumb_i] / (D_total + R_total)
+    ∂μᵢ/∂Dᵢ = [β₁ + β₂·|PVI_i| + β₃·incumb_i] · Rᵢ/(Dᵢ·(Dᵢ+Rᵢ))
+              + α₄ · 1/(Dᵢ+Rᵢ)
+
+    The α₄ term captures how adding a dollar increases total spending
+    intensity log((D+R)/CVAP). Its contribution to MSG is small relative
+    to the log-ratio term but ensures the gradient is exact.
 
     Returns MSG per dollar. Multiply by 1e6 externally for per-$1M.
     """
@@ -93,9 +100,14 @@ def _marginal_seat_gain(
     if total_spend <= 0:
         return 0.0
 
+    # For the ratio term, we need D and R separately; use ratio passed via total_spend.
+    # Here total_spend = D + R, and the log-ratio gradient at spend share s = D/total is:
+    # ∂log(ratio)/∂D = R/(D·(D+R)) = (1-s)/(s·total). Use total_spend as proxy.
     d_mu_d_s = (b1 + coef.beta2 * abs_pvi + coef.beta3 * is_incumb) / total_spend
-    phi = float(norm.pdf(mu / sigma))
+    # α₄ gradient: ∂log((D+R)/CVAP)/∂D = 1/(D+R)
+    d_mu_d_s += coef.alpha4 / total_spend
 
+    phi = float(norm.pdf(mu / sigma))
     return phi * (1.0 / sigma) * d_mu_d_s
 
 

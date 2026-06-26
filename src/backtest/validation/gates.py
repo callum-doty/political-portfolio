@@ -115,9 +115,10 @@ def run_all_gates(
     # Corner solutions (races at 0 or cap) are expected under risk-neutral (γ=0)
     # LP — the optimal LP solution IS a corner. Only check corner fraction for γ>0.
     corner_frac = n_corner_solutions / max(len(races), 1)
+    _ok_statuses = ("optimal", "optimal_inaccurate", "Optimization terminated successfully.")
     g5 = GateResult(
         name="Optimizer convergence",
-        passed=optimizer_status in ("optimal", "optimal_inaccurate"),
+        passed=optimizer_status in _ok_statuses or optimizer_status.startswith("slsqp:Optimization"),
         value=optimizer_status,
         threshold="status=optimal or optimal_inaccurate",
         notes=f"{n_corner_solutions} corner solutions ({corner_frac:.0%})",
