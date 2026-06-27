@@ -66,6 +66,7 @@ def load_processed_artifacts(processed: Path) -> tuple[BetaRC, MarginModelCoeffi
     coef = MarginModelCoefficients(**{k: d[k] for k in
                                       ["alpha0", "alpha1", "alpha2", "alpha3", "alpha4",
                                        "beta1", "beta2", "beta3"]},
+                                   alpha5=d.get("alpha5", 0.0),
                                    beta1_open=d.get("beta1_open"))
 
     with open(processed / "sigma_model.json") as f:
@@ -242,7 +243,17 @@ def main() -> None:
     cook_shares = cook_proportional_shares(races)
     model_shares = primary_result.shares
     allocator_table = compare_allocators(races, outputs, model_shares, null_shares, cook_shares, budget)
+    # Replace the model row's linearized E[Seats] estimate with the nonlinear truth.
+    # _expected_seats_at_shares uses MSG · Δspend linearization, which overestimates
+    # because MSG decays as spending increases. The optimizer's Φ(μ/σ) sum is authoritative.
+    allocator_table.loc[allocator_table["allocator"] == "Model optimizer", "expected_seats"] = (
+        primary_result.expected_seats)
     logger.info("\n" + allocator_table.to_string(index=False))
+
+    # Save for make_charts.py (avoids hardcoded values in chart script)
+    alloc_table_path = out_dir / f"allocator_comparison_table{suffix}.csv"
+    allocator_table.to_csv(alloc_table_path, index=False)
+    logger.info(f"Allocator comparison table → {alloc_table_path}")
 
     # ── 11. Outputs ───────────────────────────────────────────────────────────
     logger.info("Building output tables…")

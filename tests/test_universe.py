@@ -25,6 +25,25 @@ class TestParsePVI:
             _parse_pvi("X+5")
 
 
+class TestParsePVIEdgeCases:
+    def test_zero_numeric_string(self):
+        assert _parse_pvi("0") == pytest.approx(0.0)
+
+    def test_empty_string(self):
+        assert _parse_pvi("") == pytest.approx(0.0)
+
+    def test_decimal_pvi(self):
+        assert _parse_pvi("D+2.5") == pytest.approx(2.5)
+
+    def test_case_insensitive(self):
+        assert _parse_pvi("d+3") == pytest.approx(3.0)
+        assert _parse_pvi("r+4") == pytest.approx(-4.0)
+
+    def test_r_invalid_prefix_raises(self):
+        with pytest.raises(ValueError):
+            _parse_pvi("X+5")
+
+
 class TestUniverseFilters:
     """Test inclusion/exclusion logic without hitting disk."""
 
@@ -53,3 +72,37 @@ class TestUniverseFilters:
         comp = competitive_subset(races)
         assert len(comp) == 2
         assert all(r.cook_rating in {"Toss-Up", "Lean R"} for r in comp)
+
+    def test_lean_d_is_competitive(self):
+        from backtest.data.universe import competitive_subset
+        race = self._make_race(cook_rating="Lean D")
+        assert len(competitive_subset([race])) == 1
+
+    def test_likely_d_not_competitive(self):
+        from backtest.data.universe import competitive_subset
+        race = self._make_race(cook_rating="Likely D")
+        assert len(competitive_subset([race])) == 0
+
+    def test_empty_input_returns_empty(self):
+        from backtest.data.universe import competitive_subset
+        assert competitive_subset([]) == []
+
+    def test_safe_d_not_competitive(self):
+        from backtest.data.universe import competitive_subset
+        race = self._make_race(cook_rating="Safe D")
+        assert len(competitive_subset([race])) == 0
+
+    def test_competitive_ratings_from_config(self):
+        """competitive_subset must honour the config — not a hard-coded set."""
+        from backtest import config
+        from backtest.data.universe import competitive_subset
+        competitive = set(config.competitive_ratings())
+        races = [
+            self._make_race(district_id=f"TX-{i:02d}", cook_rating=rating)
+            for i, rating in enumerate(
+                ["Safe D", "Likely D", "Lean D", "Toss-Up", "Lean R", "Likely R", "Safe R"]
+            )
+        ]
+        comp = competitive_subset(races)
+        for r in comp:
+            assert r.cook_rating in competitive

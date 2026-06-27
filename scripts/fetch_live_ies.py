@@ -208,7 +208,8 @@ def compute_live_msg(
         d = json.load(f)
     coef = MarginModelCoefficients(**{k: d[k] for k in
                                       ["alpha0", "alpha1", "alpha2", "alpha3", "alpha4",
-                                       "beta1", "beta2", "beta3"]})
+                                       "beta1", "beta2", "beta3"]},
+                                   alpha5=d.get("alpha5", 0.0))
     with open(processed / "sigma_model.json") as f:
         sigma_coef = json.load(f)
     sigma_model = SigmaModel(_coef=sigma_coef)

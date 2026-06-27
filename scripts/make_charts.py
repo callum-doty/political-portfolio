@@ -30,10 +30,15 @@ matplotlib.rcParams.update({
     "figure.dpi": 150,
 })
 
-OUT = Path(__file__).parent.parent / "outputs"
+OUT  = Path(__file__).parent.parent / "outputs"
 DATA = OUT / "race_table_baseline.csv"
+AGG  = OUT / "aggregate_summary_baseline.csv"
+ALLOC_TABLE = OUT / "allocator_comparison_table.csv"
 
 df = pd.read_csv(DATA)
+
+# Load comparison table produced by run_backtest.py (authoritative; avoids hardcoding)
+_alloc_df = pd.read_csv(ALLOC_TABLE) if ALLOC_TABLE.exists() else None
 df["d_total_m"] = df["d_total"] / 1e6
 df["r_total_m"] = df["r_total"] / 1e6
 df["outcome_bin"] = (df["outcome"] == "D").astype(int)
@@ -203,8 +208,22 @@ print("✓ spending_by_cook.png")
 
 # ─── 4. Allocator Comparison Bar Chart ──────────────────────────────────────
 
-allocators = ["DCCC\nObserved", "Cook\n-Implied", "Null\n(Equal)", "Model\nOptimizer"]
-seats      = [209.54, 209.34, 209.98, 214.00]
+if _alloc_df is not None:
+    # Read authoritative values from run_backtest.py output
+    _label_map = {
+        "DCCC observed":     "DCCC\nObserved",
+        "Null (equal-weight)": "Null\n(Equal)",
+        "Cook-implied":      "Cook\n-Implied",
+        "Model optimizer":   "Model\nOptimizer",
+    }
+    _order = ["DCCC observed", "Cook-implied", "Null (equal-weight)", "Model optimizer"]
+    allocators = [_label_map[k] for k in _order]
+    seats      = [float(_alloc_df.loc[_alloc_df["allocator"] == k, "expected_seats"].iloc[0])
+                  for k in _order]
+else:
+    allocators = ["DCCC\nObserved", "Cook\n-Implied", "Null\n(Equal)", "Model\nOptimizer"]
+    seats = [df["p_win"].sum()] * 4  # fallback: all equal, signals missing data
+
 bar_colors = ["#2e6da4", "#aaaaaa", "#888888", "#1a5c2b"]
 
 fig, ax = plt.subplots(figsize=(7, 5))
@@ -215,7 +234,7 @@ baseline = seats[0]
 for bar, s in zip(bars, seats):
     delta = s - baseline
     delta_str = f"\n({'+' if delta >= 0 else ''}{delta:.2f})" if delta != 0 else ""
-    ax.text(bar.get_x() + bar.get_width()/2, s + 0.02,
+    ax.text(bar.get_x() + bar.get_width()/2, s + 0.04,
             f"{s:.2f}{delta_str}", ha="center", va="bottom",
             fontsize=9.5, fontweight="bold")
 
@@ -223,8 +242,12 @@ ax.axhline(baseline, color="#2e6da4", lw=1.2, ls="--", alpha=0.5, zorder=2)
 ax.set_ylabel("Expected Democratic Seats", fontsize=12)
 ax.set_title("Expected Seats by Allocation Strategy\n(2024 House — model win probabilities)",
              fontsize=13, fontweight="bold")
-ax.set_ylim(208.5, 211.5)
-ax.yaxis.set_major_locator(mticker.MultipleLocator(0.5))
+
+# Dynamic y-axis: full range from below floor to above model bar
+_y_lo = min(seats) - 0.5
+_y_hi = max(seats) + 0.8
+ax.set_ylim(_y_lo, _y_hi)
+ax.yaxis.set_major_locator(mticker.MultipleLocator(1.0))
 ax.grid(axis="y", lw=0.5, alpha=0.35, zorder=0)
 fig.tight_layout()
 fig.savefig(OUT / "allocator_comparison.png", bbox_inches="tight")

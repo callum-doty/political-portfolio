@@ -97,6 +97,14 @@ def main() -> None:
     spend_frames = [fec.build_total_spend(c) for c in cycles]
     panel_spend = pd.concat(spend_frames, ignore_index=True)
 
+    logger.info("Loading panel individual-contribution shares…")
+    cand_frames = [fec.load_candidate_disbursements(c) for c in cycles]
+    panel_cand = pd.concat(cand_frames, ignore_index=True)
+    panel_indiv_df = (
+        panel_cand[panel_cand["party"] == "D"][["district_id", "cycle", "indiv_share"]]
+        .copy()
+    )
+
     logger.info("Loading panel incumbency…")
     incumb_frames = [incumbency.load_incumbency(c) for c in cycles]
     panel_incumb = pd.concat(incumb_frames, ignore_index=True)
@@ -132,6 +140,7 @@ def main() -> None:
         generic_ballot_by_cycle=GENERIC_BALLOT_BY_CYCLE,
         beta_rc_estimate=beta_rc.estimate,
         cvap_df=cvap_df,
+        panel_indiv_df=panel_indiv_df,
     )
 
     # ── Step 2b: Open-seat κ calibration (§8.3) ──────────────────────────────
@@ -167,7 +176,7 @@ def main() -> None:
         json.dump({
             "alpha0": coef.alpha0, "alpha1": coef.alpha1,
             "alpha2": coef.alpha2, "alpha3": coef.alpha3,
-            "alpha4": coef.alpha4,
+            "alpha4": coef.alpha4, "alpha5": coef.alpha5,
             "beta1":  coef.beta1,  "beta2":  coef.beta2,
             "beta3":  coef.beta3,
             "beta1_open": coef.beta1_open,

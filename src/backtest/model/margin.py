@@ -32,6 +32,7 @@ class MarginModelCoefficients:
     alpha2: float         # incumbency (Incumbent dummy)
     alpha3: float         # generic ballot
     alpha4: float = 0.0   # log((D+R)/CVAP) — total spending intensity per voter
+    alpha5: float = 0.0   # indiv_share — D candidate individual-contribution fraction
     beta1:  float = 0.0   # β_RC — log(ratio) base spending elasticity
     beta2:  float = 0.0   # log(ratio) × |PVI|
     beta3:  float = 0.0   # log(ratio) × Incumbent
@@ -49,6 +50,7 @@ def estimate_from_panel(
     generic_ballot_by_cycle: dict[int, float],
     beta_rc_estimate: float,
     cvap_df: pd.DataFrame | None = None,
+    panel_indiv_df: pd.DataFrame | None = None,
 ) -> tuple[MarginModelCoefficients, float]:
     """
     Fit the margin model on the 2012–2022 panel.
@@ -97,10 +99,18 @@ def estimate_from_panel(
     df["log_ratio_x_abs_pvi"] = df["log_ratio"] * df["abs_pvi"]
     df["log_ratio_x_incumb"] = df["log_ratio"] * df["is_incumb"]
     df["log_ratio_x_open"] = df["log_ratio"] * df["is_open"]
+    # Merge indiv_share for D candidate quality control
+    if panel_indiv_df is not None:
+        df = df.merge(panel_indiv_df[["district_id", "cycle", "indiv_share"]],
+                      on=["district_id", "cycle"], how="left")
+        df["indiv_share"] = df["indiv_share"].fillna(0.0)
+    else:
+        df["indiv_share"] = 0.0
+
     # Note: log_total_per_voter excluded — endogeneity; see note in code.
     feature_cols = ["pvi", "is_incumb", "gb",
                     "log_ratio_x_abs_pvi", "log_ratio_x_incumb",
-                    "log_ratio_x_open"]
+                    "log_ratio_x_open", "indiv_share"]
 
     X = sm.add_constant(df[feature_cols])
     y = df["y_offset"]
@@ -122,6 +132,7 @@ def estimate_from_panel(
         alpha2=float(fit.params["is_incumb"]),
         alpha3=float(fit.params["gb"]),
         alpha4=0.0,   # constrained to zero; see note above
+        alpha5=float(fit.params.get("indiv_share", 0.0)),
         beta1=beta_rc_estimate,
         beta2=float(fit.params["log_ratio_x_abs_pvi"]),
         beta3=float(fit.params["log_ratio_x_incumb"]),
@@ -151,6 +162,7 @@ def predict(
     beta1_override: float | None = None,
     total_spend: float = 0.0,
     cvap: int = 0,
+    indiv_share: float = 0.0,
 ) -> float:
     """
     Compute fitted expected margin for a single district.
@@ -180,6 +192,7 @@ def predict(
         + coef.alpha2 * is_incumb
         + coef.alpha3 * generic_ballot
         + coef.alpha4 * log_total_pv
+        + coef.alpha5 * indiv_share
         + b1 * log_ratio
         + coef.beta2 * log_ratio * abs_pvi
         + coef.beta3 * log_ratio * is_incumb
@@ -192,12 +205,14 @@ def predict_batch(df: pd.DataFrame, coef: MarginModelCoefficients) -> pd.Series:
     Requires df to have: pvi, is_incumb, gb, log_ratio, log_total_per_voter
     """
     log_tpv = df["log_total_per_voter"] if "log_total_per_voter" in df.columns else 0.0
+    indiv = df["indiv_share"] if "indiv_share" in df.columns else 0.0
     return (
         coef.alpha0
         + coef.alpha1 * df["pvi"]
         + coef.alpha2 * df["is_incumb"]
         + coef.alpha3 * df["gb"]
         + coef.alpha4 * log_tpv
+        + coef.alpha5 * indiv
         + coef.beta1 * df["log_ratio"]
         + coef.beta2 * df["log_ratio"] * df["pvi"].abs()
         + coef.beta3 * df["log_ratio"] * df["is_incumb"]

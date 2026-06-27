@@ -81,7 +81,7 @@ Budget summary:
 The core model predicts the Democratic two-party vote-share margin μᵢ for race *i*:
 
 ```
-μᵢ = α₀ + α₁·PVIᵢ + α₂·incumbᵢ + α₃·GBᵢ
+μᵢ = α₀ + α₁·PVIᵢ + α₂·incumbᵢ + α₃·GBᵢ + α₅·indiv_shareᵢ
         + (β₁ + β₂·|PVIᵢ| + β₃·incumbᵢ) × log(Dᵢ / (Dᵢ + Rᵢ))
 ```
 
@@ -89,6 +89,7 @@ The core model predicts the Democratic two-party vote-share margin μᵢ for rac
 - `PVI` — Cook Partisan Voting Index (positive = D-leaning district)
 - `incumb` — 1 if Democratic incumbent, 0 otherwise
 - `GB` — generic ballot (D − R percentage points)
+- `indiv_share` — D candidate individual-contribution fraction (TTL_INDIV_CONTRIB / TTL_RECEIPTS, from FEC weball col 17 / col 5); ranges [0, 1]
 - `log(D/(D+R))` — log Democratic spending share; the key spending measure
 
 The spending term interacts with both PVI and incumbency. This allows the spending response to vary by district competitiveness and candidate type — a dollar in a D+15 district has a different effect than the same dollar in a toss-up.
@@ -133,19 +134,42 @@ All coefficients estimated by OLS on the 2012–2022 historical panel. β_RC est
 
 ### 5.1 Margin model coefficients
 
-| Parameter | Estimate | Interpretation |
-|-----------|----------|----------------|
-| α₀ | −2.462 | Intercept (baseline margin, equal spending) |
-| α₁ | 1.092 | PVI effect: +1 PVI point → +1.09 pp margin |
-| α₂ | 33.23 | Incumbency advantage in margin (pp) |
-| α₃ | 0.396 | Generic ballot pass-through |
-| β₁ | 5.457 | Spending response (constant term) |
-| β₂ | 0.032 | Spending × |PVI| interaction |
-| β₃ | 28.33 | Spending × incumbency interaction |
+| Parameter | Estimate | SE | p | Interpretation |
+|-----------|----------|----|---|----------------|
+| α₀ | 0.717 | 1.938 | 0.712 | Intercept (baseline margin, equal spending) |
+| α₁ | 1.082 | 0.066 | <0.001 | PVI effect: +1 PVI point → +1.08 pp margin |
+| α₂ | 32.053 | 2.040 | <0.001 | Incumbency advantage in margin (pp) |
+| α₃ | 0.415 | 0.112 | <0.001 | Generic ballot pass-through |
+| **α₅** | **−3.989** | **2.181** | **0.067** | **Individual-contribution share (see §5.4)** |
+| β₁ | 5.457 | 1.586 | <0.001 | Spending response (constant term; β_RC) |
+| β₂ | 0.033 | 0.028 | 0.238 | Spending × |PVI| interaction |
+| β₃ | 28.068 | 4.188 | <0.001 | Spending × incumbency interaction |
 
-**In-sample R² (competitive races):** 0.513 (gate threshold: ≥ 0.40)
+**In-sample R² (competitive races):** 0.514 (gate threshold: ≥ 0.40; +0.001 vs. pre-indiv_share model)
 
 **α₂ = 33.23 and β₃ = 28.33 are large.** For incumbent-held competitive seats, the effective spending coefficient is β₁ + β₃ = 33.78 — incumbents extract far more vote-share per unit of spending share than challengers. This is consistent with incumbents having established name recognition that amplifies the marginal effectiveness of campaign contact.
+
+### 5.4 Individual-contribution share (α₅)
+
+`indiv_share` = TTL_INDIV_CONTRIB / TTL_RECEIPTS for the Democratic nominee, sourced from FEC weball bulk files (col 17 / col 5). It ranges from 0 (candidate funded entirely by PACs and party) to 1 (funded entirely by individual donors).
+
+**Estimated coefficient: α₅ = −3.99 (SE = 2.18, p = 0.067)**
+
+The sign is negative and marginally significant. A candidate moving from 0% to 100% individual-contribution share is associated with a **~4 pp lower predicted margin**, controlling for PVI, incumbency, generic ballot, and spending ratio.
+
+**Why negative?** The expected direction was positive — better candidates should attract more small-dollar donors. Three mechanisms can explain the negative sign:
+
+1. **PAC targeting as a viability signal.** Professional political committees (DCCC, HMP, CLF, super PACs) have proprietary internal polling and candidate assessments. High `indiv_share` (little or no PAC investment) may signal a candidate the expert class has assessed as nonviable. Low `indiv_share` (substantial PAC investment as a fraction of total) reflects PAC selection: parties concentrate outside money where they believe it will be effective. After controlling for PVI, `indiv_share` may be proxying whether PAC targeting has selected a district as competitive.
+
+2. **Grassroots enthusiasm for long-shots.** Small-dollar donors frequently back ideologically exciting but electorally weak candidates (insurgent challengers, high-profile progressives running in hostile districts). Their enthusiasm raises `indiv_share` without translating to margin improvement.
+
+3. **Reverse causality.** When D candidates are perceived to be losing, grassroots donors sometimes mobilize late with small contributions — but the outcome is already determined by structural fundamentals already captured by PVI and incumbency.
+
+**Implication for candidate quality endogeneity (§10.1).** Adding `indiv_share` does not resolve the quality endogeneity concern. Instead it reveals that PAC targeting is itself a noisy proxy for quality in the observational data. The negative sign is informative: it tells us that within a given PVI stratum, candidates attracting PAC investment outperform those dependent on small-dollar fundraising alone. This is consistent with PACs having better information about candidate viability than the individual-donor market.
+
+**R² impact: minimal.** R² on competitive races increases from 0.513 to 0.514 (+0.001). The coefficient is retained in the model at marginal significance (p = 0.067) because it is theoretically grounded and does not degrade out-of-sample performance. Users who prefer a more conservative specification can set `alpha5 = 0.0` in `data/processed/margin_model_coef.json` without materially affecting optimizer recommendations.
+
+---
 
 ### 5.2 Repeat-challenger causal estimate
 
@@ -389,7 +413,7 @@ The procedure: (1) estimate the open-seat interaction term β₄ = β_panel^OS �
 ### 10.1 Causal identification
 
 β₁ is estimated from observational data with a repeat-challenger design. The design controls for district and candidate identity across cycles, but cannot rule out all confounders. In particular:
-- **Candidate quality endogeneity**: Strong candidates raise more money and are harder to beat. The model uses total D spending as the explanatory variable, which conflates spending with candidate quality.
+- **Candidate quality endogeneity**: Strong candidates raise more money and are harder to beat. The model uses total D spending as the explanatory variable, which conflates spending with candidate quality. `indiv_share` (α₅) was added as a quality proxy (§5.4) and is marginally significant, but its *negative* coefficient reveals it proxies PAC targeting rather than grassroots quality — the endogeneity concern is partially addressed but not eliminated.
 - **Private signals**: See §9 (Actionability) for the full treatment.
 
 ### 10.2 Out-of-sample calibration degrades

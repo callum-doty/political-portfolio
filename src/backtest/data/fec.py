@@ -5,7 +5,8 @@ Raw data contract (files produced by scripts/fetch_data.py)
 ───────────────────────────────────────────────────────────
   candidate_disbursements_{cycle}.csv
     Columns: district_id, fec_candidate_id, candidate_name, party, cycle,
-             candidate_disbursements
+             candidate_disbursements, incumbent_challenge_full,
+             ttl_receipts, ttl_indiv_contrib, indiv_share
     One row per candidate. Multiple candidates per party per district are
     possible (primary losers); load_candidate_disbursements selects the
     top spender per party per district as the general-election nominee proxy.
@@ -13,6 +14,10 @@ Raw data contract (files produced by scripts/fetch_data.py)
     IMPORTANT: candidate_disbursements = TTL_DISB (total disbursements, weball
     col 7). Earlier pipeline versions incorrectly used col 17 (TTL_INDIV_CONTRIB).
     Run `scripts/fetch_data.py --rebuild-local` to regenerate with the fix.
+
+    indiv_share = TTL_INDIV_CONTRIB (col 17) / TTL_RECEIPTS (col 5), clipped
+    to [0, 1]. Zero when TTL_RECEIPTS = 0. Proxy for candidate quality /
+    grassroots fundraising strength, orthogonal to total spend.
 
   coordinated_expenditures_{cycle}.csv
     Columns: district_id, party, cycle, coordinated_expenditures
@@ -80,7 +85,8 @@ def load_candidate_disbursements(cycle: int) -> pd.DataFrame:
     inflate the district's apparent candidate spending by $40–60M.
 
     Returns DataFrame with columns:
-        district_id, party, cycle, candidate_disbursements (float)
+        district_id, party, cycle, candidate_disbursements (float),
+        indiv_share (float, 0–1)
     """
     path = config.raw_path("fec") / f"candidate_disbursements_{cycle}.csv"
     df = pd.read_csv(path, dtype={"district_id": str, "party": str})
@@ -88,6 +94,8 @@ def load_candidate_disbursements(cycle: int) -> pd.DataFrame:
     df["candidate_disbursements"] = pd.to_numeric(
         df["candidate_disbursements"], errors="coerce"
     ).fillna(0)
+    if "indiv_share" not in df.columns:
+        df["indiv_share"] = 0.0
 
     df = df[df["party"].isin(["D", "R"])].copy()
 
@@ -117,13 +125,15 @@ def load_candidate_disbursements(cycle: int) -> pd.DataFrame:
                 "candidates not on the House ballot (likely ran for Senate/President)"
             )
 
+    df["indiv_share"] = pd.to_numeric(df["indiv_share"], errors="coerce").fillna(0.0)
+
     top = (
         df.sort_values("candidate_disbursements", ascending=False)
         .groupby(["district_id", "party"], sort=False)
         .first()
         .reset_index()
     )
-    return top[["district_id", "party", "cycle", "candidate_disbursements"]]
+    return top[["district_id", "party", "cycle", "candidate_disbursements", "indiv_share"]]
 
 
 def load_coordinated_expenditures(cycle: int) -> pd.DataFrame:

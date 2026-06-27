@@ -155,6 +155,9 @@ def _weball_to_disbursements(house: "pd.DataFrame", cycle: int) -> "pd.DataFrame
     # Any unmapped code stays as-is (e.g., IND, LIB, GRE) — filtered out later
     mapped_party = mapped_party.fillna(raw_party)
 
+    ttl_receipts = pd.to_numeric(house[5], errors="coerce").fillna(0)
+    ttl_indiv = pd.to_numeric(house[17], errors="coerce").fillna(0)
+
     out = pd.DataFrame({
         "fec_candidate_id":        house[0].str.strip(),
         "candidate_name":          house[1].str.strip(),
@@ -163,9 +166,17 @@ def _weball_to_disbursements(house: "pd.DataFrame", cycle: int) -> "pd.DataFrame
         "state":                   house[18].str.strip(),
         "district_num":            house[19].str.strip().str.zfill(2),
         "candidate_disbursements": pd.to_numeric(house[7], errors="coerce").fillna(0),
+        "ttl_receipts":            ttl_receipts,
+        "ttl_indiv_contrib":       ttl_indiv,
         "cycle":                   cycle,
     })
     out["district_id"] = out["state"] + "-" + out["district_num"]
+    # indiv_share: fraction of receipts from individual donors (0–1)
+    out["indiv_share"] = (
+        (ttl_indiv / ttl_receipts.replace(0, float("nan")))
+        .clip(0.0, 1.0)
+        .fillna(0.0)
+    )
     return out.drop(columns=["state", "district_num"])
 
 
@@ -212,6 +223,7 @@ def fetch_candidate_totals_local(cycle: int, force: bool = False) -> bool:
     out[[
         "district_id", "fec_candidate_id", "candidate_name", "party",
         "cycle", "candidate_disbursements", "incumbent_challenge_full",
+        "ttl_receipts", "ttl_indiv_contrib", "indiv_share",
     ]].to_csv(out_path, index=False)
     logger.info(f"Saved {len(out)} House candidates → {out_path}")
     return True
@@ -227,7 +239,8 @@ def fetch_candidate_totals_bulk(cycle: int, force: bool = False) -> None:
 
     Output schema:
         district_id, fec_candidate_id, candidate_name, party, cycle,
-        candidate_disbursements, incumbent_challenge_full
+        candidate_disbursements, incumbent_challenge_full,
+        ttl_receipts, ttl_indiv_contrib, indiv_share
     """
     import pandas as pd
 
@@ -249,6 +262,7 @@ def fetch_candidate_totals_bulk(cycle: int, force: bool = False) -> None:
     out[[
         "district_id", "fec_candidate_id", "candidate_name", "party",
         "cycle", "candidate_disbursements", "incumbent_challenge_full",
+        "ttl_receipts", "ttl_indiv_contrib", "indiv_share",
     ]].to_csv(out_path, index=False)
     logger.info(f"Saved {len(out)} House candidates → {out_path}")
 

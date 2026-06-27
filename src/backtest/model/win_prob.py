@@ -47,6 +47,7 @@ def compute_outputs(
         beta1_override=beta1_override,
         total_spend=total,
         cvap=race.cvap,
+        indiv_share=race.indiv_share,
     )
 
     sigma = sigma_model.predict(abs(race.pvi), race.incumb_status, race.generic_ballot)

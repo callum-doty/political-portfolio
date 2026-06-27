@@ -38,7 +38,7 @@ def build_universe(cycle: int = 2024) -> list[RaceRecord]:
 
     # ── Merge ─────────────────────────────────────────────────────────────────
     cand_d = (
-        cand_only[cand_only["party"] == "D"][["district_id", "candidate_disbursements"]]
+        cand_only[cand_only["party"] == "D"][["district_id", "candidate_disbursements", "indiv_share"]]
         .rename(columns={"candidate_disbursements": "cand_d_total"})
     )
 
@@ -52,6 +52,7 @@ def build_universe(cycle: int = 2024) -> list[RaceRecord]:
         .merge(incumb[["district_id", "incumb_status"]], on="district_id", how="left")
     )
     df["cand_d_total"] = df["cand_d_total"].fillna(0.0)
+    df["indiv_share"] = df["indiv_share"].fillna(0.0)
 
     df["state"] = df["district_id"].str.split("-").str[0]
     df["district"] = df["district_id"].str.split("-").str[1].astype(int, errors="ignore")
@@ -109,6 +110,7 @@ def build_universe(cycle: int = 2024) -> list[RaceRecord]:
             redistricting_flagged=bool(row["redistricting_flagged"]),
             outcome=row.get("winner"),
             cand_d_total=float(row["cand_d_total"]),
+            indiv_share=float(row["indiv_share"]),
         ))
 
     return records
