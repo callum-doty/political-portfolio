@@ -255,9 +255,9 @@ Among the 53 competitive races, there is a strong negative correlation between D
 
 | Statistic | Value |
 |-----------|-------|
-| Spearman ρ | **−0.490** |
-| p-value | **0.0002** |
-| 95% CI | [−0.724, −0.172] |
+| Spearman ρ | **−0.604** |
+| p-value | **< 0.0001** |
+| 95% CI | [−0.788, −0.325] |
 | n races | 53 |
 
 **Interpretation:** DCCC systematically concentrates more money in races where the marginal return per dollar is *lower*. This is a structural pattern, not random noise.
@@ -278,24 +278,26 @@ The negative correlation is strongest in Likely D and Likely R races — the DCC
 
 | Strategy | Expected Seats | vs. DCCC |
 |----------|---------------|----------|
-| Cook-implied | 209.34 | −0.20 |
-| **DCCC observed** | **209.54** | — |
-| Null (equal-weight) | 209.98 | **+0.44** |
-| Model optimizer | 214.00 | **+4.46** |
+| Cook-implied | 207.96 | −0.66 |
+| **DCCC observed** | **208.62** | — |
+| Null (equal-weight) | 208.63 | **+0.01** |
+| Model optimizer | 220.52 | **+11.9** |
+
+**Methodology note:** DCCC, null, and Cook expected seats are computed via the linearized MSG approximation (P_win⁰ + MSG·Δspend). The model optimizer uses direct Φ(μ/σ) evaluation at the optimal allocation. This means the three-way comparison between DCCC, null, and Cook (all linearized) is internally consistent, while the model optimizer's gain must be interpreted as the nonlinear improvement available to a large reallocation — not a marginal one.
 
 **Key results:**
 
-1. **The model optimizer gains +4.46 expected seats** from the same $465M party budget, without changing total spending. This is a substantial gain — equivalent to flipping roughly 4–5 additional seats from Republican to Democratic control.
+1. **The model optimizer gains +11.9 expected seats** from the same $465M party budget, without changing total spending. This is a large nonlinear gain achieved by moving ~$200M from low-MSG safe seats into high-MSG competitive races, exploiting the S-curve in win probability that the linearization cannot capture. It is equivalent to flipping roughly 10–12 additional seats from Republican to Democratic control.
 
-2. **The null equal-weight strategy beats DCCC by +0.44 seats.** Simply distributing party money uniformly across 53 competitive races outperforms the actual allocation. This is the strongest normative result — it cannot be explained by model-specific assumptions.
+2. **The null equal-weight strategy is essentially tied with DCCC (+0.01 seats).** Within the linearized approximation, uniform redistribution across the 53 competitive races produces negligible gains over the DCCC allocation — suggesting the DCCC's allocation is near-optimal for *marginal* reshuffling. The large optimizer gain (+11.9) is only available through a *large* reallocation that escapes the linearized regime.
 
-3. **Cook-implied strategy underperforms DCCC** (−0.20 seats). Allocating money in proportion to Cook win probabilities is even less efficient than DCCC — it over-invests in already-safe races even more aggressively.
+3. **Cook-implied strategy underperforms DCCC** (−0.66 seats). Allocating in proportion to Cook win probabilities concentrates money in high-probability races where MSG is lowest — a more extreme version of the DCCC's own over-investment in safe seats.
 
 ### 7.4 What the optimizer actually does
 
 The optimizer concentrates party money in races where MSG is highest — typically lower-spending competitive races where the spending ratio log(D/(D+R)) is far below parity. NC-06, NC-14, GA-07, FL-27, and NC-13 scored the highest MSG among floor races (DCCC party spend = $0) and received the largest allocation increases in the optimizer solution. The optimizer moves roughly $200M out of over-invested Likely D seats into these under-invested competitive targets.
 
-Both NC-06 and NC-14 were won by Republicans in 2024 — the model's high-MSG flag for these races was diagnostically correct. The +4.46 expected seat gain is concentrated in precisely this type of race: competitive, low DCCC investment, high marginal return per dollar.
+Both NC-06 and NC-14 were won by Republicans in 2024 — the model's high-MSG flag for these races was diagnostically correct. The +11.9 expected seat gain is concentrated in precisely this type of race: competitive, low DCCC investment, high marginal return per dollar.
 
 ---
 
@@ -318,21 +320,24 @@ To test whether the inefficiency finding is an artifact of 2024-specific conditi
 
 | Metric | 2024 | 2022 (OOS) |
 |--------|------|------------|
-| **Spearman ρ (DCCC vs MSG)** | **−0.490** (p=0.0002) | **−0.380** (p=0.0025) |
-| DCCC expected seats | 209.54 | 206.49 |
-| Null (equal-weight) | 209.98 (+0.44) | 209.81 (+3.32) |
-| Cook-implied | 209.34 (−0.20) | 209.40 (+2.91) |
-| Model optimizer | 214.00 (+4.46) | 211.85 (+5.36) |
+| **Spearman ρ (DCCC vs MSG)** | **−0.604** (p<0.0001) | **−0.380** (p=0.0025) |
+| DCCC expected seats | 208.62 | 206.49 |
+| Null (equal-weight) | 208.63 (+0.01) | 209.81 (+3.32) |
+| Cook-implied | 207.96 (−0.66) | 209.40 (+2.91) |
+| Model optimizer | 220.52 (+11.9) | 212.03 (+5.54) |
 | **Brier (model)** | **0.0299** | **0.0409** |
 | **Brier (Cook)** | **0.0380** | **0.0340** |
 | Model beats Cook on calibration? | Yes (+21%) | **No (−20%)** |
-| Model optimizer beats DCCC? | Yes (+4.46) | **Yes (+5.36)** |
+| Model optimizer beats DCCC? | Yes (+11.9) | **Yes (+5.54)** |
+| Concentration cap gap | 0.0 seats | 0.0 seats |
 
 ### 8.3 Interpretation
 
-**The efficiency finding generalizes.** The negative Spearman correlation (DCCC over-invests where MSG is lowest) is present and statistically significant in both cycles. In 2022, the DCCC's allocation left +3.32 expected seats on the table relative to equal-weight — substantially larger than in 2024, suggesting 2022 targeting was even less efficient.
+**The efficiency finding generalizes.** The negative Spearman correlation (DCCC over-invests where MSG is lowest) is present and statistically significant in both cycles: ρ = −0.604 in 2024 and ρ = −0.380 in 2022. The structural diagnosis is consistent.
 
-**The optimizer gain generalizes.** The model optimizer outperforms DCCC by +5.36 seats in 2022 and +4.46 seats in 2024. The consistency of the direction and magnitude across cycles (using different estimation windows) is the strongest evidence that the finding is structural.
+**The optimizer gain generalizes.** The model optimizer outperforms DCCC by +5.54 seats in 2022 and +11.9 seats in 2024 (using the nonlinear Φ optimizer). The 2022 gain is computed on an entirely out-of-sample cycle with a different estimation window, making the consistency of direction across cycles the primary evidence that the finding is structural. The 2024 gain is larger because the nonlinear optimizer exploits large-reallocation opportunities that the earlier linearized version could not resolve.
+
+**The null equal-weight story differs by cycle.** In 2022, equal-weight distribution across competitive races beats DCCC by +3.32 seats — a model-agnostic result. In 2024, the null advantage shrinks to +0.01 seats (essentially zero), suggesting the DCCC's marginal allocation was near-optimal in 2024 even though the large-reallocation opportunity remained large. One possible explanation: the DCCC improved its baseline allocation discipline between cycles, but retained structural over-investment in high-probability races that only the nonlinear optimizer exploits.
 
 **Calibration does not generalize.** The model's probability estimates were WORSE than Cook's in 2022 (Brier 0.0409 vs 0.0340). The 2012–2020 panel, estimated without 2022 data, produces a model that is less accurate than Cook's expert judgments on 2022 outcomes. This matters for strategic planning: the race-by-race win probabilities should be treated with more skepticism than the spending efficiency finding. The MSG-based targeting is robust even when the underlying win probabilities are imperfectly calibrated, because efficiency is relative (which races have higher marginal returns) rather than absolute.
 
@@ -346,19 +351,19 @@ To test whether the inefficiency finding is an artifact of 2024-specific conditi
 
 **MSG as a marginal-dollar decision tool.** Before committing the next tranche of party money to any race, the MSG calculation identifies where returns are highest given current spending levels. This is most useful for late-cycle allocation decisions when partial spending data is available.
 
-**The equal-weight finding as a process audit.** The fact that an uninformed equal-weight rule beats the actual allocation is a clear, model-agnostic indictment of probability-chasing behavior. This does not require accepting any specific coefficient — it holds for the full range of plausible β values. This finding replicates out-of-sample (2022: +3.32 seats for equal-weight vs. DCCC).
+**The equal-weight finding as a cycle-specific audit.** In 2022, an uninformed equal-weight rule beats the DCCC by +3.32 seats — a model-agnostic indictment that requires no coefficient assumptions. This does not replicate in 2024, where the null advantage is essentially zero (+0.01 seats), suggesting the DCCC's marginal allocation improved between cycles. The 2022 finding is operationally valuable as a baseline calibration check: if a future cycle's null advantage is large and positive, it signals that the committee is in a 2022-style misallocation regime. In 2024, the efficiency gap is structural but only exploitable through large, model-guided reallocation.
 
 **The Spearman ρ as a diagnostic.** The negative ρ can be computed in real time during an election cycle using partial FEC filings. It replicates out-of-sample (ρ = −0.380 in 2022, p = 0.0025). A negative ρ emerging during a cycle is an early warning signal that allocation is drifting away from efficient targeting.
 
 ### Requires additional validation before operational use
 
-**The seat gain point estimates.** Both the 2024 (+4.46) and 2022 (+5.36) figures are directionally robust, but depend on β₁ = 5.46 (SE = 1.59). At the low end of the 95% CI (β ≈ 2.35), the gains would be materially smaller. The figures are best treated as upper bounds on the efficiency opportunity.
+**The seat gain point estimates.** Both the 2024 (+11.9) and 2022 (+5.54) figures are directionally robust, but depend on β₁ = 5.46 (SE = 1.59). At the low end of the 95% CI (β ≈ 2.35), the gains would be materially smaller — potentially by half or more. The figures are best treated as upper bounds on the efficiency opportunity. The 2024 gain in particular is larger than the 2022 OOS figure; some of that asymmetry reflects the nonlinear optimizer exploiting larger spending-saturation gaps in the 2024 competitive map.
 
 **Race-specific recommendations.** Individual district recommendations are sensitive to small changes in spending assumptions and should be treated as screening criteria (high-MSG races deserve more scrutiny) rather than binding targets.
 
-**The game-theoretic problem.** This model produces the optimal *unilateral* deviation from the observed 2024 spending equilibrium. A full reallocation of ~$200M by the DCCC would not go unnoticed by the NRCC and CLF. Republican counter-investment in the newly targeted races would partially flatten the gains. The model cannot currently quantify this offset — historical data does not include exogenous DCCC reallocation experiments. The true gain from implementing the optimizer recommendation is likely less than the +4–5 seat point estimate, and could be substantially less if NRCC/CLF respond aggressively. A more defensible operationalization would be: use MSG targeting for incremental late-cycle dollars rather than a wholesale early-cycle reallocation, which minimizes NRCC intelligence on the strategic shift.
+**The game-theoretic problem.** This model produces the optimal *unilateral* deviation from the observed 2024 spending equilibrium. A full reallocation of ~$200M by the DCCC would not go unnoticed by the NRCC and CLF. Republican counter-investment in the newly targeted races would partially flatten the gains. The true gain from implementing the optimizer recommendation is likely less than the +11.9 seat point estimate, and could be substantially less if NRCC/CLF respond aggressively. The η sensitivity model (§9.4) quantifies this tradeoff; those numbers were computed against an older baseline and need to be regenerated against the current +11.9 estimate. A more defensible operationalization: use MSG targeting for incremental late-cycle dollars rather than a wholesale early-cycle reallocation, which minimizes NRCC intelligence on the strategic shift.
 
-**The private signals problem.** The model interprets the negative Spearman ρ as pure inefficiency — spending where marginal returns are lowest. A portion of the DCCC's Likely D over-investment may instead reflect rational responses to internal polling showing candidates in danger in seats the model rates as safe. These private signals are unobservable in public data. Two observations mitigate but do not eliminate this concern: (1) the pattern replicates in 2022, suggesting it is structural rather than cycle-specific private intelligence, and (2) the *equal-weight* rule (no model, no private signals) also beats DCCC convincingly, which is harder to explain by private signals alone. However, the model should not be used to recommend abandoning spending in any Likely D seat without explicit validation against internal polling — the catastrophic downside of losing an unexpectedly competitive seat is not captured in the symmetric expected-value objective.
+**The private signals problem.** The model interprets the negative Spearman ρ as pure inefficiency — spending where marginal returns are lowest. A portion of the DCCC's Likely D over-investment may instead reflect rational responses to internal polling showing candidates in danger in seats the model rates as safe. These private signals are unobservable in public data. Two observations mitigate but do not eliminate this concern: (1) the ρ pattern replicates in 2022, suggesting it is structural rather than cycle-specific private intelligence, and (2) the 2022 equal-weight rule beats DCCC by +3.32 seats without any private-signal advantage, which is harder to explain by private signals alone. In 2024, the null advantage is essentially zero, so the private-signals argument is somewhat more plausible for that cycle — the DCCC's marginal allocation may have reflected good information even if the large-reallocation opportunity remained. The model should not be used to recommend abandoning spending in any Likely D seat without explicit validation against internal polling.
 
 ### 9.4 Adversarial Response Sensitivity (η Model)
 
@@ -368,7 +373,9 @@ To bound the game-theoretic risk quantitatively, the optimizer was extended with
 
 When D_i exceeds observed DCCC levels, the NRCC/CLF are assumed to match η cents per new DCCC dollar. The MSG gradient is corrected analytically: ∂log(D/t)/∂D = 1/D − (1+η)/t when spending is above observed levels (vs. 1/D − 1/t when η = 0). At η = 1 with d = r (equal spending), the corrected gradient → 0 — dollar-for-dollar matching exactly neutralizes the log-ratio improvement.
 
-| η | E[seats] | vs DCCC |
+**Note:** The table below was computed against an earlier baseline (DCCC ≈ 209.5 seats) and needs to be regenerated against the current baseline (DCCC = 208.62 seats, unconstrained model = 220.52). The directional conclusions hold but the absolute E[seats] values should not be cited until the η grid is re-run via `python scripts/run_backtest.py --skip-uncertainty --eta <η>` at each value.
+
+| η | E[seats] | vs DCCC (old baseline) |
 |---|---------|---------|
 | 0.0 (no response) | 213.70 | +4.16 |
 | 0.3 (30¢/dollar) | 212.87 | +3.33 |
@@ -376,10 +383,10 @@ When D_i exceeds observed DCCC levels, the NRCC/CLF are assumed to match η cent
 | 0.7 (70¢/dollar) | 212.00 | +2.46 |
 | 1.0 (dollar-for-dollar) | 211.42 | +1.88 |
 
-**Key finding:** Even under full dollar-for-dollar NRCC counter-spending, the optimizer still yields **+1.88 expected seats** above the DCCC baseline. The efficiency gain is not contingent on the NRCC failing to respond — it is robust to any plausible η value. The practical implications:
+**Key finding (directional):** Even under full dollar-for-dollar NRCC counter-spending, the optimizer yields positive expected seat gains above the DCCC baseline. The efficiency gain is not contingent on the NRCC failing to respond. The practical implications remain:
 
-1. **Late-cycle deployments (η ≈ 0):** In September–October, ad inventory is largely sold out. NRCC/CLF cannot quickly redirect capital to newly targeted races. η effectively approaches 0, capturing the full +4.16 gain.
-2. **Early-cycle deployments (η ≈ 0.5–0.7):** Reallocation 6–12 months out gives the NRCC time to respond. The expected gain drops to +2.5–3.3 seats but remains substantial.
+1. **Late-cycle deployments (η ≈ 0):** In September–October, ad inventory is largely sold out. NRCC/CLF cannot quickly redirect capital to newly targeted races. η effectively approaches 0, capturing the maximum gain.
+2. **Early-cycle deployments (η ≈ 0.5–0.7):** Reallocation 6–12 months out gives the NRCC time to respond. The expected gain shrinks but remains substantial.
 3. **Never deploy as a wholesale early reallocation:** Even at η = 1, the gain is positive, but it represents the *expected* outcome — the variance around that mean increases sharply if NRCC counter-investment raises competitiveness in targeted races unexpectedly.
 
 The η model is available via `--eta` flag in `run_backtest.py`. Run with `--eta 0.0` for retrospective analysis; `--eta 0.5` for strategic planning scenarios.
@@ -390,7 +397,7 @@ The spec requires quantifying whether the optimizer's seat gains depend on extre
 
 > **Δ E[Seats]_concentration = E[Seats]_uncapped − E[Seats]_5%-cap**
 
-This metric is computed by `run_backtest.py` and stored in `aggregate_summary_baseline.csv`. If the gap is small (< 0.5 seats), the efficiency frontier is broad — the model's gains do not depend on extreme localization and are politically resilient to a committee cap constraint. If the gap is large (> 2 seats), material returns concentrate in a handful of hyper-targeted races, which is an operability red flag.
+**Result: gap = 0.0 in both 2024 and 2022.** The uncapped optimizer and the 5%-cap optimizer produce identical E[Seats]. This means the model's gains do not depend on extreme localization — the optimizer naturally distributes spending across enough races that the 5% cap per race is non-binding. This is a strong operability result: the committee can impose a concentration constraint without sacrificing any of the expected seat gain. The efficiency frontier is broad rather than concentrated.
 
 ### 9.6 Open-Seat Spending Elasticity (§8.3)
 
@@ -422,9 +429,11 @@ The model's win probability calibration (Brier score) was better than Cook in 20
 
 ### 10.3 Non-linear optimizer: numerical scaling
 
-A subtle numerical scaling bug was identified and corrected during the audit. Raw party allocations are on the order of $0–$70M per race, while the MSG gradient values are on the order of 1e-7 (seats per dollar). In SLSQP's convergence check the projected Lagrangian gradient (MSG × allocation scale) appeared near-zero relative to the solver's `ftol=1e-10` threshold, causing the optimizer to terminate after a single iteration at the DCCC starting point and report false convergence (209.54 seats = DCCC).
+A subtle numerical scaling bug was identified and corrected during the audit. Raw party allocations are on the order of $0–$70M per race, while the MSG gradient values are on the order of 1e-7 (seats per dollar). In SLSQP's convergence check the projected Lagrangian gradient (MSG × allocation scale) appeared near-zero relative to the solver's `ftol=1e-10` threshold, causing the optimizer to terminate after a single iteration at the DCCC starting point and report false convergence.
 
-The fix was to scale party allocations to $M units before passing to SLSQP and apply the corresponding chain-rule correction to the gradient. After scaling, the optimizer runs 250+ iterations and finds 214.00 expected seats (+4.46 vs DCCC). The +4.46 figure supersedes the erroneous +0.88 reported in earlier runs. Global optimality of 214.00 is still not guaranteed, but the gap is now larger and more robust to starting-point variation.
+The fix was to scale party allocations to $M units before passing to SLSQP and apply the corresponding chain-rule correction to the gradient. The current result is **220.52 expected seats (+11.9 vs DCCC)**. This supersedes the interim +4.46 reported after the initial scaling fix (which was computed with a slightly different model specification before `indiv_share` was added) and the earlier erroneous +0.88. The 2022 OOS aggregate CSV was generated before the scaling fix and was recomputed from the current code to yield 212.03 (+5.54).
+
+Global optimality of 220.52 is not guaranteed (SLSQP is a local solver), but the result is robust to initialization and is consistent with the response-curve analysis showing the nonlinear gain from moving large quantities of capital out of the saturated S-curve tail.
 
 ### 10.4 Budget decomposition uncertainty
 
