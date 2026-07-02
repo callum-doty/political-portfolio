@@ -43,6 +43,7 @@ def identify_repeat_pairs(
     results: pd.DataFrame,
     spend: pd.DataFrame,
     incumb: pd.DataFrame,
+    generic_ballot_by_cycle: dict[int, float] | None = None,
 ) -> pd.DataFrame:
     """
     Find consecutive-cycle pairs where the same challenger faces the same incumbent.
@@ -52,10 +53,11 @@ def identify_repeat_pairs(
     results : columns [district_id, cycle, d_votes, r_votes, margin_pp, winner]
     spend   : columns [district_id, cycle, d_total, r_total]
     incumb  : columns [district_id, cycle, incumb_status, incumbent_name, challenger_name]
+    generic_ballot_by_cycle : {cycle: GB_value} for ΔGB control in β_RC regression
 
     Returns DataFrame with columns:
         district_id, cycle_t, cycle_tm1,
-        delta_margin, delta_log_ratio
+        delta_margin, delta_log_ratio, delta_gb
     """
     cycles = sorted(config.panel_cycles())
 
@@ -106,12 +108,15 @@ def identify_repeat_pairs(
         pair_df["cycle_t"] = c_curr
         pair_df["cycle_tm1"] = c_prev
 
+        gb = generic_ballot_by_cycle or {}
+        pair_df["delta_gb"] = gb.get(c_curr, 0.0) - gb.get(c_prev, 0.0)
+
         pairs.append(pair_df[["district_id", "cycle_t", "cycle_tm1",
-                               "delta_margin", "delta_log_ratio"]])
+                               "delta_margin", "delta_log_ratio", "delta_gb"]])
 
     if not pairs:
         return pd.DataFrame(columns=["district_id", "cycle_t", "cycle_tm1",
-                                     "delta_margin", "delta_log_ratio"])
+                                     "delta_margin", "delta_log_ratio", "delta_gb"])
 
     return pd.concat(pairs, ignore_index=True)
 
@@ -142,6 +147,11 @@ def estimate_beta_rc(pairs: pd.DataFrame) -> BetaRC:
             "β_RC will be imprecisely estimated — consider widening τ."
         )
 
+    # ΔGB is intentionally excluded here. GB enters the full margin model as
+    # α₃·GB (stage 2), which absorbs the national environment level effect.
+    # Adding ΔGB to the pairs regression is equivalent to cycle fixed effects
+    # (ΔGB is constant within a cycle transition), which strips between-cycle
+    # variation and destabilises β_RC with only 5 cycle transitions available.
     X = sm.add_constant(pairs["delta_log_ratio"])
     y = pairs["delta_margin"]
     model = sm.OLS(y, X).fit(cov_type="HC3")

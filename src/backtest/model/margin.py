@@ -132,7 +132,10 @@ def estimate_from_panel(
         alpha2=float(fit.params["is_incumb"]),
         alpha3=float(fit.params["gb"]),
         alpha4=0.0,   # constrained to zero; see note above
-        alpha5=float(fit.params.get("indiv_share", 0.0)),
+        alpha5=0.0,   # constrained to zero: indiv_share is a race-salience proxy,
+                      # not candidate quality — competitive races attract grassroots
+                      # donors, penalising them suppresses the DCCC baseline without
+                      # changing optimizer allocations (see §5.4 of FINDINGS.md)
         beta1=beta_rc_estimate,
         beta2=float(fit.params["log_ratio_x_abs_pvi"]),
         beta3=float(fit.params["log_ratio_x_incumb"]),

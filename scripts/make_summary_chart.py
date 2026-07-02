@@ -172,11 +172,16 @@ ax_scatter.text(
     style="italic",
 )
 
+rho_22   = float(agg_22["spearman_rho"])
+n_22     = int(agg_22["n_competitive"])
+p_22     = float(agg_22["spearman_p_value"])
+p22_str  = "p < 0.001" if p_22 < 0.001 else f"p = {p_22:.3f}"
+
 # Spearman annotation box
 ax_scatter.text(
     0.04, 0.06,
     f"Spearman ρ = {rho:.3f}   (p < 0.001, n = {n_comp})\n"
-    "2022 OOS: ρ = −0.380  (p = 0.003, n = 61)",
+    f"2022 OOS: ρ = {rho_22:.3f}  ({p22_str}, n = {n_22})",
     transform=ax_scatter.transAxes,
     fontsize=9.5, va="bottom", ha="left",
     bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#cccccc", lw=0.8),

@@ -116,7 +116,10 @@ def main() -> None:
 
     # ── Step 1: β_RC ─────────────────────────────────────────────────────────
     logger.info("Identifying repeat-challenger pairs…")
-    pairs = beta_rc_module.identify_repeat_pairs(panel_results, panel_spend, panel_incumb)
+    pairs = beta_rc_module.identify_repeat_pairs(
+        panel_results, panel_spend, panel_incumb,
+        generic_ballot_by_cycle=GENERIC_BALLOT_BY_CYCLE,
+    )
     logger.info(f"Found {len(pairs)} pairs across cycles")
 
     logger.info("Estimating β_RC…")
