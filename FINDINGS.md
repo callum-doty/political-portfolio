@@ -145,7 +145,7 @@ All coefficients estimated by OLS on the 2012–2022 historical panel. β_RC est
 | β₂ | 0.033 | 0.028 | 0.238 | Spending × |PVI| interaction |
 | β₃ | 28.068 | 4.188 | <0.001 | Spending × incumbency interaction |
 
-**In-sample R² (competitive races):** 0.513 (gate threshold: ≥ 0.40)
+**In-sample R² (competitive races):** 0.492 (gate threshold: ≥ 0.40)
 
 **α₂ = 32.05 and β₃ = 28.07 are large.** For incumbent-held competitive seats, the effective spending coefficient is β₁ + β₃ = 33.78 — incumbents extract far more vote-share per unit of spending share than challengers. This is consistent with incumbents having established name recognition that amplifies the marginal effectiveness of campaign contact.
 
@@ -200,11 +200,11 @@ The backtest evaluates what the model would have recommended for 2024 DCCC spend
 | Gate | Result | Threshold |
 |------|--------|-----------|
 | Spending data completeness | 91.9% (398/433 races) | ≥ 80% |
-| Margin model R² (competitive) | 0.513 | ≥ 0.40 |
+| Margin model R² (competitive) | 0.492 | ≥ 0.40 |
 | σ ordering (open > chall > incumb) | 0/5 bins | ≥ 0% |
 | MSG sign (all competitive races) | 53/53 positive | 100% |
 | Optimizer convergence | Optimal | status=optimal |
-| Brier score | 0.0299 | ≤ Cook Brier + 0.05 |
+| Brier score | 0.0283 | ≤ Cook Brier + 0.05 |
 
 ### 6.3 Optimizer
 
@@ -218,6 +218,8 @@ Subject to:  Σᵢ party_i ≤ $465M
 ```
 
 The non-linear objective (direct Φ evaluation) is required because the MSG linearization breaks down for races with very low observed spending — a linear approximation at $1M spend is invalid at $10M, since the log-ratio moves into a highly non-linear regime. A scipy SLSQP solver is used with 500 iterations, initialized from the observed DCCC allocation.
+
+The sensitivity grid (§9, γ near 0) occasionally hits a QP-solver degeneracy at extremely small γ; `allocator.py` detects this and falls back to the LP formulation automatically (logged as a warning). This does not affect the headline γ=0 result.
 
 **Corner solutions:** 374/433 races (86%) converge to their floor (0 party spend) or cap. Only ~59 races receive interior solutions — reflecting that the optimizer concentrates party money on the highest-MSG competitive races.
 
@@ -502,4 +504,4 @@ Run `python scripts/fetch_live_ies.py --api-key YOUR_KEY` daily during the cycle
 
 ---
 
-*Generated from `scripts/run_estimation.py` + `scripts/run_backtest.py` + `scripts/make_charts.py` + `scripts/fetch_live_ies.py`.*
+*Generated from `scripts/run_estimation.py` + `scripts/run_backtest.py` + `scripts/make_charts.py` + `scripts/make_summary_chart.py` + `scripts/plot_allocator_comparison.py` + `scripts/plot_response_curve.py` + `scripts/plot_single_race_response.py` + `scripts/fetch_live_ies.py`.*

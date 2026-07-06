@@ -67,7 +67,7 @@ generic_ballot_by_cycle:
 # ─── Spending response surface ────────────────────────────────────────────────
 # β_RC is estimated from the historical panel and carried forward.
 # These are populated by scripts/run_estimation.py and stored in
-# data/processed/beta_rc.yaml; the values below are placeholders until estimated.
+# data/processed/beta_rc.json; the values below are placeholders until estimated.
 beta_rc:
   estimate: null
   se:       null
