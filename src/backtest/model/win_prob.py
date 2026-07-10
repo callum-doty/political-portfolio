@@ -58,7 +58,8 @@ def compute_outputs(
         sigma=sigma,
         pvi=race.pvi,
         incumb_status=race.incumb_status,
-        total_spend=total,
+        d_total=d_total,
+        r_total=r_total,
         coef=coef,
         beta1_override=beta1_override,
     )
@@ -78,7 +79,8 @@ def _marginal_seat_gain(
     sigma: float,
     pvi: float,
     incumb_status: str,
-    total_spend: float,
+    d_total: float,
+    r_total: float,
     coef: MarginModelCoefficients,
     beta1_override: float | None = None,
 ) -> float:
@@ -92,19 +94,31 @@ def _marginal_seat_gain(
     intensity log((D+R)/CVAP). Its contribution to MSG is small relative
     to the log-ratio term but ensures the gradient is exact.
 
+    D and R must be passed separately (not just D+R): the log-ratio
+    gradient is R/(D·(D+R)), not 1/(D+R) — these coincide only at D=R
+    (spending parity) and diverge for any lopsided spending ratio.
+
+    b1 mirrors predict()'s open-seat substitution: β₁ is replaced by
+    coef.beta1_open for Open races when set, so MSG differentiates the
+    same effective β that predict() used to produce mu.
+
     Returns MSG per dollar. Multiply by 1e6 externally for per-$1M.
     """
-    b1 = beta1_override if beta1_override is not None else coef.beta1
+    total_spend = d_total + r_total
+    if total_spend <= 0 or d_total <= 0:
+        return 0.0
+
+    if beta1_override is not None:
+        b1 = beta1_override
+    elif coef.beta1_open is not None and incumb_status == "Open":
+        b1 = coef.beta1_open
+    else:
+        b1 = coef.beta1
     is_incumb = 1.0 if incumb_status == "Incumbent" else 0.0
     abs_pvi = abs(pvi)
 
-    if total_spend <= 0:
-        return 0.0
-
-    # For the ratio term, we need D and R separately; use ratio passed via total_spend.
-    # Here total_spend = D + R, and the log-ratio gradient at spend share s = D/total is:
-    # ∂log(ratio)/∂D = R/(D·(D+R)) = (1-s)/(s·total). Use total_spend as proxy.
-    d_mu_d_s = (b1 + coef.beta2 * abs_pvi + coef.beta3 * is_incumb) / total_spend
+    d_log_ratio_dd = r_total / (d_total * total_spend)
+    d_mu_d_s = (b1 + coef.beta2 * abs_pvi + coef.beta3 * is_incumb) * d_log_ratio_dd
     # α₄ gradient: ∂log((D+R)/CVAP)/∂D = 1/(D+R)
     d_mu_d_s += coef.alpha4 / total_spend
 

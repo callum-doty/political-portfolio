@@ -220,3 +220,108 @@ def build_total_spend(cycle: int) -> pd.DataFrame:
     combined = pd.concat([d, r], axis=1).fillna(0).reset_index()
     combined["cycle"] = cycle
     return combined[["district_id", "cycle", "d_total", "r_total"]]
+
+
+# ─── Paper II: point-in-time (dated) IE reconstruction ───────────────────────
+# Everything above this line is Paper I and is unmodified. The two functions
+# below serve dynamic/simulate.py's one-step-ahead historical harness
+# (docs/paper2_draft.md §6.2) and are not used anywhere in Paper I's pipeline.
+
+
+def load_ie_transactions_dated(cycle: int) -> pd.DataFrame:
+    """
+    Return transaction-level, dated independent expenditures for a cycle.
+
+    Derived from the raw comprehensive Schedule E file
+    (data/raw/independent_expenditure/independent_expenditure_{cycle}.csv) —
+    NOT the pre-aggregated independent_expenditures_{cycle}.csv that
+    load_independent_expenditures() reads, which collapses to a cycle total
+    and drops the transaction date. This is the one component of total race
+    spend that can genuinely be reconstructed point-in-time from data
+    already in this repo (see the Paper II implementation plan's Phase 3
+    data-gap table); candidate-committee and coordinated-expenditure spend
+    have no per-filing date source here and must be held fixed by the caller.
+
+    Applies the identical House-general-election filter and D/R alignment
+    logic as scripts/fetch_data.py::build_comprehensive_ie() (candidate
+    party × support/oppose), but retains each transaction's `exp_date`
+    instead of collapsing to a cycle total.
+
+    exp_date in the raw file is in DD-MON-YY form (e.g. "23-SEP-22") and is
+    blank for a substantial minority of rows in both cycles checked (2022:
+    ~33%, 2024: ~28%) — this is missing data in the source filing, not a
+    parsing failure once the correct format string is used (confirmed: with
+    format="%d-%b-%y", every non-blank value parses). Rows with a blank
+    exp_date are dropped; the dropped count and fraction are logged, not
+    silently absorbed.
+
+    Returns DataFrame with columns: district_id, party [D/R-aligned],
+    exp_date (datetime64), amount (float).
+    """
+    src_path = config.raw_path("ie_comprehensive") / f"independent_expenditure_{cycle}.csv"
+    if not src_path.exists():
+        raise FileNotFoundError(
+            f"Raw comprehensive IE file not found: {src_path}. This is the "
+            "transaction-dated source required for point-in-time "
+            f"reconstruction — the aggregated independent_expenditures_{cycle}.csv "
+            "does not retain dates."
+        )
+    df = pd.read_csv(src_path, dtype=str, low_memory=False)
+    df = df[(df["can_office"] == "H") & (df["ele_type"] == "G")].copy()
+
+    n_total = len(df)
+    df["exp_date_parsed"] = pd.to_datetime(df["exp_date"], errors="coerce", format="%d-%b-%y")
+    n_dropped = int(df["exp_date_parsed"].isna().sum())
+    if n_dropped:
+        logger.warning(
+            f"load_ie_transactions_dated({cycle}): dropping {n_dropped}/{n_total} "
+            f"({n_dropped / n_total:.1%}) House-general IE rows with a blank "
+            "exp_date. These transactions are excluded from point-in-time "
+            "reconstruction entirely (not attributed to any period)."
+        )
+    df = df[df["exp_date_parsed"].notna()].copy()
+
+    df["exp_amo"] = pd.to_numeric(df["exp_amo"], errors="coerce").fillna(0).abs()
+    df["state"] = df["can_office_state"].str.strip().str.upper()
+    df["dist"] = df["can_office_dis"].str.strip().str.zfill(2)
+    df["district_id"] = df["state"] + "-" + df["dist"]
+
+    is_dem_cand = df["cand_pty_aff"].str.upper().str.contains("DEMOCRAT", na=False)
+    is_rep_cand = df["cand_pty_aff"].str.upper().str.contains("REPUBLICAN", na=False)
+    is_support = df["sup_opp"].str.upper() == "S"
+    is_oppose = df["sup_opp"].str.upper() == "O"
+
+    d_aligned = (is_dem_cand & is_support) | (is_rep_cand & is_oppose)
+    r_aligned = (is_rep_cand & is_support) | (is_dem_cand & is_oppose)
+
+    d = df.loc[d_aligned, ["district_id", "exp_date_parsed", "exp_amo"]].copy()
+    d["party"] = "D"
+    r = df.loc[r_aligned, ["district_id", "exp_date_parsed", "exp_amo"]].copy()
+    r["party"] = "R"
+
+    out = pd.concat([d, r], ignore_index=True)
+    out = out.rename(columns={"exp_date_parsed": "exp_date", "exp_amo": "amount"})
+    return out[["district_id", "party", "exp_date", "amount"]]
+
+
+def cumulative_ie_as_of(cycle: int, as_of_date) -> pd.DataFrame:
+    """
+    Return cumulative D/R-aligned independent-expenditure spend per
+    district, summing every transaction with exp_date <= as_of_date.
+
+    Returns DataFrame with columns: district_id, party, cycle, ie_net —
+    the same schema as load_independent_expenditures(), so callers can
+    substitute a point-in-time snapshot wherever the full-cycle aggregate
+    would otherwise be used.
+    """
+    as_of = pd.Timestamp(as_of_date)
+    txns = load_ie_transactions_dated(cycle)
+    cum = txns[txns["exp_date"] <= as_of]
+    ie = (
+        cum.groupby(["district_id", "party"])["amount"]
+        .sum()
+        .reset_index()
+        .rename(columns={"amount": "ie_net"})
+    )
+    ie["cycle"] = cycle
+    return ie[["district_id", "party", "cycle", "ie_net"]]

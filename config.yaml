@@ -63,6 +63,19 @@ generic_ballot_by_cycle:
   2020:  7.0
   2022: -1.0
   2024: -1.2
+  # 2026 is NOT a final pre-election value like the cycles above — the
+  # election hasn't happened yet. This is a LIVE point-estimate (21-day
+  # trailing average of raw polls from scripts/fetch_polling.py / VoteHub),
+  # captured 2026-07-07, meant to be refreshed at each periodic re-run of
+  # the dynamic/ live pipeline, not varied within a single run. Per the
+  # Paper II implementation plan's Phase 4A finding, this is a legitimate
+  # single-scenario input (same role as the other per-cycle constants
+  # above) — it is NOT the same as feeding a continuously time-varying GB
+  # series into coef.alpha3 within one optimization, which remains
+  # unsupported by the estimation. Update this value (and the comment
+  # date) whenever scripts/fetch_polling.py is re-run for a fresh live
+  # snapshot.
+  2026: 5.02
 
 # ─── Spending response surface ────────────────────────────────────────────────
 # β_RC is estimated from the historical panel and carried forward.
@@ -109,3 +122,12 @@ cook_win_probs:
 outputs:
   material_divergence_threshold: 0.01     # |difference| > 1% of budget = material
   concentration_flag_threshold:  0.15     # flag any race receiving > 15% of budget
+
+# ─── Dynamic allocation (Paper II — src/backtest/dynamic/) ───────────────────
+# Sequential/receding-horizon architecture. Paper I above is unaffected by
+# this block. See docs/paper2_draft.md §3.3 for f_baseline (EMA) and §3.2
+# for the commitment-source (L_t) research/operational mode distinction.
+dynamic:
+  ema_lambda: 0.7                # f_baseline smoothing constant (paper §3.3)
+  reporting_cadence: "biweekly"  # "biweekly" | "fec_quarterly" (dynamic/periods.py)
+  commitment_mode: "zero"        # "zero" | "operational" | "research_stub" (dynamic/ledger.py)

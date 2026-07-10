@@ -135,6 +135,41 @@ class TestWinProbability:
         out = compute_outputs(race, coef, sigma_model)
         assert out.msg_i > 0
 
+    def test_msg_matches_finite_difference_off_parity(self, coef, sigma_model):
+        """MSG_i must match a numerical d/dD of P(win) at D != R.
+
+        Regression test for a bug where the analytic gradient dropped the
+        R/D factor (equivalent to assuming D == R for every race).
+        """
+        h = 1.0
+        for d_total, r_total in [(6_000_000.0, 2_000_000.0), (1_000_000.0, 5_000_000.0)]:
+            race_lo = RaceRecord(
+                district_id="X", state="TX", district=1,
+                cook_rating="Toss-Up", incumb_status="Challenger",
+                pvi=-1.0, d_total=d_total - h, r_total=r_total,
+                cvap=400_000, generic_ballot=-1.2,
+            )
+            race_hi = RaceRecord(
+                district_id="X", state="TX", district=1,
+                cook_rating="Toss-Up", incumb_status="Challenger",
+                pvi=-1.0, d_total=d_total + h, r_total=r_total,
+                cvap=400_000, generic_ballot=-1.2,
+            )
+            race_mid = RaceRecord(
+                district_id="X", state="TX", district=1,
+                cook_rating="Toss-Up", incumb_status="Challenger",
+                pvi=-1.0, d_total=d_total, r_total=r_total,
+                cvap=400_000, generic_ballot=-1.2,
+            )
+            p_lo = compute_outputs(race_lo, coef, sigma_model).p_win
+            p_hi = compute_outputs(race_hi, coef, sigma_model).p_win
+            numerical_msg = (p_hi - p_lo) / (2 * h)
+            analytic_msg = compute_outputs(race_mid, coef, sigma_model).msg_i
+            assert analytic_msg == pytest.approx(numerical_msg, rel=1e-4), (
+                f"D={d_total}, R={r_total}: analytic={analytic_msg:.3e} "
+                f"vs numerical={numerical_msg:.3e}"
+            )
+
     def test_batch_matches_single(self, coef, sigma_model):
         """compute_outputs_batch must return same values as compute_outputs one-by-one."""
         races = [

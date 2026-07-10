@@ -71,6 +71,15 @@ CYCLE_TO_PRES_YEARS: dict[int, tuple[int, int]] = {
     2020: (2016, 2020),  # proxy — correct years would be (2012, 2016) on 116th map
     2022: (2016, 2020),  # exact — 118th Congress boundaries
     2024: (2016, 2020),  # exact — 118th Congress boundaries
+    2026: (2016, 2020),  # proxy — no pres_2024.csv in this repo yet (only 2016/2020
+                         # exist under data/raw/presidential/), so this reuses the
+                         # same pair as 2022/2024 rather than the more standard
+                         # (2020, 2024) mapping. Also note: several states have
+                         # mid-decade 2026 redistricting in progress (e.g. Texas) —
+                         # this mapping additionally assumes unchanged district
+                         # lines, which will not hold everywhere. Upgrade to
+                         # (2020, 2024) once district-level 2024 presidential
+                         # results are added to this repo.
 }
 
 

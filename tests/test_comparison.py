@@ -11,7 +11,10 @@ from backtest.comparison.benchmark import (
     expected_seats,
     compare_allocators,
 )
-from backtest.comparison.efficiency import spearman_efficiency_test, characterize_misallocation
+from backtest.comparison.efficiency import (
+    spearman_efficiency_test, characterize_misallocation,
+    spearman_by_cook_category, matched_group_efficiency_test,
+)
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -21,12 +24,13 @@ def _make_race(
     cook_rating: str = "Toss-Up",
     d_total: float = 2_000_000.0,
     outcome: str | None = None,
+    pvi: float = 0.0,
 ) -> RaceRecord:
     state, num = district_id.split("-")
     return RaceRecord(
         district_id=district_id, state=state, district=int(num),
         cook_rating=cook_rating, incumb_status="Challenger",
-        pvi=0.0, d_total=d_total, r_total=d_total,
+        pvi=pvi, d_total=d_total, r_total=d_total,
         cvap=350_000, generic_ballot=-1.2, outcome=outcome,
     )
 
@@ -243,6 +247,64 @@ class TestSpearmanEfficiency:
         outputs = [_make_output("TX-01")]
         with pytest.raises(ValueError, match="No competitive"):
             spearman_efficiency_test(races, outputs)
+
+
+# ─── spearman_by_cook_category ─────────────────────────────────────────────────
+
+class TestSpearmanByCookCategory:
+    def test_returns_row_per_category_present(self):
+        races, outputs = [], []
+        for cat in ["Lean D", "Toss-Up"]:
+            for i in range(5):
+                rid = f"{cat[:2]}-{i:02d}"
+                races.append(_make_race(rid, cook_rating=cat, d_total=float(i + 1) * 1e6))
+                outputs.append(_make_output(rid, msg_i=float(i + 1) * 1e-7))
+        df = spearman_by_cook_category(races, outputs, categories=("Lean D", "Toss-Up", "Lean R"))
+        assert set(df["cook_category"]) == {"Lean D", "Toss-Up"}   # Lean R absent -> dropped
+        assert (df["n"] == 5).all()
+
+    def test_skips_categories_with_too_few_races(self):
+        races = [_make_race("AA-01", cook_rating="Lean R", d_total=1e6),
+                 _make_race("AA-02", cook_rating="Lean R", d_total=2e6)]
+        outputs = [_make_output("AA-01", msg_i=1e-7), _make_output("AA-02", msg_i=2e-7)]
+        df = spearman_by_cook_category(races, outputs, categories=("Lean R",))
+        assert df.empty   # n=2 < minimum of 3
+
+    def test_rho_sign_within_category(self):
+        races, outputs = [], []
+        for i in range(6):
+            rid = f"TU-{i:02d}"
+            races.append(_make_race(rid, cook_rating="Toss-Up", d_total=float(i + 1) * 1e6))
+            outputs.append(_make_output(rid, msg_i=float(6 - i) * 1e-7))   # anti-aligned
+        df = spearman_by_cook_category(races, outputs, categories=("Toss-Up",))
+        assert df.iloc[0]["rho"] < -0.8
+
+
+# ─── matched_group_efficiency_test ─────────────────────────────────────────────
+
+class TestMatchedGroupEfficiency:
+    def test_filters_by_category_and_pvi(self):
+        races, outputs = [], []
+        # In-scope: Lean D, |PVI| <= 5
+        for i in range(5):
+            rid = f"IN-{i:02d}"
+            races.append(_make_race(rid, cook_rating="Lean D", pvi=3.0, d_total=float(i + 1) * 1e6))
+            outputs.append(_make_output(rid, msg_i=float(i + 1) * 1e-7))
+        # Out of scope: PVI too large
+        races.append(_make_race("OT-01", cook_rating="Lean D", pvi=9.0, d_total=1e6))
+        outputs.append(_make_output("OT-01", msg_i=1e-7))
+        # Out of scope: wrong category
+        races.append(_make_race("OT-02", cook_rating="Likely D", pvi=1.0, d_total=1e6))
+        outputs.append(_make_output("OT-02", msg_i=1e-7))
+
+        result = matched_group_efficiency_test(races, outputs)
+        assert result["n"] == 5
+
+    def test_raises_when_no_races_match(self):
+        races = [_make_race("AA-01", cook_rating="Safe R", pvi=20.0, d_total=1e6)]
+        outputs = [_make_output("AA-01", msg_i=1e-7)]
+        with pytest.raises(ValueError, match="No races"):
+            matched_group_efficiency_test(races, outputs)
 
 
 # ─── characterize_misallocation ───────────────────────────────────────────────

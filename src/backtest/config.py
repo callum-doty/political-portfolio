@@ -85,6 +85,12 @@ def outputs_cfg() -> dict:
     return _cfg["outputs"]
 
 
+def dynamic_cfg() -> dict:
+    """Paper II (src/backtest/dynamic/) config block. See config.yaml's
+    `dynamic:` section and docs/paper2_draft.md §3.2–3.3."""
+    return _cfg["dynamic"]
+
+
 def competitive_ratings() -> list[str]:
     return _cfg["universe"]["competitive_ratings"]
 

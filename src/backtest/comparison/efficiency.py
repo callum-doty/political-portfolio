@@ -67,6 +67,59 @@ def spearman_efficiency_test(
     }
 
 
+def spearman_by_cook_category(
+    races: list[RaceRecord],
+    outputs: list[ModelOutputs],
+    categories: tuple[str, ...] = ("Likely D", "Lean D", "Toss-Up", "Lean R", "Likely R"),
+) -> pd.DataFrame:
+    """
+    Spearman ρ between observed spending and MSG_i, computed separately
+    within each Cook rating category (Paper I Table 2).
+
+    Unlike spearman_efficiency_test(), this is not restricted to
+    config.competitive_ratings() — it reports every category in `categories`
+    so that Likely D/Likely R (outside the primary n=53/61 competitive set)
+    are included alongside Lean D/Toss-Up/Lean R.
+    """
+    rows = []
+    for cat in categories:
+        pairs = [(r, o) for r, o in zip(races, outputs) if r.cook_rating == cat]
+        if len(pairs) < 3:
+            continue
+        cat_races, cat_outputs = zip(*pairs)
+        spend = np.array([r.d_total for r in cat_races])
+        msg_vals = np.array([o.msg_i for o in cat_outputs])
+        rho, p_value = stats.spearmanr(spend, msg_vals)
+        rows.append({"cook_category": cat, "n": len(pairs), "rho": float(rho), "p_value": float(p_value)})
+    return pd.DataFrame(rows)
+
+
+def matched_group_efficiency_test(
+    races: list[RaceRecord],
+    outputs: list[ModelOutputs],
+    categories: tuple[str, ...] = ("Lean D", "Toss-Up"),
+    max_abs_pvi: float = 5.0,
+) -> dict:
+    """
+    Spearman ρ restricted to races matched on partisan lean and Cook
+    category (Paper I §9, "matched-group test") — the risk-tolerance-robust
+    efficiency test of §3.3: within races with similar factor loadings,
+    γ·∂Var[Seats]/∂sᵢ is approximately constant, so equalization of raw MSG
+    is the relevant efficiency condition.
+    """
+    pairs = [
+        (r, o) for r, o in zip(races, outputs)
+        if r.cook_rating in categories and abs(r.pvi) <= max_abs_pvi
+    ]
+    if not pairs:
+        raise ValueError("No races found for matched-group test")
+    m_races, m_outputs = zip(*pairs)
+    spend = np.array([r.d_total for r in m_races])
+    msg_vals = np.array([o.msg_i for o in m_outputs])
+    rho, p_value = stats.spearmanr(spend, msg_vals)
+    return {"rho": float(rho), "p_value": float(p_value), "n": len(pairs)}
+
+
 def characterize_misallocation(
     races: list[RaceRecord],
     outputs: list[ModelOutputs],

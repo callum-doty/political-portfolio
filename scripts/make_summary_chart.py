@@ -5,7 +5,7 @@ Holistic backtest summary chart.
 Three-panel figure aligned with the paper's framework and the backtest findings:
 
   A (left, tall):   Efficiency test — rank-rank scatter of DCCC spending vs MSG
-                    for the 53 competitive races.  Spearman ρ = -0.597.
+                    for the 53 competitive races.  Spearman ρ = -0.582.
   B (top-right):    Allocator comparison — expected-seat gain vs DCCC baseline
                     for four strategies, 2024 and 2022 shown together.
   C (bottom-right): Cross-cycle validation — Spearman ρ and seat-gain metrics

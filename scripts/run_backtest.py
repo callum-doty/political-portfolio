@@ -38,7 +38,10 @@ from backtest.types import BetaRC, SigmaModel, FactorModel
 from backtest.optimizer.allocator import (
     optimize, optimize_nonlinear, run_sensitivity_grid, build_allocation_results
 )
-from backtest.comparison.efficiency import spearman_efficiency_test, characterize_misallocation
+from backtest.comparison.efficiency import (
+    spearman_efficiency_test, characterize_misallocation,
+    spearman_by_cook_category, matched_group_efficiency_test,
+)
 from backtest.comparison.benchmark import (
     compute_brier_comparison, null_equal_weight_shares,
     cook_proportional_shares, compare_allocators
@@ -224,6 +227,17 @@ def main() -> None:
     efficiency = spearman_efficiency_test(races, outputs)
     misalloc = characterize_misallocation(
         races, outputs, [a.difference for a in allocation], budget
+    )
+
+    by_category = spearman_by_cook_category(races, outputs)
+    by_category_path = out_dir / f"spearman_by_category{suffix}.csv"
+    by_category.to_csv(by_category_path, index=False)
+    logger.info(f"Spearman by Cook category → {by_category_path}\n" + by_category.to_string(index=False))
+
+    matched_group = matched_group_efficiency_test(races, outputs)
+    logger.info(
+        f"Matched-group test (Lean D + Toss-Up, |PVI|<=5): "
+        f"ρ={matched_group['rho']:.3f} (p={matched_group['p_value']:.4f}, n={matched_group['n']})"
     )
 
     # ── 9. β_RC uncertainty propagation ──────────────────────────────────────
