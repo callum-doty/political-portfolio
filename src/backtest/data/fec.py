@@ -255,6 +255,30 @@ def load_ie_transactions_dated(cycle: int) -> pd.DataFrame:
     exp_date are dropped; the dropped count and fraction are logged, not
     silently absorbed.
 
+    Two further data-quality issues (Paper III §4.2) are resolved here:
+
+    FEC amendment chains. `tran_id` is NOT a unique per-transaction key in
+    this raw format, despite the name — the same tran_id recurs across many
+    rows with unrelated payees, amounts, and dates (e.g. tran_id "SE.4228"
+    appears for four unrelated 2018 committees). The real duplication
+    mechanism is amendments: `amndt_ind` in {A1, A2, ...} marks a re-filing
+    of an earlier transaction, with `prev_file_num` pointing back at the
+    filing it supersedes. Any row whose `file_num` is referenced as another
+    row's `prev_file_num` has been superseded and is dropped, keeping only
+    the terminal version of each amendment chain — otherwise the same
+    underlying expenditure is counted once per amendment (observed at
+    15-48% of rows across the 2012-2024 panel).
+
+    Implausible single-transaction amounts. The 2022 file contains one row
+    (tran_id "F57.000001"-style batch id notwithstanding) with
+    exp_amo=$9,999,999,999 and agg_amo=2024.00 — the agg_amo value looks
+    like a year that leaked into the wrong field, i.e. a parsing/upstream
+    data bug, not real spending. Every other cycle's legitimate maximum is
+    under $4.6M. Rows with exp_amo > $20M are dropped as implausible for a
+    single IE transaction; the threshold is set well above every other
+    cycle's genuine maximum specifically so it cannot silently discard real
+    (if unusually large) spending.
+
     Returns DataFrame with columns: district_id, party [D/R-aligned],
     exp_date (datetime64), amount (float).
     """
@@ -269,6 +293,17 @@ def load_ie_transactions_dated(cycle: int) -> pd.DataFrame:
     df = pd.read_csv(src_path, dtype=str, low_memory=False)
     df = df[(df["can_office"] == "H") & (df["ele_type"] == "G")].copy()
 
+    superseded = set(df["prev_file_num"].dropna().astype(str))
+    n_before_amend = len(df)
+    df = df[~df["file_num"].astype(str).isin(superseded)].copy()
+    n_superseded = n_before_amend - len(df)
+    if n_superseded:
+        logger.info(
+            f"load_ie_transactions_dated({cycle}): dropped {n_superseded}/{n_before_amend} "
+            f"({n_superseded / n_before_amend:.1%}) rows superseded by a later FEC "
+            "amendment (resolved via file_num/prev_file_num, not tran_id)."
+        )
+
     n_total = len(df)
     df["exp_date_parsed"] = pd.to_datetime(df["exp_date"], errors="coerce", format="%d-%b-%y")
     n_dropped = int(df["exp_date_parsed"].isna().sum())
@@ -282,6 +317,15 @@ def load_ie_transactions_dated(cycle: int) -> pd.DataFrame:
     df = df[df["exp_date_parsed"].notna()].copy()
 
     df["exp_amo"] = pd.to_numeric(df["exp_amo"], errors="coerce").fillna(0).abs()
+    n_implausible = int((df["exp_amo"] > 20_000_000).sum())
+    if n_implausible:
+        logger.warning(
+            f"load_ie_transactions_dated({cycle}): dropping {n_implausible} row(s) "
+            "with exp_amo > $20M (implausible for a single IE transaction; see "
+            "docstring)."
+        )
+        df = df[df["exp_amo"] <= 20_000_000].copy()
+
     df["state"] = df["can_office_state"].str.strip().str.upper()
     df["dist"] = df["can_office_dis"].str.strip().str.zfill(2)
     df["district_id"] = df["state"] + "-" + df["dist"]

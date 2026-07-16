@@ -83,16 +83,16 @@ class TestOneStepAheadIndependence:
         # rather than saturating at ratio ~= 1 with r ~= 0.
         raw_csv = tmp_path / f"independent_expenditure_{cycle}.csv"
         raw_csv.write_text(
-            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date\n"
-            "H,G,TX,01,DEMOCRATIC,S,1000000,05-JAN-24\n"
-            "H,G,TX,01,REPUBLICAN,S,1000000,05-JAN-24\n"
-            "H,G,TX,02,DEMOCRATIC,S,1000000,05-JAN-24\n"
-            "H,G,TX,02,REPUBLICAN,S,1000000,05-JAN-24\n"
+            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date,file_num,prev_file_num\n"
+            "H,G,TX,01,DEMOCRATIC,S,1000000,05-JAN-24,1001,\n"
+            "H,G,TX,01,REPUBLICAN,S,1000000,05-JAN-24,1002,\n"
+            "H,G,TX,02,DEMOCRATIC,S,1000000,05-JAN-24,1003,\n"
+            "H,G,TX,02,REPUBLICAN,S,1000000,05-JAN-24,1004,\n"
             # Additional spend after period 0 but before period 1, so period
             # 1's reconstructed state genuinely differs from period 0's —
             # a meaningful check, not just two identical snapshots.
-            "H,G,TX,01,DEMOCRATIC,S,500000,15-FEB-24\n"
-            "H,G,TX,02,DEMOCRATIC,S,500000,15-FEB-24\n"
+            "H,G,TX,01,DEMOCRATIC,S,500000,15-FEB-24,1005,\n"
+            "H,G,TX,02,DEMOCRATIC,S,500000,15-FEB-24,1006,\n"
         )
         monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
 
@@ -139,21 +139,21 @@ class TestDatedIEReconstruction:
     def _write_synthetic_ie_file(self, tmp_path, monkeypatch):
         raw_csv = tmp_path / "independent_expenditure_2024.csv"
         raw_csv.write_text(
-            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date\n"
+            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date,file_num,prev_file_num\n"
             # D-aligned: DEM candidate + support
-            "H,G,TX,07,DEMOCRATIC,S,1000,01-JAN-24\n"
+            "H,G,TX,07,DEMOCRATIC,S,1000,01-JAN-24,101,\n"
             # R-aligned: DEM candidate + oppose
-            "H,G,TX,07,DEMOCRATIC,O,500,15-FEB-24\n"
+            "H,G,TX,07,DEMOCRATIC,O,500,15-FEB-24,102,\n"
             # R-aligned: REP candidate + support
-            "H,G,TX,07,REPUBLICAN,S,2000,01-MAR-24\n"
+            "H,G,TX,07,REPUBLICAN,S,2000,01-MAR-24,103,\n"
             # D-aligned: REP candidate + oppose
-            "H,G,TX,07,REPUBLICAN,O,300,10-JAN-24\n"
+            "H,G,TX,07,REPUBLICAN,O,300,10-JAN-24,104,\n"
             # Dropped: blank exp_date
-            "H,G,TX,07,DEMOCRATIC,S,999,\n"
+            "H,G,TX,07,DEMOCRATIC,S,999,,105,\n"
             # Filtered: primary, not general
-            "H,P,TX,07,DEMOCRATIC,S,999,01-JAN-24\n"
+            "H,P,TX,07,DEMOCRATIC,S,999,01-JAN-24,106,\n"
             # Filtered: not House
-            "S,G,TX,07,DEMOCRATIC,S,999,01-JAN-24\n"
+            "S,G,TX,07,DEMOCRATIC,S,999,01-JAN-24,107,\n"
         )
         monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
 
@@ -166,6 +166,36 @@ class TestDatedIEReconstruction:
         r_total = txns[txns["party"] == "R"]["amount"].sum()
         assert d_total == pytest.approx(1300.0)   # 1000 (S,DEM) + 300 (O,REP)
         assert r_total == pytest.approx(2500.0)   # 500 (O,DEM) + 2000 (S,REP)
+
+    def test_superseded_amendment_is_dropped_not_summed(self, tmp_path, monkeypatch):
+        """A row whose file_num is referenced as a later row's prev_file_num
+        was amended and must be excluded — otherwise the same real-world
+        expenditure is counted once per amendment (Paper III §4.2)."""
+        raw_csv = tmp_path / "independent_expenditure_2024.csv"
+        raw_csv.write_text(
+            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date,file_num,prev_file_num\n"
+            "H,G,TX,07,DEMOCRATIC,S,1000,01-JAN-24,201,\n"      # original filing
+            "H,G,TX,07,DEMOCRATIC,S,1000,01-JAN-24,202,201\n"  # A1: supersedes 201
+            "H,G,TX,07,DEMOCRATIC,S,1000,01-JAN-24,203,202\n"  # A2: supersedes 202
+        )
+        monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
+        txns = fec.load_ie_transactions_dated(2024)
+        assert len(txns) == 1   # only the terminal amendment (203) survives
+        assert txns["amount"].sum() == pytest.approx(1000.0)   # not 3000
+
+    def test_implausible_amount_is_dropped(self, tmp_path, monkeypatch):
+        """A single-transaction exp_amo above $20M is treated as a data
+        error, not real spending (Paper III §4.2's $10B/agg_amo=2024 row)."""
+        raw_csv = tmp_path / "independent_expenditure_2024.csv"
+        raw_csv.write_text(
+            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date,file_num,prev_file_num\n"
+            "H,G,TX,07,DEMOCRATIC,S,1000,01-JAN-24,301,\n"
+            "H,G,TX,07,DEMOCRATIC,S,9999999999,01-JAN-24,302,\n"
+        )
+        monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
+        txns = fec.load_ie_transactions_dated(2024)
+        assert len(txns) == 1
+        assert txns["amount"].sum() == pytest.approx(1000.0)
 
     def test_cumulative_ie_as_of_is_monotonic_and_date_bounded(self, tmp_path, monkeypatch):
         self._write_synthetic_ie_file(tmp_path, monkeypatch)

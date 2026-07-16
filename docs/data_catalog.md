@@ -247,6 +247,23 @@ These are downloaded from FEC bulk but are not directly loaded by model code. Th
 
 ---
 
+### 1.8b Generic Ballot — Historical Daily Series (Paper III §5)
+
+| Attribute | Value |
+|-----------|-------|
+| **Path** | `data/raw/generic_ballot/generic_ballot_historical_538.csv` |
+| **Format** | CSV with header |
+| **Source** | FiveThirtyEight's live generic-ballot data endpoint (`projects.fivethirtyeight.com/polls/data/generic_ballot_averages.csv`), recovered via the Wayback Machine — the live endpoint was discontinued after ABC News shut down 538 in 2023; this repo's copy is a snapshot captured 2024-12-03 (`http://web.archive.org/web/20241203003203/https://projects.fivethirtyeight.com/polls/data/generic_ballot_averages.csv`), which retained the full cumulative history back through the 2018 cycle. |
+| **Distinct from §1.8** | §1.8 is one static value per cycle (used in the margin model's `α₃·GB` term). This file is 538's own **daily** smoothed trend estimate — not raw individual polls, not re-aggregated by this project — spanning 2018, 2020, 2022, and 2024 (~1,150-1,175 rows/cycle). It exists solely to support Paper III §5's national-environment volatility calibration and is not consumed by Paper I's estimation pipeline. |
+
+**Columns:** `candidate` (Democrats/Republicans), `pct_estimate`, `lo`, `hi` (538's confidence bounds), `date`, `election` (mostly blank in this snapshot), `cycle`.
+
+**Caveat:** this is 538's own aggregation methodology (weighted/pollster-adjusted trendline), not a from-scratch reconstruction from raw polls — methodologically distinct from the 21-day trailing average of raw polls used for the live 2026 series (`data/live/generic_ballot_polls.csv`). Pooling volatility estimates across the two is a reasonable approximation, not an exact apples-to-apples comparison (Paper III §5.4).
+
+**Pipeline role:** Input to `scripts/estimate_gb_volatility.py` (Paper III §5.3/5.4). Not used anywhere in Paper I or II's estimation.
+
+---
+
 ### 1.9 Cook PVI / Ratings (Proprietary — Manual)
 
 | Attribute | Value |

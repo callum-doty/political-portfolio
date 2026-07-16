@@ -126,9 +126,9 @@ class TestRealizedSpendCommitmentSource:
             "XX-00,R,{c},20000\n".format(c=cycle)
         )
         (tmp_path / f"independent_expenditure_{cycle}.csv").write_text(
-            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date\n"
-            "H,G,XX,00,DEMOCRATIC,S,30000,01-JAN-24\n"   # -> D-aligned, XX-00, before period_date
-            "H,G,XX,00,DEMOCRATIC,S,90000,01-DEC-24\n"   # -> D-aligned, XX-00, AFTER period_date
+            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date,file_num,prev_file_num\n"
+            "H,G,XX,00,DEMOCRATIC,S,30000,01-JAN-24,901,\n"   # -> D-aligned, XX-00, before period_date
+            "H,G,XX,00,DEMOCRATIC,S,90000,01-DEC-24,902,\n"   # -> D-aligned, XX-00, AFTER period_date
         )
         monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
 
