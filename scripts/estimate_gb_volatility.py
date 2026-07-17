@@ -14,14 +14,22 @@ Output: outputs/gb_volatility_term_structure.csv
 """
 
 from __future__ import annotations
+import json
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import curve_fit
 
 ROOT = Path(__file__).parent.parent
 HORIZONS_DAYS = [30, 60, 90, 180, 270, 365, 450]
+
+# Reference horizon for the single representative sigma_G(per-sqrt-day) figure
+# quoted throughout Paper III (docs/paper3_draft.md Section 5.3's "working
+# number for the calibration") -- chosen to match Paper II Section 7.1's live
+# run horizon (~4 months out from a typical decision point), not hand-picked.
+REFERENCE_HORIZON_DAYS = 120.0
 
 
 def load_historical_series() -> dict[int, pd.Series]:
@@ -88,6 +96,34 @@ def pooled_vol_by_horizon(all_series: dict[str, pd.Series], horizons: list[int])
     return pd.DataFrame(rows)
 
 
+def representative_sigma_g_per_sqrt_day(term_structure: pd.DataFrame,
+                                         horizon_days: float = REFERENCE_HORIZON_DAYS) -> float:
+    """Interpolate the pooled std(dG)/sqrt(days) term structure at a single
+    reference horizon, rather than hand-picking one of the table's rows --
+    this is what makes the "0.186" figure quoted in Paper III reproducible
+    from data instead of a literal someone typed once and never revisited."""
+    return float(np.interp(horizon_days, term_structure["horizon_days"],
+                            term_structure["pooled_std_over_sqrt_days"]))
+
+
+def fit_lambda_from_term_structure(term_structure: pd.DataFrame) -> tuple[float, float, float]:
+    """Fit Var(dG)(t) = A(1 - exp(-t/tau)) to a pooled term structure,
+    return (lambda=1/tau, A, tau). Used for Section 6.2's epsilon-decay
+    proxy rate -- moved here (previously duplicated/discarded in
+    scripts/validate_state_simulator.py) so there is exactly one function
+    that fits this number, called once here and re-checked (not re-derived
+    independently) by validate_state_simulator.py."""
+    t = term_structure["horizon_days"].values.astype(float)
+    var = term_structure["pooled_std_dG"].values ** 2
+
+    def model(t, A, tau):
+        return A * (1 - np.exp(-t / tau))
+
+    popt, _ = curve_fit(model, t, var, p0=[20.0, 300.0], maxfev=5000)
+    a_fit, tau_fit = popt
+    return 1.0 / tau_fit, a_fit, tau_fit
+
+
 def main():
     hist = load_historical_series()
     live_2026 = load_live_2026_series()
@@ -123,6 +159,28 @@ def main():
     pooled_hist.to_csv(out_dir / "gb_volatility_term_structure_historical_only.csv", index=False)
     print(f"\nSaved -> {out_dir / 'gb_volatility_term_structure.csv'}")
     print(f"Saved -> {out_dir / 'gb_volatility_term_structure_historical_only.csv'}")
+
+    # --- Single source of truth for sigma_G(dt) and lambda (Paper III audit, 2026-07-16):
+    # write the two calibrated constants every downstream script/paper cites into one
+    # JSON, instead of each re-typing its own copy of a number computed here. Uses the
+    # historical-only (4-cycle) term structure, per Section 5.3's stated preference for
+    # methodological cleanliness (538's own aggregation vs. this project's raw-poll
+    # smoothing are not identically constructed for the live 2026 series).
+    sigma_g = representative_sigma_g_per_sqrt_day(pooled_hist)
+    lam, a_fit, tau_fit = fit_lambda_from_term_structure(pooled_hist)
+    gb_dynamics = {
+        "sigma_g_per_sqrt_day": sigma_g,
+        "reference_horizon_days": REFERENCE_HORIZON_DAYS,
+        "lambda_decay": lam,
+        "tau_days": tau_fit,
+        "lambda_fit_A": a_fit,
+        "source": "scripts/estimate_gb_volatility.py, historical-only (4-cycle) pooled term structure",
+    }
+    with open(ROOT / "data/processed/gb_dynamics.json", "w") as f:
+        json.dump(gb_dynamics, f, indent=2)
+    print(f"\n=== Single source of truth written: data/processed/gb_dynamics.json ===")
+    print(f"  sigma_g_per_sqrt_day={sigma_g:.4f} (at {REFERENCE_HORIZON_DAYS:.0f}d), "
+          f"lambda_decay={lam:.5f} (tau={tau_fit:.1f}d)")
 
 
 if __name__ == "__main__":

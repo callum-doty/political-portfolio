@@ -32,6 +32,7 @@ Output: outputs/allocation_2026_live.png, outputs/allocation_2026_live.csv
 """
 from __future__ import annotations
 
+import json
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -50,9 +51,10 @@ from backtest.dynamic.ledger import RealizedSpendCommitmentSource
 from backtest.dynamic.updates import EMAStateUpdater
 from backtest.dynamic.periods import ReportingPeriod
 from backtest.dynamic.horizon import run_receding_horizon
+from backtest.model.budget import estimate_budget_2026
 from run_backtest import load_processed_artifacts, build_dummy_factor_model
 
-BUDGET_2026 = 394_300_000.0
+BUDGET_2026 = estimate_budget_2026()   # single source of truth: backtest.model.budget
 TOP_N = 25
 
 
@@ -148,6 +150,26 @@ def main() -> None:
     print(f"\nExpected seats: {meta['expected_seats']:.2f}  |  status: {meta['status']}  |  "
           f"L_t=${meta['committed_total']:,.0f}  F_t=${meta['deployable_total']:,.0f}")
     plot(df, meta)
+
+    # --- Single source of truth for today/F0/election_day (Paper III audit,
+    # 2026-07-16): scripts/solve_bellman_lsm.py and scripts/estimate_gb_ou_drift.py
+    # previously re-typed these as independent literals (a stale-TODAY /
+    # 98-vs-110-days-remaining drift already surfaced from this before the fix).
+    as_of = date.fromisoformat(meta["as_of"])
+    elec_day = config.election_day(2026)
+    live_state = {
+        "as_of": meta["as_of"],
+        "election_day": elec_day.isoformat(),
+        "days_remaining": (elec_day - as_of).days,
+        "budget_2026": meta["budget"],
+        "l_t_committed": meta["committed_total"],
+        "f0": meta["deployable_total"],
+        "generic_ballot": meta["generic_ballot"],
+    }
+    with open(ROOT / "data/processed/live_2026_state.json", "w") as f:
+        json.dump(live_state, f, indent=2)
+    print(f"\nSaved -> data/processed/live_2026_state.json "
+          f"(F0=${live_state['f0']:,.0f}, {live_state['days_remaining']}d remaining)")
 
 
 if __name__ == "__main__":

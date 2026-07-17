@@ -18,9 +18,15 @@ class ReportingPeriod:
     label: str
 
 
-def biweekly_periods(start: date, end: date) -> list[ReportingPeriod]:
+def biweekly_periods(start: date, end: date, period_days: int = 14) -> list[ReportingPeriod]:
     """Return biweekly reporting periods from `start` through `end`
-    (inclusive of any period landing on or before `end`)."""
+    (inclusive of any period landing on or before `end`).
+
+    `period_days` defaults to 14 to keep this a self-contained, dependency-
+    free calendar utility (no import of backtest.config). The default is the
+    single canonical value -- also exposed as config.yaml's
+    `dynamic.period_days` / `backtest.config.period_days()` for callers that
+    need to keep their own period-length constants in sync with this one."""
     if end < start:
         raise ValueError("end must be >= start")
     periods: list[ReportingPeriod] = []
@@ -28,7 +34,7 @@ def biweekly_periods(start: date, end: date) -> list[ReportingPeriod]:
     i = 0
     while current <= end:
         periods.append(ReportingPeriod(index=i, period_date=current, label=f"P{i}"))
-        current = current + timedelta(days=14)
+        current = current + timedelta(days=period_days)
         i += 1
     return periods
 

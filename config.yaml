@@ -123,6 +123,26 @@ outputs:
   material_divergence_threshold: 0.01     # |difference| > 1% of budget = material
   concentration_flag_threshold:  0.15     # flag any race receiving > 15% of budget
 
+# ─── 2026 live budget projection (Paper II §7.1) ──────────────────────────────
+# BUDGET_2026 is DERIVED, not typed here directly: see
+# backtest.model.budget.estimate_budget_2026(), which averages the 2018 and
+# 2022 midterm party-controlled budgets (each computed live from
+# build_universe(), same formula as scripts/run_backtest.py's party_budget),
+# inflated to 2026-equivalent dollars via BLS CPI-U (series CUUR0000SA0).
+# The raw CPI index values below are genuine external inputs (BLS data this
+# repo does not itself fetch) -- not re-derivable from anything else here --
+# so they are the one thing in this block that must be hand-updated when a
+# newer CPI release changes them. Previously this whole derivation existed
+# only as prose in docs/paper2_draft.md §7.1, with BUDGET_2026 hardcoded as
+# an independent literal in scripts/plot_2026_live_allocation.py (Paper III
+# audit, 2026-07-16).
+budget_2026_projection:
+  base_cycles: [2018, 2022]      # party-controlled budgets averaged, each own-cycle-CPI-inflated
+  cpi_nov_2018: 252.038          # BLS CPI-U, series CUUR0000SA0
+  cpi_nov_2022: 297.711
+  cpi_nov_2025: 324.122
+  trailing_yoy_rate: 0.0425      # as of May 2026, applied to Nov 2025 CPI to project Nov 2026
+
 # ─── Dynamic allocation (Paper II — src/backtest/dynamic/) ───────────────────
 # Sequential/receding-horizon architecture. Paper I above is unaffected by
 # this block. See docs/paper2_draft.md §3.3 for f_baseline (EMA) and §3.2
@@ -131,3 +151,10 @@ dynamic:
   ema_lambda: 0.7                # f_baseline smoothing constant (paper §3.3)
   reporting_cadence: "biweekly"  # "biweekly" | "fec_quarterly" (dynamic/periods.py)
   commitment_mode: "zero"        # "zero" | "operational" | "research_stub" (dynamic/ledger.py)
+  period_days: 14                # biweekly grid spacing (dynamic/periods.py's biweekly_periods()) --
+                                  # single source of truth; previously re-typed as an independent
+                                  # literal in scripts/simulate_and_validate.py and
+                                  # scripts/solve_bellman_lsm.py (Paper III audit, 2026-07-16)
+  election_day_2026: "2026-11-03"  # official 2026 House general election date -- single source
+                                    # of truth; previously re-typed independently in
+                                    # scripts/solve_bellman_lsm.py and scripts/estimate_gb_ou_drift.py

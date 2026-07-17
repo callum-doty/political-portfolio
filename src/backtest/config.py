@@ -85,10 +85,39 @@ def outputs_cfg() -> dict:
     return _cfg["outputs"]
 
 
+def budget_2026_projection_cfg() -> dict:
+    """CPI-U inputs for backtest.model.budget.estimate_budget_2026(). See
+    config.yaml's `budget_2026_projection:` block."""
+    return _cfg["budget_2026_projection"]
+
+
 def dynamic_cfg() -> dict:
     """Paper II (src/backtest/dynamic/) config block. See config.yaml's
     `dynamic:` section and docs/paper2_draft.md §3.2–3.3."""
     return _cfg["dynamic"]
+
+
+def period_days() -> int:
+    """Biweekly grid spacing (days). Single source of truth for the period
+    length used by dynamic/periods.py, scripts/simulate_and_validate.py, and
+    scripts/solve_bellman_lsm.py -- see config.yaml's `dynamic.period_days`."""
+    return int(_cfg["dynamic"]["period_days"])
+
+
+def election_day(cycle: int):
+    """Return the cycle's general-election date as a datetime.date.
+
+    Only cycles with an explicit `election_day_{cycle}` entry in config.yaml
+    are supported (currently just the live 2026 cycle) -- historical cycles'
+    election days are read directly from dated result/polling data elsewhere
+    and don't need a config entry.
+    """
+    from datetime import date
+    key = f"election_day_{cycle}"
+    if key not in _cfg["dynamic"]:
+        raise ValueError(f"No election_day defined for cycle {cycle}. "
+                          f"Add dynamic.{key} to config.yaml.")
+    return date.fromisoformat(_cfg["dynamic"][key])
 
 
 def competitive_ratings() -> list[str]:
