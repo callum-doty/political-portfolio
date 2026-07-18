@@ -1,0 +1,2 @@
+budget,n_districts,excluded,safe_obs_share,safe_rec_share,safe_budget_stranded_M,comp_obs_share,comp_rec_share,rho_likely_d,p_likely_d,n_likely_d,rho_tossup,p_tossup,n_tossup,rho_comp_pooled,p_comp_pooled,rho_comp_demeaned,p_comp_demeaned,n_comp
+750245848.45,431,GA-06 (redistricting artifact),0.330015,0.0,247.6,0.66763,1.0,-0.3825,0.0163,39,0.005159958720330237,0.9837879533049655,18,0.2292,0.0087,-0.1236,0.1612,130

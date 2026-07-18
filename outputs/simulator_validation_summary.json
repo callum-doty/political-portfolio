@@ -1,0 +1,160 @@
+{
+  "validation_a_september_forecast": [
+    {
+      "cycle": 2022,
+      "n_competitive": 61,
+      "spearman_rho": 0.4565838180856689,
+      "p_value": 0.00021683677664999717,
+      "sept_snapshot_date": "2022-09-01"
+    },
+    {
+      "cycle": 2024,
+      "n_competitive": 53,
+      "spearman_rho": 0.6235284631511047,
+      "p_value": 6.123425421178869e-07,
+      "sept_snapshot_date": "2024-09-01"
+    }
+  ],
+  "validation_b_sigma_g_check": [
+    {
+      "cycle": 2022,
+      "delta_t_days": 68,
+      "realized_delta_g": -2.176198999999997,
+      "predicted_sd": 1.5157020116487385,
+      "z_score": -1.4357696851195625,
+      "within_1_sd": false,
+      "within_2_sd": true
+    },
+    {
+      "cycle": 2024,
+      "delta_t_days": 65,
+      "realized_delta_g": -1.9481400726510145,
+      "predicted_sd": 1.4818902784834829,
+      "z_score": -1.3146317922030477,
+      "within_1_sd": false,
+      "within_2_sd": true
+    }
+  ],
+  "validation_c_eta_stability": [
+    {
+      "tier": "Safe D",
+      "n_obs": 97,
+      "eta": 0.31820153349756125,
+      "se": 0.1958912949208948,
+      "p_value": 0.10429513369304613,
+      "fit_on_cycle": 2024
+    },
+    {
+      "tier": "Likely D",
+      "n_obs": 82,
+      "eta": -0.10149819147606647,
+      "se": 0.11140766405466952,
+      "p_value": 0.3622678985224349,
+      "fit_on_cycle": 2024
+    },
+    {
+      "tier": "Lean D",
+      "n_obs": 114,
+      "eta": 0.2365321180823473,
+      "se": 0.08883192460602207,
+      "p_value": 0.007751816816922296,
+      "fit_on_cycle": 2024
+    },
+    {
+      "tier": "Toss-Up",
+      "n_obs": 61,
+      "eta": 0.3414522734491997,
+      "se": 0.08184590236004137,
+      "p_value": 3.0208068641544806e-05,
+      "fit_on_cycle": 2024
+    },
+    {
+      "tier": "Lean R",
+      "n_obs": 20,
+      "eta": 0.1830996353790613,
+      "se": 0.19650863539611782,
+      "p_value": 0.35145859988213335,
+      "fit_on_cycle": 2024
+    },
+    {
+      "tier": "Likely R",
+      "n_obs": 90,
+      "eta": 0.4115858359343356,
+      "se": 0.27502960593563563,
+      "p_value": 0.13451959173954303,
+      "fit_on_cycle": 2024
+    },
+    {
+      "tier": "Safe R",
+      "n_obs": 137,
+      "eta": -0.16495319778952344,
+      "se": 0.06530348489420455,
+      "p_value": 0.011538660544488065,
+      "fit_on_cycle": 2024
+    },
+    {
+      "tier": "Safe D",
+      "n_obs": 109,
+      "eta": 1.069694529719842,
+      "se": 0.1813180217547551,
+      "p_value": 3.644968125005205e-09,
+      "fit_on_cycle": 2022
+    },
+    {
+      "tier": "Likely D",
+      "n_obs": 91,
+      "eta": -0.21203912431649058,
+      "se": 0.1304268225866678,
+      "p_value": 0.10400657319197397,
+      "fit_on_cycle": 2022
+    },
+    {
+      "tier": "Lean D",
+      "n_obs": 127,
+      "eta": 0.2938841818755611,
+      "se": 0.1232834575744678,
+      "p_value": 0.017134505637023265,
+      "fit_on_cycle": 2022
+    },
+    {
+      "tier": "Toss-Up",
+      "n_obs": 139,
+      "eta": 0.729939109263241,
+      "se": 0.1463869206866843,
+      "p_value": 6.152479289294156e-07,
+      "fit_on_cycle": 2022
+    },
+    {
+      "tier": "Lean R",
+      "n_obs": 22,
+      "eta": 0.3868884135796588,
+      "se": 0.6453845568717413,
+      "p_value": 0.548859785251861,
+      "fit_on_cycle": 2022
+    },
+    {
+      "tier": "Likely R",
+      "n_obs": 93,
+      "eta": -0.017244985216736237,
+      "se": 0.043839063545329016,
+      "p_value": 0.6940460084774269,
+      "fit_on_cycle": 2022
+    },
+    {
+      "tier": "Safe R",
+      "n_obs": 139,
+      "eta": -0.003346238743621956,
+      "se": 0.004566079309108957,
+      "p_value": 0.4636515886018897,
+      "fit_on_cycle": 2022
+    }
+  ],
+  "lambda_consistency_check": {
+    "lambda_refit": 0.005362207289686016,
+    "tau_refit_days": 186.49036599600663,
+    "lambda_stored": 0.0053622075108426944,
+    "tau_stored_days": 186.4903583044748,
+    "relative_diff": 4.1243588129150835e-08,
+    "consistent": true
+  }
+}

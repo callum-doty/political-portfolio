@@ -1,0 +1,51 @@
+{
+  "ou_drift_fit": {
+    "n_obs": 2269,
+    "dt_days": 14.0,
+    "a": 0.01261906083737293,
+    "b": -0.003117286417421119,
+    "se_a": 0.02119881937294871,
+    "se_b": 0.0034902552261238916,
+    "p_value_b": 0.3717822252113815,
+    "kappa_per_day": 0.0002226633155300799,
+    "g_bar": 4.048091560291234,
+    "r_squared": 0.0003049891028353846
+  },
+  "today_gb": 5.02,
+  "days_remaining": 109,
+  "gap_today_vs_gbar": 0.9719084397087654,
+  "implied_drift_points": -0.02358851075791703,
+  "historical_sanity_check": [
+    {
+      "cycle": 2018,
+      "found_match": true,
+      "match_date": "2017-04-15",
+      "g_at_match": 4.394800000000004,
+      "days_to_election": 570,
+      "g_at_election": 8.611539999999998,
+      "change_to_election": 4.216739999999994
+    },
+    {
+      "cycle": 2020,
+      "found_match": true,
+      "match_date": "2019-04-01",
+      "g_at_match": 5.344619999999999,
+      "days_to_election": 582,
+      "g_at_election": 7.256267999999999,
+      "change_to_election": 1.9116479999999996
+    },
+    {
+      "cycle": 2022,
+      "found_match": true,
+      "match_date": "2021-04-01",
+      "g_at_match": 4.312919999999998,
+      "days_to_election": 586,
+      "g_at_election": -1.2316129999999958,
+      "change_to_election": -5.544532999999994
+    },
+    {
+      "cycle": 2024,
+      "found_match": false
+    }
+  ]
+}

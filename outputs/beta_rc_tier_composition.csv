@@ -1,0 +1,2 @@
+tier_counts,pct_safe_r,pct_competitive,beta_rc_all,se_all,n_all,beta_rc_safe_r_only,se_safe_r_only,n_safe_r_only,beta_rc_competitive_only,se_competitive_only,n_competitive_only,interaction_coef,interaction_p_value
+"{'Safe D': 8, 'Likely D': 3, 'Lean D': 4, 'Toss-Up': 7, 'Lean R': 3, 'Likely R': 8, 'Safe R': 85}",0.7203389830508474,0.11864406779661017,5.456825516722046,1.5856645224260215,118,4.662316140257278,1.8048857564481975,85,2.663666930884438,1.345586164018294,14,-2.622661704587461,0.6079981100912321

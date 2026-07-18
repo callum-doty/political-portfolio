@@ -29,8 +29,21 @@ Var[Seats]_t here is Sum_i p_i(1-p_i) -- an independence approximation,
 not Paper I's full factor-covariance model -- stated explicitly as a
 simplification of this first pass, not a silent omission.
 
-Run twice -- eta fit on 2022 only, eta fit on 2024 only -- bracketing
-Theta per the cycle-instability caveat already on record (Section 5.5).
+Run three scenarios:
+  - eta_fit_2022 / eta_fit_2024: eta fit on a single cycle, held identical
+    across all K paths -- the original cycle-instability bracket (Section 5.5).
+  - eta_bootstrap_all_cycles (added 2026-07-17, per docs/theta_followup_plan.md
+    Section 6): each of the K simulated paths draws its OWN per-tier
+    (eta, resid_std) pair from a randomly chosen historical cycle
+    (2012-2024, whichever have >=10 obs for that tier), held fixed for
+    that path's whole campaign. This propagates the confirmed real
+    cycle-to-cycle eta variation (5 of 7 tiers, scripts/
+    reconcile_eta_sigma_g_instability.py) into Theta directly, replacing
+    two hand-picked brackets with an empirical distribution -- the
+    "random effects, draw once per simulated election" approach preferred
+    over a continuous stochastic process, since the data show cycle-to-
+    cycle jumps, not within-cycle drift (this regression cannot even see
+    the latter -- it fits one eta per cycle by construction).
 
 Output: outputs/theta_schedule.json
 """
@@ -109,6 +122,68 @@ def fit_eta_and_resid(fit_cycle: int) -> tuple[dict, dict]:
     return eta_by_tier, resid_std_by_tier
 
 
+BOOTSTRAP_CYCLES = [2012, 2014, 2016, 2018, 2020, 2022, 2024]
+
+
+def tile_single_cycle(eta_by_tier: dict, resid_std_by_tier: dict, tiers_per_race: list[str],
+                       k_paths: int) -> tuple[np.ndarray, np.ndarray]:
+    """Broadcast one cycle's (eta, resid_std) per tier identically across
+    every simulated path -- the original eta_fit_2022/eta_fit_2024 brackets,
+    expressed in the same (K_PATHS, n) shape the bootstrap scenario uses,
+    so run_lsm() doesn't need two different code paths."""
+    n = len(tiers_per_race)
+    eta_row = np.array([eta_by_tier.get(t, 0.0) for t in tiers_per_race])
+    resid_row = np.array([resid_std_by_tier.get(t, 0.0) for t in tiers_per_race])
+    return np.tile(eta_row, (k_paths, 1)), np.tile(resid_row, (k_paths, 1))
+
+
+def bootstrap_eta_resid_paths(cycles: list[int], tiers_per_race: list[str], k_paths: int,
+                               rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray, dict]:
+    """Each of k_paths simulated elections draws its OWN per-tier
+    (eta, resid_std) pair from one randomly chosen historical cycle, held
+    fixed for that whole path -- not eta and resid_std from independently
+    chosen cycles, which would break the real within-cycle relationship
+    between how opponents reacted and how noisy that reaction was that
+    year. This is the empirical-bootstrap option (assumption-light: no
+    parametric shape imposed on a distribution whose real data include a
+    sign flip -- Toss-Up went to -0.22 in 2016) recommended over a fitted
+    Normal or a continuous stochastic process, per docs/theta_followup_plan.md
+    Section 6."""
+    per_cycle_fits = {c: fit_eta_and_resid(c) for c in cycles}
+
+    eta_by_tier_cycle: dict[str, list[float]] = {t: [] for t in TIERS}
+    resid_by_tier_cycle: dict[str, list[float]] = {t: [] for t in TIERS}
+    for c in cycles:
+        eta_c, resid_c = per_cycle_fits[c]
+        for t in TIERS:
+            if t in eta_c:
+                eta_by_tier_cycle[t].append(eta_c[t])
+                resid_by_tier_cycle[t].append(resid_c[t])
+
+    n = len(tiers_per_race)
+    eta_paths = np.zeros((k_paths, n))
+    resid_paths = np.zeros((k_paths, n))
+    summary = {}
+    for t in TIERS:
+        idx = [i for i, race_tier in enumerate(tiers_per_race) if race_tier == t]
+        available_eta = np.array(eta_by_tier_cycle[t])
+        available_resid = np.array(resid_by_tier_cycle[t])
+        if not idx or len(available_eta) == 0:
+            continue
+        draw_idx = rng.integers(0, len(available_eta), size=k_paths)
+        eta_draw = available_eta[draw_idx]
+        resid_draw = available_resid[draw_idx]
+        for i in idx:
+            eta_paths[:, i] = eta_draw
+            resid_paths[:, i] = resid_draw
+        summary[t] = {
+            "n_cycles_available": int(len(available_eta)),
+            "historical_values": [float(v) for v in available_eta],
+            "path_draw_mean": float(eta_draw.mean()), "path_draw_sd": float(eta_draw.std()),
+        }
+    return eta_paths, resid_paths, summary
+
+
 def margin_gradient(coef, pvi, incumb_status, d_total, r_total, eta: float = 0.0) -> float:
     """d(mu_i)/d(D_i), Part I Section I.5's chain rule.
 
@@ -127,7 +202,15 @@ def margin_gradient(coef, pvi, incumb_status, d_total, r_total, eta: float = 0.0
     return c * (1.0 / d - (1.0 + eta) / t)
 
 
-def run_lsm(eta_by_tier: dict, resid_std_by_tier: dict, label: str) -> dict:
+def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, label: str,
+            eta_summary: dict | None = None) -> dict:
+    """eta_arr_by_path / resid_std_arr_by_path: shape (K_PATHS, n) -- either
+    a single cycle's fit tiled identically across every path (tile_single_cycle,
+    the original eta_fit_2022/eta_fit_2024 brackets) or a genuine per-path
+    bootstrap draw (bootstrap_eta_resid_paths). run_lsm() itself is agnostic
+    to which; unifying the two here (rather than a separate code path per
+    scenario) is what makes the bootstrap scenario a small addition instead
+    of a duplicated ~150-line function."""
     coef, sigma_model = load_coef_and_sigma()
     races = build_universe(cycle=2026)
     n = len(races)
@@ -141,8 +224,8 @@ def run_lsm(eta_by_tier: dict, resid_std_by_tier: dict, label: str) -> dict:
     is_comp = np.array([t in COMPETITIVE for t in tiers])
     gb_national = races[0].generic_ballot
     is_incumb_arr = np.array([1.0 if s == "Incumbent" else 0.0 for s in incumb_arr])
-    resid_std_arr = np.array([resid_std_by_tier.get(t, 0.0) for t in tiers])
-    eta_arr = np.array([eta_by_tier.get(t, 0.0) for t in tiers])
+    resid_std_arr = resid_std_arr_by_path
+    eta_arr = eta_arr_by_path
 
     # --- Simulate the "wait" branch forward: R moves via residual noise only ---
     # NOTE (docs/theta_followup_plan.md Section 0.1.1): eta_arr is NOT applied here.
@@ -198,7 +281,7 @@ def run_lsm(eta_by_tier: dict, resid_std_by_tier: dict, label: str) -> dict:
                      + coef.alpha3 * gb_national + c_arr * log_ratio)
         mu_paths[:, tstep, :] = mu_struct + eps_cum[:, tstep, :]
 
-    def _deploy_value(mu_t, r_t, widened_sigma):
+    def _deploy_value(mu_t, r_t, widened_sigma, eta_arr_k):
         """Close the reserve now via the LP allocator, apply the resulting
         Delta_mu via the chain-rule gradient, then evaluate expected seats
         against widened_sigma (sigma_i, or sqrt(sigma_i^2+V_i(t)) if time
@@ -207,15 +290,16 @@ def run_lsm(eta_by_tier: dict, resid_std_by_tier: dict, label: str) -> dict:
         session found via a smoke test: the terminal value must ALSO
         deploy, or it is not a valid anchor for the recursion.
 
-        grad now uses eta_arr (Section 0.1.2): the LP's linearized gradient
-        is discounted by each race's tier-specific opponent-reaction rate,
-        since the entire deploy_now increment is new spend against which R
-        reacts at eta -- previously eta_by_tier was computed and reported
-        but never multiplied into anything in this function."""
+        grad uses eta_arr_k (Section 0.1.2), the (n,) eta slice for THIS
+        path k -- previously a single shared eta_arr, now indexed per path
+        so a bootstrap-drawn per-path eta (Section 6) discounts the LP's
+        linearized gradient exactly like a single-cycle bracket's shared
+        value did, just varying path to path instead of being identical
+        across all K paths."""
         d_t = floor_arr.copy()
         p_win0 = norm.cdf(mu_t / sigma_arr)
         phi0 = norm.pdf(mu_t / sigma_arr)
-        grad = np.array([margin_gradient(coef, pvi_arr[i], incumb_arr[i], d_t[i], r_t[i], eta_arr[i])
+        grad = np.array([margin_gradient(coef, pvi_arr[i], incumb_arr[i], d_t[i], r_t[i], eta_arr_k[i])
                           for i in range(n)])
         msg = phi0 / sigma_arr * grad
         outs = [ModelOutputs(district_id=races[i].district_id, ratio=d_t[i] / (d_t[i] + r_t[i]),
@@ -233,7 +317,7 @@ def run_lsm(eta_by_tier: dict, resid_std_by_tier: dict, label: str) -> dict:
 
     print(f"  [{label}] computing terminal condition (forced deploy, {K_PATHS} paths)...")
     V_star = np.array([
-        _deploy_value(mu_paths[k, -1, :], r_paths[k, -1, :], sigma_arr)   # V=0 at T: no widening
+        _deploy_value(mu_paths[k, -1, :], r_paths[k, -1, :], sigma_arr, eta_arr[k])   # V=0 at T: no widening
         for k in range(K_PATHS)
     ])
 
@@ -243,7 +327,7 @@ def run_lsm(eta_by_tier: dict, resid_std_by_tier: dict, label: str) -> dict:
         widened_sigma = np.sqrt(sigma_arr ** 2 + v_remaining)
 
         deploy_vals = np.array([
-            _deploy_value(mu_paths[k, tstep, :], r_paths[k, tstep, :], widened_sigma)
+            _deploy_value(mu_paths[k, tstep, :], r_paths[k, tstep, :], widened_sigma, eta_arr[k])
             for k in range(K_PATHS)
         ])
 
@@ -281,19 +365,35 @@ def run_lsm(eta_by_tier: dict, resid_std_by_tier: dict, label: str) -> dict:
               f"basis R2={cont_fit.rsquared:.3f}, g_t_coef={cont_fit.params[5]:+.5f} (p={cont_fit.pvalues[5]:.3f})")
 
     theta_by_period = list(reversed(theta_by_period))
-    return {"label": label, "eta_by_tier": eta_by_tier, "n_periods": N_PERIODS, "k_paths": K_PATHS,
+    return {"label": label, "eta_summary": eta_summary, "n_periods": N_PERIODS, "k_paths": K_PATHS,
             "theta_by_period": theta_by_period}
 
 
 def main():
     print(f"N_PERIODS={N_PERIODS} ({N_PERIODS*PERIOD_DAYS} days), K_PATHS={K_PATHS}\n")
+    races = build_universe(cycle=2026)
+    tiers_per_race = [r.cook_rating for r in races]
+
     results = {}
     for label, fit_cycle in [("eta_fit_2022", 2022), ("eta_fit_2024", 2024)]:
         print(f"=== {label} ===")
         eta_by_tier, resid_std_by_tier = fit_eta_and_resid(fit_cycle)
         print(f"  eta(tier): {eta_by_tier}")
-        res = run_lsm(eta_by_tier, resid_std_by_tier, label)
+        eta_arr_by_path, resid_std_arr_by_path = tile_single_cycle(
+            eta_by_tier, resid_std_by_tier, tiers_per_race, K_PATHS)
+        res = run_lsm(eta_arr_by_path, resid_std_arr_by_path, label,
+                       eta_summary={"single_cycle_fit": eta_by_tier})
         results[label] = res
+
+    print("=== eta_bootstrap_all_cycles ===")
+    eta_arr_by_path, resid_std_arr_by_path, boot_summary = bootstrap_eta_resid_paths(
+        BOOTSTRAP_CYCLES, tiers_per_race, K_PATHS, RNG)
+    for tier, s in boot_summary.items():
+        print(f"  {tier}: {s['n_cycles_available']} historical cycles {s['historical_values']}, "
+              f"path draws mean={s['path_draw_mean']:+.3f} sd={s['path_draw_sd']:.3f}")
+    res = run_lsm(eta_arr_by_path, resid_std_arr_by_path, "eta_bootstrap_all_cycles",
+                   eta_summary=boot_summary)
+    results["eta_bootstrap_all_cycles"] = res
 
     out_path = ROOT / "outputs/theta_schedule.json"
     with open(out_path, "w") as f:

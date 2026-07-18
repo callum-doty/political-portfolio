@@ -12,8 +12,11 @@ plan (docs/theta_followup_plan.md), one per question a reader asked:
   4. theta_binary_decision_motivation.png -- what does the CURRENT
      binary deploy/hold model actually produce, as motivation for testing
      whether a continuous reserve fraction would reveal something the
-     binary framing cannot (theta_followup_plan.md Section 1 -- NOT yet
-     implemented; this figure visualizes the existing binary run only).
+     binary framing cannot (theta_followup_plan.md Section 1). The
+     continuous-phi generalization this figure motivates has since been
+     implemented and run (Section 1.3/8) -- see
+     scripts/make_continuous_phi_figure.py for that result; this figure
+     is kept as-is, showing only the binary run's own motivating output.
   5. gb_asymmetry_check.png            -- does the historical record show
      a real asymmetry from a similarly-favorable starting point, or is a
      symmetric zero-drift process defensible? (theta_followup_plan.md
@@ -236,8 +239,9 @@ def fig4_binary_motivation():
         sched = json.load(f)
 
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.2))
-    colors = {"eta_fit_2022": "#c0392b", "eta_fit_2024": "#2e6da4"}
-    labels = {"eta_fit_2022": "eta fit on 2022", "eta_fit_2024": "eta fit on 2024"}
+    colors = {"eta_fit_2022": "#c0392b", "eta_fit_2024": "#2e6da4", "eta_bootstrap_all_cycles": "#2a9d4f"}
+    labels = {"eta_fit_2022": "eta fit on 2022", "eta_fit_2024": "eta fit on 2024",
+              "eta_bootstrap_all_cycles": "eta bootstrap, all 7 cycles"}
 
     for label, res in sched.items():
         periods = res["theta_by_period"]
@@ -265,13 +269,16 @@ def fig4_binary_motivation():
     axes[1].legend(frameon=False, fontsize=9)
 
     fig.suptitle("Is the All-or-Nothing Framing Hiding a Partial Reserve? (§1, motivation only)",
-                 fontsize=13, fontweight="bold", y=1.04)
-    fig.text(0.5, -0.02,
-             "NOT a continuous-φ result -- φ∈[0,1] partial-reserve framing is proposed but not yet implemented (theta_followup_plan.md §1).\n"
-             "This shows the existing binary deploy/hold model's own path-level split, which is already far from 0%/100% in the 28-84 day window --\n"
-             "exactly the situation where a continuous reserve fraction could reveal a real small-but-nonzero optimum the binary comparison cannot express.",
+                 fontsize=13, fontweight="bold", y=1.05)
+    fig.text(0.5, -0.10,
+             "This is the BINARY model's own path-level split (deploy-everything vs. hold-everything), shown only as motivation -- it is\n"
+             "already far from 0%/100% in the 28-84 day window, which is exactly the situation where a continuous reserve fraction could\n"
+             "reveal a real small-but-nonzero optimum the binary comparison cannot express. The bootstrap line (theta_followup_plan.md §6)\n"
+             "draws each path's own eta from the empirical 7-cycle distribution -- frac(deploy now) at t=0 is a real 91.5%, not degenerate.\n"
+             "The continuous-phi generalization this motivates was since implemented and run (§1.3/§8) -- see make_continuous_phi_figure.py:\n"
+             "the answer is that the corner holds regardless, for reasons distinct from anything visible in this figure.",
              ha="center", fontsize=8.5, color="#555555", style="italic")
-    fig.tight_layout(rect=[0, 0.05, 1, 1])
+    fig.tight_layout(rect=[0, 0.14, 1, 0.96])
     fig.savefig(OUT / "theta_binary_decision_motivation_fig.png", bbox_inches="tight")
     plt.close(fig)
     print("✓ theta_binary_decision_motivation_fig.png")
