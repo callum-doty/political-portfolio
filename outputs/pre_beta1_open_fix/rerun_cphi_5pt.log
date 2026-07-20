@@ -1,0 +1,74 @@
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MA-00', 'MI-14', 'MT-00', 'OH-16', 'PA-18', 'VI-00', 'KS-00', 'MO-00']
+load_ie_transactions_dated(2022): dropping 6249/17375 (36.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+load_ie_transactions_dated(2022): dropping 1 row(s) with exp_amo > $20M (implausible for a single IE transaction; see docstring).
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+C:\Users\_cal\AppData\Roaming\Python\Python312\site-packages\numpy\_core\fromnumeric.py:83: RuntimeWarning: invalid value encountered in reduce
+  return ufunc.reduce(obj, axis, dtype, out, **passkwargs)
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'PR-00', 'VI-00', 'AZ-00', 'KS-00', 'MO-09', 'WI-00']
+load_ie_transactions_dated(2024): dropping 4586/15835 (29.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+C:\Users\_cal\AppData\Roaming\Python\Python312\site-packages\numpy\_core\fromnumeric.py:83: RuntimeWarning: invalid value encountered in reduce
+  return ufunc.reduce(obj, axis, dtype, out, **passkwargs)
+Dropping 17 races with no PVI: ['AS-00', 'CA-53', 'DC-00', 'GU-00', 'IL-18', 'MA-10', 'MI-14', 'MT-00', 'NV-00', 'NY-27', 'NY-29', 'OH-16', 'PA-18', 'PR-00', 'VI-00', 'WV-03', 'SC-00']
+Dropping 13 races with no PVI: ['CA-53', 'DC-00', 'GU-00', 'IL-18', 'MI-14', 'MT-00', 'NY-27', 'OH-16', 'PA-18', 'PR-00', 'VI-00', 'WV-03', 'IN-00']
+load_ie_transactions_dated(2014): dropping 951/7661 (12.4%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 13 races with no PVI: ['CA-53', 'DC-00', 'GU-00', 'IL-18', 'MI-14', 'MT-00', 'NB-02', 'NY-27', 'OH-16', 'PR-00', 'VI-00', 'WV-03', 'PA-18']
+load_ie_transactions_dated(2016): dropping 966/5291 (18.3%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 13 races with no PVI: ['CA-53', 'DC-00', 'GU-00', 'IL-18', 'MI-14', 'MT-00', 'NY-27', 'NY-29', 'OH-16', 'PA-18', 'VI-00', 'WV-03', 'AS-00']
+load_ie_transactions_dated(2018): dropping 2751/19819 (13.9%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 13 races with no PVI: ['CA-53', 'DC-00', 'GU-00', 'IL-18', 'MI-14', 'MT-00', 'NY-27', 'OH-16', 'PA-18', 'PR-00', 'VI-00', 'WV-03', 'KS-00']
+load_ie_transactions_dated(2020): dropping 2613/15354 (17.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MA-00', 'MI-14', 'MT-00', 'OH-16', 'PA-18', 'VI-00', 'KS-00', 'MO-00']
+load_ie_transactions_dated(2022): dropping 6249/17375 (36.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+load_ie_transactions_dated(2022): dropping 1 row(s) with exp_amo > $20M (implausible for a single IE transaction; see docstring).
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'PR-00', 'VI-00', 'AZ-00', 'KS-00', 'MO-09', 'WI-00']
+load_ie_transactions_dated(2024): dropping 4586/15835 (29.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+N_PERIODS=7 (98 days), K_PATHS=2000, grid=['0.00', '0.25', '0.50', '0.75', '1.00']
+
+=== eta_fit_2022 (5pt grid) ===
+  [eta_fit_2022] precomputing floor_state for 4 nonzero grid levels x 2000 paths x 8 periods (64000 LP calls)...
+  [eta_fit_2022] grid level 0.25 done
+  [eta_fit_2022] grid level 0.50 done
+  [eta_fit_2022] grid level 0.75 done
+  [eta_fit_2022] grid level 1.00 done
+  [eta_fit_2022] t=6 (14d left): V(g=0)=+223.8299, mean chosen frac=0.673, R2=0.761
+  [eta_fit_2022] t=5 (28d left): V(g=0)=+224.1081, mean chosen frac=0.657, R2=0.724
+  [eta_fit_2022] t=4 (42d left): V(g=0)=+224.3763, mean chosen frac=0.641, R2=0.689
+  [eta_fit_2022] t=3 (56d left): V(g=0)=+224.6713, mean chosen frac=0.705, R2=0.624
+  [eta_fit_2022] t=2 (70d left): V(g=0)=+224.9947, mean chosen frac=0.767, R2=0.515
+  [eta_fit_2022] t=1 (84d left): V(g=0)=+225.3871, mean chosen frac=0.888, R2=0.362
+  [eta_fit_2022] t=0 (98d left): V(g=0)=+225.8591, mean chosen frac=1.000, R2=0.000
+  -> saved C:\Users\_cal\Desktop\political-portfolio\outputs\theta_schedule_continuous_phi_eta_fit_2022_5pt.json
+
+=== eta_fit_2024 (5pt grid) ===
+  [eta_fit_2024] precomputing floor_state for 4 nonzero grid levels x 2000 paths x 8 periods (64000 LP calls)...
+  [eta_fit_2024] grid level 0.25 done
+  [eta_fit_2024] grid level 0.50 done
+  [eta_fit_2024] grid level 0.75 done
+  [eta_fit_2024] grid level 1.00 done
+  [eta_fit_2024] t=6 (14d left): V(g=0)=+225.3288, mean chosen frac=0.558, R2=0.758
+  [eta_fit_2024] t=5 (28d left): V(g=0)=+225.4996, mean chosen frac=0.460, R2=0.730
+  [eta_fit_2024] t=4 (42d left): V(g=0)=+225.6196, mean chosen frac=0.392, R2=0.692
+  [eta_fit_2024] t=3 (56d left): V(g=0)=+225.7285, mean chosen frac=0.389, R2=0.655
+  [eta_fit_2024] t=2 (70d left): V(g=0)=+225.8221, mean chosen frac=0.399, R2=0.558
+  [eta_fit_2024] t=1 (84d left): V(g=0)=+225.9046, mean chosen frac=0.428, R2=0.399
+  [eta_fit_2024] t=0 (98d left): V(g=0)=+225.9775, mean chosen frac=1.000, R2=0.000
+  -> saved C:\Users\_cal\Desktop\political-portfolio\outputs\theta_schedule_continuous_phi_eta_fit_2024_5pt.json
+
+=== eta_bootstrap_all_cycles (5pt grid) ===
+  [eta_bootstrap_all_cycles] precomputing floor_state for 4 nonzero grid levels x 2000 paths x 8 periods (64000 LP calls)...
+  [eta_bootstrap_all_cycles] grid level 0.25 done
+  [eta_bootstrap_all_cycles] grid level 0.50 done
+  [eta_bootstrap_all_cycles] grid level 0.75 done
+  [eta_bootstrap_all_cycles] grid level 1.00 done
+  [eta_bootstrap_all_cycles] t=6 (14d left): V(g=0)=+224.1548, mean chosen frac=0.667, R2=0.841
+  [eta_bootstrap_all_cycles] t=5 (28d left): V(g=0)=+224.4104, mean chosen frac=0.599, R2=0.807
+  [eta_bootstrap_all_cycles] t=4 (42d left): V(g=0)=+224.6455, mean chosen frac=0.581, R2=0.779
+  [eta_bootstrap_all_cycles] t=3 (56d left): V(g=0)=+224.8707, mean chosen frac=0.568, R2=0.739
+  [eta_bootstrap_all_cycles] t=2 (70d left): V(g=0)=+225.1322, mean chosen frac=0.651, R2=0.643
+  [eta_bootstrap_all_cycles] t=1 (84d left): V(g=0)=+225.3929, mean chosen frac=0.701, R2=0.487
+  [eta_bootstrap_all_cycles] t=0 (98d left): V(g=0)=+225.7492, mean chosen frac=0.997, R2=0.027
+  -> saved C:\Users\_cal\Desktop\political-portfolio\outputs\theta_schedule_continuous_phi_eta_bootstrap_all_cycles_5pt.json
+

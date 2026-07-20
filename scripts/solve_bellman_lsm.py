@@ -224,6 +224,18 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
     is_comp = np.array([t in COMPETITIVE for t in tiers])
     gb_national = races[0].generic_ballot
     is_incumb_arr = np.array([1.0 if s == "Incumbent" else 0.0 for s in incumb_arr])
+    # beta1_eff_arr: per-race spending elasticity, substituting beta1_open for
+    # Open-seat races -- matching margin_gradient()'s already-correct branch and
+    # win_prob.predict()'s static-pipeline behavior. mu_struct below previously
+    # used coef.beta1 unconditionally, which meant the LEVEL of mu for an
+    # Open-seat race used a different elasticity than the GRADIENT
+    # margin_gradient() computed for that same race (found while writing
+    # tests/test_bellman_lsm.py; fixed here).
+    if coef.beta1_open is not None:
+        is_open_arr = np.array([1.0 if s == "Open" else 0.0 for s in incumb_arr])
+        beta1_eff_arr = np.where(is_open_arr > 0, coef.beta1_open, coef.beta1)
+    else:
+        beta1_eff_arr = np.full(n, coef.beta1)
     resid_std_arr = resid_std_arr_by_path
     eta_arr = eta_arr_by_path
 
@@ -276,7 +288,7 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         t_t = d_t + r_paths[:, tstep, :]
         ratio = np.clip(d_t / t_t, 1e-6, 1 - 1e-6)
         log_ratio = np.log(ratio)
-        c_arr = coef.beta1 + coef.beta2 * np.abs(pvi_arr)[None, :] + coef.beta3 * is_incumb_arr[None, :]
+        c_arr = beta1_eff_arr[None, :] + coef.beta2 * np.abs(pvi_arr)[None, :] + coef.beta3 * is_incumb_arr[None, :]
         mu_struct = (coef.alpha0 + coef.alpha1 * pvi_arr[None, :] + coef.alpha2 * is_incumb_arr[None, :]
                      + coef.alpha3 * gb_national + c_arr * log_ratio)
         mu_paths[:, tstep, :] = mu_struct + eps_cum[:, tstep, :]

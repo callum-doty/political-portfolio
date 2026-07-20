@@ -1,0 +1,29 @@
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'PR-00', 'VI-00', 'AZ-00', 'KS-00', 'MO-09', 'WI-00']
+load_ie_transactions_dated(2024): dropping 4586/15835 (29.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+C:\Users\_cal\AppData\Roaming\Python\Python312\site-packages\numpy\_core\fromnumeric.py:83: RuntimeWarning: invalid value encountered in reduce
+  return ufunc.reduce(obj, axis, dtype, out, **passkwargs)
+N_PERIODS=7 (98 days), K_PATHS=500, grid=['0.00', '0.10', '0.20', '0.30', '0.40', '0.50', '0.60', '0.70', '0.80', '0.90', '1.00']
+
+=== eta_fit_2024 (11pt grid) ===
+  [eta_fit_2024] precomputing floor_state for 10 nonzero grid levels x 500 paths x 8 periods (40000 LP calls)...
+  [eta_fit_2024] grid level 0.10 done
+  [eta_fit_2024] grid level 0.20 done
+  [eta_fit_2024] grid level 0.30 done
+  [eta_fit_2024] grid level 0.40 done
+  [eta_fit_2024] grid level 0.50 done
+  [eta_fit_2024] grid level 0.60 done
+  [eta_fit_2024] grid level 0.70 done
+  [eta_fit_2024] grid level 0.80 done
+  [eta_fit_2024] grid level 0.90 done
+  [eta_fit_2024] grid level 1.00 done
+  [eta_fit_2024] t=6 (14d left): V(g=0)=+225.3353, mean chosen frac=0.611, R2=0.754
+  [eta_fit_2024] t=5 (28d left): V(g=0)=+225.5033, mean chosen frac=0.435, R2=0.712
+  [eta_fit_2024] t=4 (42d left): V(g=0)=+225.6477, mean chosen frac=0.450, R2=0.666
+  [eta_fit_2024] t=3 (56d left): V(g=0)=+225.7634, mean chosen frac=0.390, R2=0.612
+  [eta_fit_2024] t=2 (70d left): V(g=0)=+225.8463, mean chosen frac=0.340, R2=0.542
+  [eta_fit_2024] t=1 (84d left): V(g=0)=+225.9294, mean chosen frac=0.425, R2=0.349
+  [eta_fit_2024] t=0 (98d left): V(g=0)=+225.9775, mean chosen frac=1.000, R2=0.000
+  -> saved C:\Users\_cal\Desktop\political-portfolio\outputs\theta_schedule_continuous_phi_eta_fit_2024_11pt.json
+

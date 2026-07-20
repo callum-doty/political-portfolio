@@ -116,17 +116,33 @@ def _setup_universe():
     is_comp = np.array([t in lsm.COMPETITIVE for t in tiers])
     gb_national = races[0].generic_ballot
     is_incumb_arr = np.array([1.0 if s == "Incumbent" else 0.0 for s in incumb_arr])
+    is_open_arr = np.array([1.0 if s == "Open" else 0.0 for s in incumb_arr])
     return (coef, races, n, sigma_arr, pvi_arr, incumb_arr, floor_arr, r0_arr,
-            is_comp, gb_national, is_incumb_arr)
+            is_comp, gb_national, is_incumb_arr, is_open_arr)
 
 
-def _mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, d_arr, r_arr):
+def _mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, d_arr, r_arr, is_open_arr=None):
     """Exact nonlinear margin formula, identical to solve_bellman_lsm.run_lsm's
-    mu_struct computation -- d_arr/r_arr broadcast over (K, n) or (n,)."""
+    mu_struct computation -- d_arr/r_arr broadcast over (K, n) or (n,).
+
+    is_open_arr: substitutes coef.beta1_open for Open-seat races, matching
+    margin_gradient()'s already-correct branch and win_prob.predict()'s
+    static-pipeline behavior. Previously always used coef.beta1 regardless of
+    incumbency status, which meant this function's mu LEVEL used a different
+    elasticity than margin_gradient()'s mu GRADIENT for the same Open-seat
+    race (found while writing tests/test_bellman_lsm.py; fixed here).
+    Optional and defaults to None (old behavior) only so any external caller
+    that hasn't been updated fails loudly on a shape mismatch rather than
+    silently keeping the bug -- every in-repo caller now passes it.
+    """
+    if is_open_arr is not None and coef.beta1_open is not None:
+        beta1_eff = np.where(is_open_arr > 0, coef.beta1_open, coef.beta1)
+    else:
+        beta1_eff = coef.beta1
     t_arr = d_arr + r_arr
     ratio = np.clip(d_arr / t_arr, 1e-6, 1 - 1e-6)
     log_ratio = np.log(ratio)
-    c_arr = coef.beta1 + coef.beta2 * np.abs(pvi_arr) + coef.beta3 * is_incumb_arr
+    c_arr = beta1_eff + coef.beta2 * np.abs(pvi_arr) + coef.beta3 * is_incumb_arr
     return (coef.alpha0 + coef.alpha1 * pvi_arr + coef.alpha2 * is_incumb_arr
             + coef.alpha3 * gb_national + c_arr * log_ratio)
 
@@ -163,7 +179,7 @@ def run_continuous_phi_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: n
     n_periods = lsm.N_PERIODS
     n_grid = len(grid_fracs)
     (coef, races, n, sigma_arr, pvi_arr, incumb_arr, floor_arr, r0_arr,
-     is_comp, gb_national, is_incumb_arr) = _setup_universe()
+     is_comp, gb_national, is_incumb_arr, is_open_arr) = _setup_universe()
 
     eta_arr = eta_arr_by_path
     resid_std_arr = resid_std_arr_by_path
@@ -191,7 +207,7 @@ def run_continuous_phi_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: n
     for tstep in range(n_periods + 1):
         mu_baseline[:, tstep, :] = (
             _mu_struct(coef, pvi_arr[None, :], is_incumb_arr[None, :], gb_national,
-                       floor_arr[None, :], r_paths[:, tstep, :])
+                       floor_arr[None, :], r_paths[:, tstep, :], is_open_arr[None, :])
             + eps_cum[:, tstep, :]
         )
 
@@ -209,7 +225,7 @@ def run_continuous_phi_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: n
                     mu_baseline[k, tstep, :], r_paths[k, tstep, :], eta_arr[k], budget_g)
                 r_eff = r_paths[k, tstep, :] + eta_arr[k] * (floor_g_kt - floor_arr)
                 mu_g[k, tstep, :] = (
-                    _mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, floor_g_kt, r_eff)
+                    _mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, floor_g_kt, r_eff, is_open_arr)
                     + eps_cum[k, tstep, :]
                 )
         mu_committed.append(mu_g)

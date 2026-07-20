@@ -1,0 +1,65 @@
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MA-00', 'MI-14', 'MT-00', 'OH-16', 'PA-18', 'VI-00', 'KS-00', 'MO-00']
+load_ie_transactions_dated(2022): dropping 6249/17375 (36.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+load_ie_transactions_dated(2022): dropping 1 row(s) with exp_amo > $20M (implausible for a single IE transaction; see docstring).
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+C:\Users\_cal\AppData\Roaming\Python\Python312\site-packages\numpy\_core\fromnumeric.py:83: RuntimeWarning: invalid value encountered in reduce
+  return ufunc.reduce(obj, axis, dtype, out, **passkwargs)
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'PR-00', 'VI-00', 'AZ-00', 'KS-00', 'MO-09', 'WI-00']
+load_ie_transactions_dated(2024): dropping 4586/15835 (29.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+Dropping 17 races with no PVI: ['AS-00', 'CA-53', 'DC-00', 'GU-00', 'IL-18', 'MA-10', 'MI-14', 'MT-00', 'NV-00', 'NY-27', 'NY-29', 'OH-16', 'PA-18', 'PR-00', 'VI-00', 'WV-03', 'SC-00']
+Dropping 13 races with no PVI: ['CA-53', 'DC-00', 'GU-00', 'IL-18', 'MI-14', 'MT-00', 'NY-27', 'OH-16', 'PA-18', 'PR-00', 'VI-00', 'WV-03', 'IN-00']
+load_ie_transactions_dated(2014): dropping 951/7661 (12.4%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 13 races with no PVI: ['CA-53', 'DC-00', 'GU-00', 'IL-18', 'MI-14', 'MT-00', 'NB-02', 'NY-27', 'OH-16', 'PR-00', 'VI-00', 'WV-03', 'PA-18']
+load_ie_transactions_dated(2016): dropping 966/5291 (18.3%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 13 races with no PVI: ['CA-53', 'DC-00', 'GU-00', 'IL-18', 'MI-14', 'MT-00', 'NY-27', 'NY-29', 'OH-16', 'PA-18', 'VI-00', 'WV-03', 'AS-00']
+load_ie_transactions_dated(2018): dropping 2751/19819 (13.9%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 13 races with no PVI: ['CA-53', 'DC-00', 'GU-00', 'IL-18', 'MI-14', 'MT-00', 'NY-27', 'OH-16', 'PA-18', 'PR-00', 'VI-00', 'WV-03', 'KS-00']
+load_ie_transactions_dated(2020): dropping 2613/15354 (17.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MA-00', 'MI-14', 'MT-00', 'OH-16', 'PA-18', 'VI-00', 'KS-00', 'MO-00']
+load_ie_transactions_dated(2022): dropping 6249/17375 (36.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+load_ie_transactions_dated(2022): dropping 1 row(s) with exp_amo > $20M (implausible for a single IE transaction; see docstring).
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'PR-00', 'VI-00', 'AZ-00', 'KS-00', 'MO-09', 'WI-00']
+load_ie_transactions_dated(2024): dropping 4586/15835 (29.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+Dropping 10 races with no PVI: ['DC-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+N_PERIODS=7 (98 days), K_PATHS=2000
+
+=== eta_fit_2022 ===
+  eta(tier): {'Safe D': 1.0696945297198421, 'Likely D': -0.21203912431649063, 'Lean D': 0.2938841818755611, 'Toss-Up': 0.7299391092632409, 'Lean R': 0.3868884135796587, 'Likely R': -0.01724498521673626, 'Safe R': -0.003346238743621956}
+  [eta_fit_2022] computing terminal condition (forced deploy, 2000 paths)...
+  [eta_fit_2022] t=6 (14d left): mean Theta=-0.2460 seats, frac(deploy now)=0.658, basis R2=0.742, g_t_coef=-0.00077 (p=0.955)
+  [eta_fit_2022] t=5 (28d left): mean Theta=-0.1251 seats, frac(deploy now)=0.589, basis R2=0.725, g_t_coef=+0.00889 (p=0.529)
+  [eta_fit_2022] t=4 (42d left): mean Theta=-0.1786 seats, frac(deploy now)=0.636, basis R2=0.727, g_t_coef=-0.01689 (p=0.228)
+  [eta_fit_2022] t=3 (56d left): mean Theta=-0.2087 seats, frac(deploy now)=0.655, basis R2=0.626, g_t_coef=+0.00630 (p=0.704)
+  [eta_fit_2022] t=2 (70d left): mean Theta=-0.2767 seats, frac(deploy now)=0.718, basis R2=0.541, g_t_coef=-0.01177 (p=0.552)
+  [eta_fit_2022] t=1 (84d left): mean Theta=-0.4147 seats, frac(deploy now)=0.856, basis R2=0.379, g_t_coef=+0.02112 (p=0.425)
+  [eta_fit_2022] t=0 (98d left): mean Theta=-0.6328 seats, frac(deploy now)=1.000, basis R2=0.000, g_t_coef=+0.00000 (p=nan)
+=== eta_fit_2024 ===
+  eta(tier): {'Safe D': 0.3182015334975614, 'Likely D': -0.10149819147606645, 'Lean D': 0.2365321180823473, 'Toss-Up': 0.34145227344919976, 'Lean R': 0.18309963537906132, 'Likely R': 0.4115858359343356, 'Safe R': -0.1649531977895235}
+  [eta_fit_2024] computing terminal condition (forced deploy, 2000 paths)...
+  [eta_fit_2024] t=6 (14d left): mean Theta=-0.1349 seats, frac(deploy now)=0.607, basis R2=0.721, g_t_coef=+0.00329 (p=0.804)
+  [eta_fit_2024] t=5 (28d left): mean Theta=+0.0215 seats, frac(deploy now)=0.502, basis R2=0.722, g_t_coef=+0.01964 (p=0.124)
+  [eta_fit_2024] t=4 (42d left): mean Theta=+0.0640 seats, frac(deploy now)=0.457, basis R2=0.703, g_t_coef=-0.01133 (p=0.401)
+  [eta_fit_2024] t=3 (56d left): mean Theta=+0.1049 seats, frac(deploy now)=0.427, basis R2=0.658, g_t_coef=-0.01402 (p=0.344)
+  [eta_fit_2024] t=2 (70d left): mean Theta=+0.0796 seats, frac(deploy now)=0.443, basis R2=0.545, g_t_coef=-0.01175 (p=0.498)
+  [eta_fit_2024] t=1 (84d left): mean Theta=+0.0333 seats, frac(deploy now)=0.496, basis R2=0.404, g_t_coef=+0.00871 (p=0.692)
+  [eta_fit_2024] t=0 (98d left): mean Theta=-0.1090 seats, frac(deploy now)=1.000, basis R2=0.000, g_t_coef=+0.00000 (p=nan)
+=== eta_bootstrap_all_cycles ===
+  Safe D: 7 historical cycles [0.3705156441807805, 0.36324702782179663, 0.16896310393175415, 0.19294798851248035, -0.1371786299169855, 1.0696945297198421, 0.3182015334975614], path draws mean=+0.341 sd=0.342
+  Likely D: 7 historical cycles [0.17996493678014397, 0.5906036196686203, 0.5427028241936119, 0.4233127203150181, 0.034796691535519085, -0.21203912431649063, -0.10149819147606645], path draws mean=+0.208 sd=0.295
+  Lean D: 7 historical cycles [0.6371795918918657, 0.004641689442899713, 0.4358267740599169, -0.09656619944087724, 0.6619827929557667, 0.2938841818755611, 0.2365321180823473], path draws mean=+0.316 sd=0.270
+  Toss-Up: 7 historical cycles [0.4221527012342253, 0.25216310968692646, -0.21679422607135657, 0.07922542788070612, 0.1100790225600657, 0.7299391092632409, 0.34145227344919976], path draws mean=+0.245 sd=0.277
+  Lean R: 6 historical cycles [0.5722407455611277, 0.4635953544892922, 0.07668190565771635, 0.42641567914979717, 0.3868884135796587, 0.18309963537906132], path draws mean=+0.350 sd=0.170
+  Likely R: 7 historical cycles [0.5617242440432888, 0.16672566646248796, 0.5286603596595743, 0.4502411134464163, 0.6251656990480302, -0.01724498521673626, 0.4115858359343356], path draws mean=+0.391 sd=0.215
+  Safe R: 7 historical cycles [0.583610038239628, 0.5640322532414571, 0.3063260654379737, 0.36041218428309363, 0.5111953595865437, -0.003346238743621956, -0.1649531977895235], path draws mean=+0.313 sd=0.266
+  [eta_bootstrap_all_cycles] computing terminal condition (forced deploy, 2000 paths)...
+  [eta_bootstrap_all_cycles] t=6 (14d left): mean Theta=-0.2041 seats, frac(deploy now)=0.642, basis R2=0.811, g_t_coef=+0.00717 (p=0.639)
+  [eta_bootstrap_all_cycles] t=5 (28d left): mean Theta=-0.0847 seats, frac(deploy now)=0.563, basis R2=0.811, g_t_coef=+0.00734 (p=0.626)
+  [eta_bootstrap_all_cycles] t=4 (42d left): mean Theta=-0.0735 seats, frac(deploy now)=0.557, basis R2=0.782, g_t_coef=-0.00244 (p=0.882)
+  [eta_bootstrap_all_cycles] t=3 (56d left): mean Theta=-0.1076 seats, frac(deploy now)=0.598, basis R2=0.719, g_t_coef=-0.01510 (p=0.431)
+  [eta_bootstrap_all_cycles] t=2 (70d left): mean Theta=-0.1106 seats, frac(deploy now)=0.592, basis R2=0.643, g_t_coef=+0.02683 (p=0.223)
+  [eta_bootstrap_all_cycles] t=1 (84d left): mean Theta=-0.1858 seats, frac(deploy now)=0.658, basis R2=0.475, g_t_coef=-0.02894 (p=0.326)
+  [eta_bootstrap_all_cycles] t=0 (98d left): mean Theta=-0.2885 seats, frac(deploy now)=1.000, basis R2=0.000, g_t_coef=+0.00000 (p=nan)
+
+Saved -> C:\Users\_cal\Desktop\political-portfolio\outputs\theta_schedule.json
