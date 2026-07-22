@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from backtest.estimation.beta_rc import (
     _normalize_name, identify_repeat_pairs, estimate_beta_rc, sample_beta_rc,
+    bootstrap_beta_rc,
 )
 from backtest.estimation.sigma import estimate_sigma, compute_residuals_from_panel
 from backtest.estimation.open_seat import calibrate_open_seat, _covariate_overlap_tau
@@ -155,6 +156,81 @@ class TestEstimateBetaRC:
         pairs = self._make_pairs(3.0, n=50)
         beta_rc = self._run(pairs)
         assert isinstance(beta_rc, BetaRC)
+
+
+# ─── bootstrap_beta_rc ─────────────────────────────────────────────────────────
+
+class TestBootstrapBetaRC:
+    def _make_pairs(self, true_beta: float, n: int = 200, seed: int = 0) -> pd.DataFrame:
+        rng = np.random.default_rng(seed)
+        delta_log_ratio = rng.normal(0.0, 0.3, n)
+        noise = rng.normal(0.0, 1.0, n)
+        return pd.DataFrame({
+            "district_id": [f"XX-{i:03d}" for i in range(n)],
+            "cycle_t":  [2020] * n,
+            "cycle_tm1": [2018] * n,
+            "delta_margin": true_beta * delta_log_ratio + noise,
+            "delta_log_ratio": delta_log_ratio,
+        })
+
+    def test_returns_ndarray_of_requested_length(self):
+        pairs = self._make_pairs(3.5, n=100)
+        draws = bootstrap_beta_rc(pairs, n_boot=250, rng=np.random.default_rng(1))
+        assert isinstance(draws, np.ndarray)
+        assert len(draws) == 250
+
+    def test_mean_close_to_point_estimate(self):
+        pairs = self._make_pairs(true_beta=3.5, n=300, seed=2)
+        with patch("backtest.estimation.beta_rc.config") as mock_cfg:
+            mock_cfg.min_repeat_pairs.return_value = 10
+            point_estimate = estimate_beta_rc(pairs)
+        draws = bootstrap_beta_rc(pairs, n_boot=2000, rng=np.random.default_rng(3))
+        assert abs(draws.mean() - point_estimate.estimate) < 0.15
+
+    def test_positive_spread(self):
+        pairs = self._make_pairs(3.0, n=150)
+        draws = bootstrap_beta_rc(pairs, n_boot=500, rng=np.random.default_rng(4))
+        assert draws.std() > 0
+
+    def test_deterministic_with_seeded_rng(self):
+        pairs = self._make_pairs(3.0, n=80)
+        draws_a = bootstrap_beta_rc(pairs, n_boot=100, rng=np.random.default_rng(7))
+        draws_b = bootstrap_beta_rc(pairs, n_boot=100, rng=np.random.default_rng(7))
+        np.testing.assert_array_equal(draws_a, draws_b)
+
+    def test_captures_leverage_instability_missed_by_parametric_se(self):
+        """
+        A few high-leverage pairs (mirroring this project's own Safe-R-skewed
+        118-pair sample, FINDINGS.md §10.1) should produce a wider, skewed
+        bootstrap CI relative to the point estimate's parametric N(beta, se^2)
+        CI -- exactly the finite-sample instability a normal approximation
+        cannot express.
+        """
+        rng = np.random.default_rng(5)
+        n_normal = 40
+        delta_log_ratio = rng.normal(0.0, 0.2, n_normal)
+        noise = rng.normal(0.0, 0.5, n_normal)
+        delta_margin = 3.0 * delta_log_ratio + noise
+        # A small number of extreme, high-leverage/high-influence pairs.
+        leverage_ratio = np.array([2.5, -2.5, 2.3])
+        leverage_margin = np.array([15.0, -15.0, 13.0])
+        pairs = pd.DataFrame({
+            "district_id": [f"XX-{i}" for i in range(n_normal + 3)],
+            "cycle_t": 2020, "cycle_tm1": 2018,
+            "delta_log_ratio": np.concatenate([delta_log_ratio, leverage_ratio]),
+            "delta_margin": np.concatenate([delta_margin, leverage_margin]),
+        })
+
+        with patch("backtest.estimation.beta_rc.config") as mock_cfg:
+            mock_cfg.min_repeat_pairs.return_value = 10
+            point_estimate = estimate_beta_rc(pairs)
+
+        draws = bootstrap_beta_rc(pairs, n_boot=3000, rng=np.random.default_rng(6))
+        boot_lo, boot_hi = np.percentile(draws, [2.5, 97.5])
+        param_lo = point_estimate.estimate - 1.96 * point_estimate.se
+        param_hi = point_estimate.estimate + 1.96 * point_estimate.se
+
+        assert (boot_hi - boot_lo) > (param_hi - param_lo)
 
 
 # ─── estimate_sigma ───────────────────────────────────────────────────────────

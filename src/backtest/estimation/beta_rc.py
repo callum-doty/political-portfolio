@@ -172,3 +172,36 @@ def sample_beta_rc(beta_rc: BetaRC, n_draws: int, rng: np.random.Generator | Non
     """
     rng = rng or np.random.default_rng()
     return rng.normal(loc=beta_rc.estimate, scale=beta_rc.se, size=n_draws)
+
+
+def bootstrap_beta_rc(
+    pairs: pd.DataFrame,
+    n_boot: int = 1000,
+    rng: np.random.Generator | None = None,
+) -> np.ndarray:
+    """
+    Non-parametric bootstrap of β_RC: resample repeat-challenger pairs with
+    replacement and re-estimate β_RC on each resample.
+
+    Unlike sample_beta_rc(), which draws from the parametric N(β̂, SE²)
+    posterior implied by OLS asymptotics, this characterizes the actual
+    finite-sample distribution of β̂_RC directly from the data — including
+    any skew or instability driven by the pair composition (the identifying
+    sample is heavily skewed toward Safe R pairs; see FINDINGS.md §10.1)
+    that a normal approximation cannot express.
+
+    Returns array of shape (n_boot,) of bootstrap β̂_RC draws.
+    """
+    rng = rng or np.random.default_rng()
+    n = len(pairs)
+    delta_log_ratio = pairs["delta_log_ratio"].to_numpy()
+    delta_margin = pairs["delta_margin"].to_numpy()
+
+    draws = np.empty(n_boot)
+    for b in range(n_boot):
+        idx = rng.integers(0, n, size=n)
+        X = sm.add_constant(delta_log_ratio[idx])
+        model = sm.OLS(delta_margin[idx], X).fit()
+        draws[b] = model.params[1]
+
+    return draws

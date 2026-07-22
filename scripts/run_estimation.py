@@ -24,7 +24,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+import numpy as np
 import pandas as pd
+from scipy.stats import skew
 
 from backtest import config
 from backtest.data import fec, elections, incumbency, census
@@ -129,6 +131,44 @@ def main() -> None:
     with open(beta_path, "w") as f:
         json.dump({"estimate": beta_rc.estimate, "se": beta_rc.se, "n_pairs": beta_rc.n_pairs}, f, indent=2)
     logger.info(f"β_RC saved to {beta_path}")
+
+    # ── Step 1b: Non-parametric bootstrap of β_RC ────────────────────────────
+    # The uncertainty propagation elsewhere in this pipeline (K=1000 draws in
+    # propagate_beta_rc_uncertainty) samples from the parametric N(β̂, SE²)
+    # posterior implied by OLS asymptotics. That assumes the 118-pair sampling
+    # distribution is well-approximated by a normal — untested, and suspect
+    # given the identifying sample's skew toward Safe R pairs (FINDINGS.md
+    # §10.1). This resamples the pairs directly to characterize the actual
+    # finite-sample distribution, including any skew the normal approximation
+    # would miss.
+    n_boot = config.uncertainty_cfg()["beta_rc_bootstrap_draws"]
+    logger.info(f"Bootstrapping β_RC ({n_boot} resamples of {len(pairs)} repeat-challenger pairs)…")
+    boot_draws = beta_rc_module.bootstrap_beta_rc(pairs, n_boot=n_boot, rng=np.random.default_rng(42))
+
+    boot_ci_low, boot_ci_high = float(np.percentile(boot_draws, 2.5)), float(np.percentile(boot_draws, 97.5))
+    param_ci_low, param_ci_high = beta_rc.estimate - 1.96 * beta_rc.se, beta_rc.estimate + 1.96 * beta_rc.se
+    boot_mean, boot_std, boot_skew = float(boot_draws.mean()), float(boot_draws.std(ddof=1)), float(skew(boot_draws))
+
+    logger.info(
+        f"β_RC bootstrap: mean={boot_mean:.4f}, std={boot_std:.4f}, skew={boot_skew:.4f}, "
+        f"95% CI=[{boot_ci_low:.4f}, {boot_ci_high:.4f}] vs. "
+        f"parametric N(β̂,SE²) 95% CI=[{param_ci_low:.4f}, {param_ci_high:.4f}]"
+    )
+
+    boot_path = processed / "beta_rc_bootstrap.json"
+    with open(boot_path, "w") as f:
+        json.dump({
+            "n_boot": n_boot,
+            "n_pairs": beta_rc.n_pairs,
+            "bootstrap_mean": boot_mean,
+            "bootstrap_std": boot_std,
+            "bootstrap_skew": boot_skew,
+            "bootstrap_ci_95": [boot_ci_low, boot_ci_high],
+            "parametric_estimate": beta_rc.estimate,
+            "parametric_se": beta_rc.se,
+            "parametric_ci_95": [param_ci_low, param_ci_high],
+        }, f, indent=2)
+    logger.info(f"β_RC bootstrap distribution saved to {boot_path}")
 
     # ── Step 2: Full margin model ─────────────────────────────────────────────
     logger.info("Loading CVAP data…")

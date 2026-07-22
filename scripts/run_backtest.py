@@ -41,10 +41,12 @@ from backtest.optimizer.allocator import (
 from backtest.comparison.efficiency import (
     spearman_efficiency_test, characterize_misallocation,
     spearman_by_cook_category, matched_group_efficiency_test,
+    permutation_test_spearman_efficiency,
 )
 from backtest.comparison.benchmark import (
     compute_brier_comparison, null_equal_weight_shares,
-    cook_proportional_shares, compare_allocators
+    cook_proportional_shares, compare_allocators,
+    permutation_test_allocation_efficiency,
 )
 from backtest.comparison.uncertainty import propagate_beta_rc_uncertainty
 from backtest.validation.gates import run_all_gates, ValidationError
@@ -240,6 +242,11 @@ def main() -> None:
         f"ρ={matched_group['rho']:.3f} (p={matched_group['p_value']:.4f}, n={matched_group['n']})"
     )
 
+    n_permutations = config.uncertainty_cfg()["permutation_draws"]
+    logger.info(f"Running permutation test on Spearman efficiency correlation ({n_permutations} shuffles)…")
+    perm_spearman = permutation_test_spearman_efficiency(
+        races, outputs, n_permutations=n_permutations, rng=np.random.default_rng(42))
+
     # ── 9. β_RC uncertainty propagation ──────────────────────────────────────
     uncertainty = None
     if not args.skip_uncertainty:
@@ -268,6 +275,21 @@ def main() -> None:
     alloc_table_path = out_dir / f"allocator_comparison_table{suffix}.csv"
     allocator_table.to_csv(alloc_table_path, index=False)
     logger.info(f"Allocator comparison table → {alloc_table_path}")
+
+    logger.info(
+        f"Running permutation test on allocation efficiency "
+        f"(random reshuffle of DCCC's own dollars, {n_permutations} shuffles)…"
+    )
+    perm_allocation = permutation_test_allocation_efficiency(
+        races, outputs, model_shares, n_permutations=n_permutations, rng=np.random.default_rng(42))
+
+    perm_path = out_dir / f"permutation_tests{suffix}.json"
+    with open(perm_path, "w") as f:
+        json.dump({
+            "spearman_efficiency": perm_spearman,
+            "allocation_efficiency": perm_allocation,
+        }, f, indent=2)
+    logger.info(f"Permutation test results → {perm_path}")
 
     # ── 11. Outputs ───────────────────────────────────────────────────────────
     logger.info("Building output tables…")

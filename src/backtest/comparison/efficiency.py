@@ -67,6 +67,65 @@ def spearman_efficiency_test(
     }
 
 
+def permutation_test_spearman_efficiency(
+    races: list[RaceRecord],
+    outputs: list[ModelOutputs],
+    n_permutations: int = 2000,
+    rng: np.random.Generator | None = None,
+) -> dict:
+    """
+    Permutation test for the primary Spearman efficiency correlation.
+
+    scipy.stats.spearmanr's p-value relies on an asymptotic approximation
+    that is untested at the small-n categories this project already reports
+    (e.g. Lean R, n=7, in spearman_by_cook_category()). This instead builds
+    an exact empirical null: randomly reassign DCCC's observed per-race
+    spending amounts across competitive races — breaking any link between
+    spending and MSG while holding the multiset of dollar amounts and MSG
+    values fixed — and recompute ρ, n_permutations times. The permutation
+    p-value is the fraction of null |ρ| at least as extreme as the observed
+    |ρ|, with no distributional assumption.
+
+    Returns dict with: rho, p_value_asymptotic, p_value_permutation,
+    n_permutations, n_competitive
+    """
+    rng = rng or np.random.default_rng(42)
+    competitive = set(config.competitive_ratings())
+
+    pairs = [
+        (r, o) for r, o in zip(races, outputs)
+        if r.cook_rating in competitive
+    ]
+    if not pairs:
+        raise ValueError("No competitive races found for efficiency test")
+
+    comp_races, comp_outputs = zip(*pairs)
+    observed_spend = np.array([r.d_total for r in comp_races])
+    msg_vals = np.array([o.msg_i for o in comp_outputs])
+
+    rho_obs, p_asymptotic = stats.spearmanr(observed_spend, msg_vals)
+
+    null_rhos = np.empty(n_permutations)
+    for i in range(n_permutations):
+        shuffled_spend = rng.permutation(observed_spend)
+        null_rhos[i], _ = stats.spearmanr(shuffled_spend, msg_vals)
+
+    p_permutation = float(np.mean(np.abs(null_rhos) >= abs(rho_obs)))
+
+    logger.info(
+        f"Permutation test (n={n_permutations}): ρ={rho_obs:.3f}, "
+        f"asymptotic p={p_asymptotic:.4g}, permutation p={p_permutation:.4g}"
+    )
+
+    return {
+        "rho": float(rho_obs),
+        "p_value_asymptotic": float(p_asymptotic),
+        "p_value_permutation": p_permutation,
+        "n_permutations": n_permutations,
+        "n_competitive": len(comp_races),
+    }
+
+
 def spearman_by_cook_category(
     races: list[RaceRecord],
     outputs: list[ModelOutputs],

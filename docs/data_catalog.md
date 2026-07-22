@@ -512,6 +512,22 @@ where `ratio = D_total / (D_total + R_total)` and `incumb = 1` if D is the incum
 
 ---
 
+### 3.2b Repeat-Challenger Beta — Non-Parametric Bootstrap
+
+| Attribute | Value |
+|-----------|-------|
+| **Path** | `data/processed/beta_rc_bootstrap.json` |
+| **Format** | JSON, flat key-value |
+| **Generator** | `src/backtest/estimation/beta_rc.py — bootstrap_beta_rc()`, called from `scripts/run_estimation.py` immediately after §3.2 |
+
+**Fields:** `n_boot` (1000, `uncertainty.beta_rc_bootstrap_draws` in `config.yaml`), `n_pairs` (118), `bootstrap_mean`, `bootstrap_std`, `bootstrap_skew`, `bootstrap_ci_95` (2.5th/97.5th percentile of the bootstrap draws), `parametric_estimate`/`parametric_se`/`parametric_ci_95` (the existing β_RC point estimate and its N(β̂,SE²) 95% CI, included for direct comparison).
+
+**Why this exists:** §3.2's uncertainty propagation elsewhere in the pipeline (`comparison/uncertainty.py`, K=1000 draws) samples β_RC from the parametric N(β̂, SE²) posterior implied by OLS asymptotics — an assumption never tested against the actual 118-pair sample, which is known to skew toward Safe R pairs (FINDINGS.md §10.1). `bootstrap_beta_rc()` instead resamples the 118 pairs with replacement and re-estimates β_RC on each resample, characterizing the empirical finite-sample distribution directly rather than assuming its shape.
+
+**Result, run against this repo's real 118-pair sample (2026-07-22):** bootstrap mean 5.523 (vs. point estimate 5.457), std 1.513 (close to the parametric SE of 1.586), skew +0.197 — mild right skew, not the dramatic asymmetry a Safe-R-heavy sample might have produced. Bootstrap 95% CI [2.811, 8.616] vs. parametric [2.349, 8.565] — comparable width, but the bootstrap's lower bound sits noticeably higher (2.81 vs. 2.35). This means the "low-end collapse" scenario used elsewhere in this project's sensitivity discussion (β_RC ≈ 2.35) is *less* likely under the empirical resampling distribution than the parametric CI implies — a reassuring result for the causal identification concern in FINDINGS.md §10.1, not a confirmation of it. Stable across five random seeds at n_boot=10,000 (skew 0.24–0.27 throughout).
+
+---
+
 ### 3.3 Sigma Model (Heteroskedastic Residual Model)
 
 | Attribute | Value |

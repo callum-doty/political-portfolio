@@ -15,6 +15,7 @@
 5. [Estimation](#5-estimation)
 6. [Backtest Methodology](#6-backtest-methodology)
 7. [Findings](#7-findings)
+   - [7.2b Permutation Tests](#72b-permutation-tests-added-2026-07-22)
 8. [Cross-Cycle Validation (2022)](#8-cross-cycle-validation-2022)
 9. [Actionability Assessment](#9-actionability-assessment)
    - [9.4 Adversarial Response Sensitivity (η Model)](#94-adversarial-response-sensitivity-η-model)
@@ -176,6 +177,17 @@ The sign is negative and marginally significant. The expected direction was posi
 
 The estimate is statistically significant (t ≈ 3.44). It implies that for a challenger at equal spending (log-ratio = 0), moving from 0 to 100% of the spending share shifts the predicted margin by ~5.5 percentage points. This is the cleanest causal quantity in the model — the repeat-challenger design absorbs district and candidate heterogeneity.
 
+**Non-parametric bootstrap (added 2026-07-22).** The 95% CI above is parametric (β̂ ± 1.96·SE, assuming the OLS sampling distribution is normal) — untested against the actual 118-pair sample, which §10.1 below documents as skewed toward Safe R pairs (72%). `bootstrap_beta_rc()` (`src/backtest/estimation/beta_rc.py`) instead resamples the 118 pairs with replacement and re-estimates β_RC on each resample. Run against this repository's real panel (n=1000 resamples, seed=42, via `scripts/run_estimation.py`):
+
+| | Parametric N(β̂, SE²) | Bootstrap (empirical) |
+|---|---|---|
+| Estimate / mean | 5.457 | 5.523 |
+| SE / std | 1.586 | 1.513 |
+| 95% CI | [2.349, 8.565] | [2.811, 8.616] |
+| Skew | 0 (assumed) | +0.197 |
+
+The two CIs are comparable in width, but the bootstrap's lower bound sits meaningfully higher than the parametric one (2.81 vs. 2.35). The "low-end collapse" scenario cited in §9 and §10.1 (β_RC ≈ 2.35) is *less* likely under the empirical resampling distribution than the normal approximation implies — a mild point against the causal-fragility concern in §10.1, not a confirmation of it. Stable across five random seeds at n=10,000 (skew 0.24–0.27 throughout). See `data/processed/beta_rc_bootstrap.json` and `docs/data_catalog.md` §3.2b.
+
 ### 5.3 σ model
 
 Estimated from OLS on 2024 margin residuals against district characteristics:
@@ -269,6 +281,20 @@ Among the 53 competitive races, there is a strong negative correlation between D
 | Likely R | 37 | +0.443 | 0.006 |
 
 The negative correlation is strongest in Likely D and Likely R races — the DCCC spends most heavily in Likely D races (protecting existing seats), where MSG is low because win probabilities are already high. The positive ρ in Lean R/Likely R reflects that spending is lower but MSG is also lower (opposing-territory races with diminished returns).
+
+### 7.2b Permutation tests (added 2026-07-22)
+
+**Note on ρ:** the current pipeline reports ρ = −0.582 for the 2024 competitive set, not the −0.597 shown in §7.2 above. A bug in the MSG gradient (missing Rᵢ/Dᵢ factor) was corrected after this document was last fully updated; the fix is documented in `docs/paper1_draft.md` §9.1 and confirmed directly against the live pipeline in this session, but has not been backported to §7.2/§8 of this document. The permutation tests below use the corrected, current pipeline; the allocator-comparison figures in §7.3/§8.2 (220.52, +5.34, DCCC=215.18, etc.) are unaffected by the gradient bug and remain correct as written.
+
+Two permutation tests were added to remove reliance on asymptotic significance assumptions (`permutation_test_spearman_efficiency()` in `comparison/efficiency.py`; `permutation_test_allocation_efficiency()` in `comparison/benchmark.py`). Both run automatically in `run_backtest.py` and save to `outputs/permutation_tests.json`. Run against the real 2024 pipeline, 2000 shuffles each, seed 42:
+
+1. **Spearman ρ permutation test.** Randomly reassign DCCC's observed spending across the 53 competitive races (breaking any link to MSG) and recompute ρ 2000 times: **0 of 2000 shuffles produced |ρ| ≥ 0.582.** Permutation p = 0.0 vs. asymptotic p = 4.7×10⁻⁶ — the asymptotic test is not overstating significance here.
+
+2. **Allocation-efficiency permutation test.** A stronger, assumption-lighter check: randomly reshuffle DCCC's own per-race dollar amounts across the same 53 races (same multiset of dollars, no MSG relationship) and evaluate E[Seats] under each shuffle via the same linearized approximation used for the Null/Cook benchmark rows in §7.3.
+   - DCCC's actual E[Seats] = 215.18 vs. a null mean of 218.29 (95% CI [216.89, 219.62]) — **100% of 2000 random reshuffles of DCCC's own dollars scored at least as well as DCCC's actual allocation.** DCCC's specific choice of which race gets which dollar is not just rank-correlated with low MSG — it underperformed every single random alternative reshuffle of the same money.
+   - The model optimizer's linearized E[Seats] = 224.91 (the nonlinear SLSQP figure remains 220.52, §7.3) vs. the same null — **0 of 2000 reshuffles matched or exceeded it.** The optimizer's gain is not explainable as "any reshuffle beats DCCC" (a real concern, since the win-probability curve's concavity alone could produce that pattern) — it is specifically finding structure beyond what random reallocation of the same dollars achieves.
+
+Configurable via `config.yaml: uncertainty.permutation_draws` (default 2000).
 
 ### 7.3 Allocator comparison
 
@@ -486,6 +512,7 @@ All outputs are in `outputs/`.
 | `aggregate_summary_baseline.csv` | Top-line statistics: E[Seats], Spearman ρ, n_competitive, n_material_divergence. |
 | `spearman_by_cook_category.csv` | Spearman ρ broken out by Cook rating category. |
 | `race_table_preelection.csv` | Race table from the pre-election model run. |
+| `permutation_tests.json` | Permutation-test results for the Spearman ρ and allocation-efficiency tests (§7.2b). |
 
 ### Model artifacts
 
@@ -494,6 +521,7 @@ All outputs are in `outputs/`.
 | `data/processed/margin_model_coef.json` | Estimated α and β coefficients. |
 | `data/processed/sigma_model.json` | σᵢ model intercept and coefficients. |
 | `data/processed/beta_rc.json` | β_RC point estimate, SE, and n_pairs. |
+| `data/processed/beta_rc_bootstrap.json` | Non-parametric bootstrap distribution of β_RC (§5.2). |
 
 ### Live 2026 pipeline
 

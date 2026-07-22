@@ -169,3 +169,78 @@ def _expected_seats_at_shares(
     delta = new_spend - observed
     p_win_new = np.clip(p_win0 + msg * delta, 0.0, 1.0)
     return float(p_win_new.sum())
+
+
+def permutation_test_allocation_efficiency(
+    races: list[RaceRecord],
+    outputs: list[ModelOutputs],
+    model_shares: np.ndarray,
+    n_permutations: int = 2000,
+    rng: np.random.Generator | None = None,
+) -> dict:
+    """
+    Permutation null distribution for DCCC's spending-to-race assignment.
+
+    Randomly reassigns DCCC's observed per-race dollar amounts across
+    competitive races (same multiset of dollars, no relationship to MSG) and
+    evaluates E[Seats] under each shuffled allocation with the same
+    linearized approximation _expected_seats_at_shares() already uses for
+    the Null and Cook-implied benchmark rows. This is a direct robustness
+    check on two distinct claims:
+
+      1. Is DCCC's *actual* choice of which race gets which dollar amount
+         worse than a random shuffle of its own dollars? This is a stronger,
+         assumption-lighter claim than the rank-correlation test — it
+         doesn't require interpreting a Spearman ρ, just comparing one real
+         number against an empirical null.
+      2. Is the model optimizer's seat gain over DCCC bigger than what a
+         random reshuffle alone would produce? If most of the "+X seats"
+         headline is achievable by literally any reshuffle of the same
+         dollars (a consequence of the win-probability curve's concavity,
+         not of MSG-based targeting), that is a real problem for the
+         targeting claim, not just a footnote.
+
+    Returns dict with: dccc_expected_seats, model_expected_seats,
+    null_mean_expected_seats, null_ci_95, n_permutations, n_competitive,
+    p_value_dccc_below_null (fraction of null ≥ DCCC's actual E[Seats]),
+    p_value_model_exceeds_null (fraction of null ≥ the optimizer's E[Seats])
+    """
+    rng = rng or np.random.default_rng(42)
+    competitive = set(config.competitive_ratings())
+    comp_idx = np.array([i for i, r in enumerate(races) if r.cook_rating in competitive])
+    if len(comp_idx) == 0:
+        raise ValueError("No competitive races for permutation test")
+
+    observed_d = np.array([r.d_total for r in races])
+    total_budget = observed_d.sum()
+
+    dccc_expected_seats = _expected_seats_at_shares(races, outputs, observed_d / total_budget)
+    model_expected_seats = _expected_seats_at_shares(races, outputs, model_shares)
+
+    null_seats = np.empty(n_permutations)
+    permuted_d = observed_d.copy()
+    for i in range(n_permutations):
+        permuted_d[comp_idx] = rng.permutation(observed_d[comp_idx])
+        null_seats[i] = _expected_seats_at_shares(races, outputs, permuted_d / total_budget)
+
+    p_dccc_below_null = float(np.mean(null_seats >= dccc_expected_seats))
+    p_model_exceeds_null = float(np.mean(null_seats >= model_expected_seats))
+
+    logger.info(
+        f"Allocation permutation test (n={n_permutations}, {len(comp_idx)} competitive races): "
+        f"DCCC E[Seats]={dccc_expected_seats:.2f}, model E[Seats]={model_expected_seats:.2f}, "
+        f"null mean={null_seats.mean():.2f}; "
+        f"P(random reshuffle ≥ DCCC)={p_dccc_below_null:.3f}, "
+        f"P(random reshuffle ≥ model)={p_model_exceeds_null:.3f}"
+    )
+
+    return {
+        "dccc_expected_seats": dccc_expected_seats,
+        "model_expected_seats": model_expected_seats,
+        "null_mean_expected_seats": float(null_seats.mean()),
+        "null_ci_95": [float(np.percentile(null_seats, 2.5)), float(np.percentile(null_seats, 97.5))],
+        "n_permutations": n_permutations,
+        "n_competitive": int(len(comp_idx)),
+        "p_value_dccc_below_null": p_dccc_below_null,
+        "p_value_model_exceeds_null": p_model_exceeds_null,
+    }

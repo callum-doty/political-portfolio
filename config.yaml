@@ -91,6 +91,8 @@ beta_rc:
 uncertainty:
   n_draws:         1000
   credible_interval: 0.83                  # 83% CI (≈ ±1 SE)
+  beta_rc_bootstrap_draws: 1000            # non-parametric bootstrap of β_RC pairs (run_estimation.py)
+  permutation_draws: 2000                  # permutation tests on DCCC spending assignment (run_backtest.py)
 
 # ─── Optimizer ────────────────────────────────────────────────────────────────
 optimizer:

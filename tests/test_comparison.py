@@ -10,10 +10,12 @@ from backtest.comparison.benchmark import (
     cook_proportional_shares,
     expected_seats,
     compare_allocators,
+    permutation_test_allocation_efficiency,
 )
 from backtest.comparison.efficiency import (
     spearman_efficiency_test, characterize_misallocation,
     spearman_by_cook_category, matched_group_efficiency_test,
+    permutation_test_spearman_efficiency,
 )
 
 
@@ -183,6 +185,83 @@ class TestExpectedSeats:
         assert expected_seats(np.array([0.7])) == pytest.approx(0.7)
 
 
+# ─── permutation_test_allocation_efficiency ────────────────────────────────────
+
+class TestPermutationAllocationEfficiency:
+    def _worst_and_best_fixture(self, n: int = 15):
+        """
+        DCCC's observed d_total is assigned in exactly the rank-inverse order
+        of MSG (most money on the lowest-MSG race) -- the worst possible
+        assignment of this exact dollar multiset. model_shares is built by
+        reassigning the same multiset of dollars in exactly rank-aligned
+        order (most money on the highest-MSG race) -- the best possible
+        assignment. Both are literally inside the permutation null's support,
+        so their percentile ranks are unambiguous: DCCC should sit at the
+        very bottom, the model at the very top.
+
+        msg_i is scaled small (3e-9) so that msg_i * delta_i stays within
+        [-1, 1] for every race at these dollar magnitudes -- otherwise
+        _expected_seats_at_shares's clip(0, 1) saturates every race and the
+        permutation stops being able to discriminate between allocations.
+        """
+        races = [
+            _make_race(f"TX-{i:02d}", cook_rating="Toss-Up", d_total=float(i + 1) * 1e6)
+            for i in range(n)
+        ]
+        outputs = [_make_output(f"TX-{i:02d}", msg_i=float(n - i) * 3e-9) for i in range(n)]
+
+        observed_d = np.array([r.d_total for r in races])
+        msg_vals = np.array([o.msg_i for o in outputs])
+
+        sorted_msg_idx = np.argsort(-msg_vals)          # highest MSG first
+        sorted_amounts_desc = np.sort(observed_d)[::-1]  # largest $ first
+        model_d = np.empty(n)
+        model_d[sorted_msg_idx] = sorted_amounts_desc     # best: largest $ -> highest MSG
+        model_shares = model_d / observed_d.sum()
+
+        return races, outputs, model_shares
+
+    def test_returns_all_required_keys(self):
+        races, outputs, model_shares = self._worst_and_best_fixture()
+        result = permutation_test_allocation_efficiency(
+            races, outputs, model_shares, n_permutations=200, rng=np.random.default_rng(0))
+        for key in ["dccc_expected_seats", "model_expected_seats", "null_mean_expected_seats",
+                    "null_ci_95", "n_permutations", "n_competitive",
+                    "p_value_dccc_below_null", "p_value_model_exceeds_null"]:
+            assert key in result
+
+    def test_worst_possible_dccc_allocation_sits_at_bottom_of_null(self):
+        races, outputs, model_shares = self._worst_and_best_fixture()
+        result = permutation_test_allocation_efficiency(
+            races, outputs, model_shares, n_permutations=2000, rng=np.random.default_rng(1))
+        # observed_d is literally the worst-scoring permutation of its own
+        # multiset, so ~every random reshuffle should do at least as well.
+        assert result["p_value_dccc_below_null"] > 0.98
+
+    def test_best_possible_model_allocation_sits_at_top_of_null(self):
+        races, outputs, model_shares = self._worst_and_best_fixture()
+        result = permutation_test_allocation_efficiency(
+            races, outputs, model_shares, n_permutations=2000, rng=np.random.default_rng(1))
+        # model_shares is literally the best-scoring permutation of DCCC's
+        # own multiset, so ~no random reshuffle should exceed it.
+        assert result["p_value_model_exceeds_null"] < 0.02
+        assert result["model_expected_seats"] > result["dccc_expected_seats"]
+
+    def test_no_competitive_races_raises(self):
+        races = [_make_race("TX-01", cook_rating="Safe R")]
+        outputs = [_make_output("TX-01")]
+        with pytest.raises(ValueError, match="No competitive"):
+            permutation_test_allocation_efficiency(races, outputs, np.array([1.0]))
+
+    def test_deterministic_with_seeded_rng(self):
+        races, outputs, model_shares = self._worst_and_best_fixture()
+        result_a = permutation_test_allocation_efficiency(
+            races, outputs, model_shares, n_permutations=300, rng=np.random.default_rng(7))
+        result_b = permutation_test_allocation_efficiency(
+            races, outputs, model_shares, n_permutations=300, rng=np.random.default_rng(7))
+        assert result_a["null_mean_expected_seats"] == result_b["null_mean_expected_seats"]
+
+
 # ─── spearman_efficiency_test ─────────────────────────────────────────────────
 
 class TestSpearmanEfficiency:
@@ -247,6 +326,72 @@ class TestSpearmanEfficiency:
         outputs = [_make_output("TX-01")]
         with pytest.raises(ValueError, match="No competitive"):
             spearman_efficiency_test(races, outputs)
+
+
+# ─── permutation_test_spearman_efficiency ──────────────────────────────────────
+
+class TestPermutationSpearmanEfficiency:
+    def _aligned(self, n: int = 15):
+        races = [
+            _make_race(f"TX-{i:02d}", cook_rating="Toss-Up", d_total=float(i + 1) * 1e6)
+            for i in range(n)
+        ]
+        outputs = [_make_output(f"TX-{i:02d}", msg_i=float(i + 1) * 1e-7) for i in range(n)]
+        return races, outputs
+
+    def _anti_aligned(self, n: int = 15):
+        races = [
+            _make_race(f"TX-{i:02d}", cook_rating="Toss-Up", d_total=float(i + 1) * 1e6)
+            for i in range(n)
+        ]
+        outputs = [_make_output(f"TX-{i:02d}", msg_i=float(n - i) * 1e-7) for i in range(n)]
+        return races, outputs
+
+    def test_returns_all_required_keys(self):
+        races, outputs = self._aligned()
+        result = permutation_test_spearman_efficiency(
+            races, outputs, n_permutations=200, rng=np.random.default_rng(0))
+        for key in ["rho", "p_value_asymptotic", "p_value_permutation",
+                    "n_permutations", "n_competitive"]:
+            assert key in result
+
+    def test_rho_matches_direct_spearman(self):
+        """The reported rho should be the same statistic spearman_efficiency_test reports."""
+        races, outputs = self._anti_aligned()
+        direct = spearman_efficiency_test(races, outputs, n_bootstrap=10,
+                                          rng=np.random.default_rng(0))
+        perm = permutation_test_spearman_efficiency(
+            races, outputs, n_permutations=200, rng=np.random.default_rng(0))
+        assert perm["rho"] == pytest.approx(direct["rho"])
+
+    def test_permutation_p_value_near_zero_when_strongly_anti_aligned(self):
+        """A near-perfect -1 rank correlation should almost never occur by
+        chance among 15! random reassignments -- permutation p should be ~0."""
+        races, outputs = self._anti_aligned(n=15)
+        result = permutation_test_spearman_efficiency(
+            races, outputs, n_permutations=2000, rng=np.random.default_rng(1))
+        assert result["rho"] < -0.9
+        assert result["p_value_permutation"] < 0.01
+
+    def test_permutation_p_value_in_unit_interval(self):
+        races, outputs = self._aligned()
+        result = permutation_test_spearman_efficiency(
+            races, outputs, n_permutations=200, rng=np.random.default_rng(0))
+        assert 0.0 <= result["p_value_permutation"] <= 1.0
+
+    def test_no_competitive_races_raises(self):
+        races = [_make_race("TX-01", cook_rating="Safe R")]
+        outputs = [_make_output("TX-01")]
+        with pytest.raises(ValueError, match="No competitive"):
+            permutation_test_spearman_efficiency(races, outputs)
+
+    def test_deterministic_with_seeded_rng(self):
+        races, outputs = self._anti_aligned()
+        result_a = permutation_test_spearman_efficiency(
+            races, outputs, n_permutations=300, rng=np.random.default_rng(7))
+        result_b = permutation_test_spearman_efficiency(
+            races, outputs, n_permutations=300, rng=np.random.default_rng(7))
+        assert result_a["p_value_permutation"] == result_b["p_value_permutation"]
 
 
 # ─── spearman_by_cook_category ─────────────────────────────────────────────────
