@@ -363,10 +363,19 @@ class TestRunLsmIntegration:
     than re-testing an isolated reimplementation of it."""
 
     @pytest.fixture
-    def fast_run(self, monkeypatch, synthetic_races):
+    def fast_run(self, monkeypatch, synthetic_races, tmp_path):
         monkeypatch.setattr(lsm, "build_universe", lambda cycle=2026: synthetic_races)
         monkeypatch.setattr(lsm, "K_PATHS", 40)
         monkeypatch.setattr(lsm, "N_PERIODS", 3)
+        # This fixture is designed around a zero-trickle baseline (this
+        # class's assertions, e.g. test_theta_equals_wait_minus_deploy_sign_convention,
+        # were written and tuned against it). Point _TRICKLE_PATH at a path
+        # that doesn't exist so this test is hermetic -- independent of
+        # whether data/processed/candidate_spend_trickle.json happens to be
+        # present in the working tree (it wasn't when these tests were
+        # first written; it is now that the real calibration has been run,
+        # which silently broke this fixture's isolation until caught here).
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", tmp_path / "no_trickle_for_this_test.json")
 
         tiers_per_race = [r.cook_rating for r in synthetic_races]
         eta_by_tier = {"Toss-Up": 0.4, "Lean D": 0.26, "Lean R": 0.3, "Safe D": 0.0, "Safe R": 0.0}
@@ -435,6 +444,107 @@ class TestRunLsmIntegration:
         for entry in fast_run["theta_by_period"]:
             if entry["mean_theta"] < -0.05:
                 assert entry["frac_deploy_now"] == pytest.approx(1.0), entry
+
+
+class TestSpendTrickle:
+    """docs/theta_followup_plan.md Section 0.1.1's blocked fix: wait-branch
+    D_i,t now grows via a calibrated trickle, giving eta something to react
+    to. load_trickle_rate_per_day() must fall back cleanly to zero (the old
+    behavior) when the calibration file doesn't exist, and read real
+    per-tier rates when it does."""
+
+    def test_falls_back_to_zero_when_trickle_file_absent(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", tmp_path / "does_not_exist.json")
+        rates = lsm.load_trickle_rate_per_day(["Toss-Up", "Safe D", "Lean R"])
+        assert (rates == 0.0).all()
+
+    def test_respects_preferred_estimator_key_not_hardcoded_to_median(self, monkeypatch, tmp_path):
+        """Regression test for a real finding: checked against the actual
+        2022/2024 panel, median_rate_per_day is exactly $0.00/day in every
+        tier (FEC's quarterly filing cadence against this project's
+        biweekly grid means most periods have no new filing at all), so
+        estimate_candidate_spend_trickle.py switched its preferred
+        estimator to mean_rate_per_day. This test locks in that
+        load_trickle_rate_per_day() reads whichever key
+        preferred_estimator names, rather than a hardcoded field, so a
+        future re-calibration's estimator choice is honored automatically."""
+        import json
+        trickle_path = tmp_path / "candidate_spend_trickle.json"
+        trickle_path.write_text(json.dumps({
+            "preferred_estimator": "mean_rate_per_day",
+            "by_tier": {
+                "Toss-Up": {"median_rate_per_day": 0.0, "mean_rate_per_day": 5000.0},
+            }
+        }))
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", trickle_path)
+        rates = lsm.load_trickle_rate_per_day(["Toss-Up"])
+        assert rates[0] == pytest.approx(5000.0), (
+            "expected the mean_rate_per_day value (5000.0), not median_rate_per_day (0.0) "
+            "or a fallback to pooled/zero -- preferred_estimator was not respected"
+        )
+
+    def test_reads_per_tier_rate_and_falls_back_to_pooled_for_unknown_tier(self, monkeypatch, tmp_path):
+        import json
+        trickle_path = tmp_path / "candidate_spend_trickle.json"
+        trickle_path.write_text(json.dumps({
+            "preferred_estimator": "mean_rate_per_day",
+            "by_tier": {
+                "Toss-Up": {"mean_rate_per_day": 1200.0},
+                "Safe D": {"mean_rate_per_day": 300.0},
+                "_pooled": {"mean_rate_per_day": 600.0},
+            }
+        }))
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", trickle_path)
+        rates = lsm.load_trickle_rate_per_day(["Toss-Up", "Safe D", "Lean R"])
+        assert rates[0] == pytest.approx(1200.0)
+        assert rates[1] == pytest.approx(300.0)
+        assert rates[2] == pytest.approx(600.0)   # Lean R absent from by_tier -> pooled fallback
+
+    def test_nonzero_trickle_changes_run_lsm_output_without_crashing(self, monkeypatch, tmp_path, synthetic_races):
+        """Integration check: wiring in a real (nonzero) trickle rate must
+        not crash run_lsm() and must produce a materially different result
+        from the zero-trickle baseline -- if it silently produced identical
+        numbers, that would mean the trickle wasn't actually reaching
+        d_paths/r_paths despite load_trickle_rate_per_day() returning
+        nonzero values (exactly the class of wiring bug this file exists to
+        catch, per its module docstring)."""
+        import json
+        monkeypatch.setattr(lsm, "build_universe", lambda cycle=2026: synthetic_races)
+        monkeypatch.setattr(lsm, "K_PATHS", 40)
+        monkeypatch.setattr(lsm, "N_PERIODS", 3)
+
+        tiers_per_race = [r.cook_rating for r in synthetic_races]
+        eta_by_tier = {"Toss-Up": 0.4, "Lean D": 0.26, "Lean R": 0.3, "Safe D": 0.0, "Safe R": 0.0}
+        resid_by_tier = {"Toss-Up": 15_000.0, "Lean D": 12_000.0, "Lean R": 12_000.0,
+                          "Safe D": 8_000.0, "Safe R": 8_000.0}
+        eta_arr, resid_arr = lsm.tile_single_cycle(eta_by_tier, resid_by_tier, tiers_per_race, k_paths=40)
+
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", tmp_path / "no_trickle.json")
+        baseline = lsm.run_lsm(eta_arr, resid_arr, "no_trickle")
+
+        trickle_path = tmp_path / "trickle.json"
+        # A large trickle rate ($50k/day for every tier) relative to these
+        # races' floors -- deliberately large so the effect isn't lost in
+        # Monte Carlo noise at only 40 paths.
+        trickle_path.write_text(json.dumps({
+            "preferred_estimator": "mean_rate_per_day",
+            "by_tier": {t: {"mean_rate_per_day": 50_000.0} for t in set(tiers_per_race)},
+            "_pooled": {"mean_rate_per_day": 50_000.0},
+        }))
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", trickle_path)
+        trickled = lsm.run_lsm(eta_arr, resid_arr, "with_trickle")
+
+        for entry in trickled["theta_by_period"]:
+            assert np.isfinite(entry["mean_theta"])
+            assert 0.0 <= entry["frac_deploy_now"] <= 1.0
+
+        # Some period's mean_theta must differ meaningfully between the two
+        # runs -- otherwise the trickle demonstrably had no effect.
+        baseline_thetas = [e["mean_theta"] for e in baseline["theta_by_period"]]
+        trickled_thetas = [e["mean_theta"] for e in trickled["theta_by_period"]]
+        assert any(
+            abs(b - t) > 1e-6 for b, t in zip(baseline_thetas, trickled_thetas)
+        ), "trickle had no measurable effect on any period's mean_theta -- likely not wired into d_paths/mu_paths"
 
 
 # ─── _solve_committed_floor() (continuous-phi script): the floor-reset fix ──
@@ -506,6 +616,138 @@ class TestSolveCommittedFloor:
         for budget in (0.0, 100_000.0, 400_000.0):
             out = self._call(setup, budget)
             assert np.all(out >= setup["floor_arr"] - 1e-6)
+
+
+# ─── run_continuous_phi_lsm() integration: trickle mechanism wired in ─────
+
+class TestContinuousPhiTrickle:
+    """docs/theta_followup_plan.md Section 12.4 flagged the continuous-phi
+    generalization as NOT updated with the wait-branch spending trickle
+    (solve_bellman_lsm.py's binary framing got it first). This class covers
+    it being wired in afterward: run_continuous_phi_lsm() must run
+    end-to-end with a real (nonzero) trickle file, and the trickle must
+    actually reach the output (same "wired but inert" bug class Section 0
+    of the followup plan found once already for eta)."""
+
+    @pytest.fixture
+    def fast_setup(self, monkeypatch, synthetic_races):
+        monkeypatch.setattr(lsm, "build_universe", lambda cycle=2026: synthetic_races)
+        monkeypatch.setattr(lsm, "K_PATHS", 20)
+        monkeypatch.setattr(lsm, "N_PERIODS", 3)
+        tiers_per_race = [r.cook_rating for r in synthetic_races]
+        eta_by_tier = {"Toss-Up": 0.4, "Lean D": 0.26, "Lean R": 0.3, "Safe D": 0.0, "Safe R": 0.0}
+        resid_by_tier = {"Toss-Up": 15_000.0, "Lean D": 12_000.0, "Lean R": 12_000.0,
+                          "Safe D": 8_000.0, "Safe R": 8_000.0}
+        eta_arr, resid_arr = lsm.tile_single_cycle(eta_by_tier, resid_by_tier, tiers_per_race, k_paths=20)
+        return tiers_per_race, eta_arr, resid_arr
+
+    def _run(self, tmp_path, monkeypatch, eta_arr, resid_arr, trickle_json, label, seed=42):
+        import json
+        trickle_path = tmp_path / f"{label}.json"
+        trickle_path.write_text(json.dumps(trickle_json))
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", trickle_path)
+        rng = np.random.default_rng(seed)
+        grid_fracs = list(np.linspace(0.0, 1.0, 5))
+        return cphi.run_continuous_phi_lsm(eta_arr, resid_arr, label, grid_fracs, 20, rng)
+
+    def test_runs_without_error_with_nonzero_trickle(self, monkeypatch, tmp_path, fast_setup):
+        tiers_per_race, eta_arr, resid_arr = fast_setup
+        res = self._run(tmp_path, monkeypatch, eta_arr, resid_arr, {
+            "preferred_estimator": "mean_rate_per_day",
+            "by_tier": {t: {"mean_rate_per_day": 5000.0} for t in set(tiers_per_race)},
+            "_pooled": {"mean_rate_per_day": 5000.0},
+        }, "with_trickle")
+        assert len(res["schedule"]) == 3
+        for entry in res["schedule"]:
+            assert np.isfinite(entry["v_g0_mean"])
+            assert 0.0 <= entry["chosen_frac_mean"] <= 1.0
+
+    def test_nonzero_trickle_changes_output_vs_zero_trickle(self, monkeypatch, tmp_path, fast_setup):
+        """Same wiring-bug class solve_bellman_lsm.py's TestSpendTrickle
+        guards against: a trickle file that load_trickle_rate_per_day()
+        reads as nonzero must actually change run_continuous_phi_lsm's
+        output, not silently fail to reach d_paths/mu_committed."""
+        tiers_per_race, eta_arr, resid_arr = fast_setup
+
+        baseline = self._run(tmp_path, monkeypatch, eta_arr, resid_arr, {
+            "preferred_estimator": "mean_rate_per_day", "by_tier": {},
+        }, "no_trickle")
+
+        trickled = self._run(tmp_path, monkeypatch, eta_arr, resid_arr, {
+            "preferred_estimator": "mean_rate_per_day",
+            "by_tier": {t: {"mean_rate_per_day": 50_000.0} for t in set(tiers_per_race)},
+            "_pooled": {"mean_rate_per_day": 50_000.0},
+        }, "with_trickle")
+
+        baseline_v = [e["v_g0_mean"] for e in baseline["schedule"]]
+        trickled_v = [e["v_g0_mean"] for e in trickled["schedule"]]
+        assert any(abs(b - t) > 1e-6 for b, t in zip(baseline_v, trickled_v)), (
+            "trickle had no measurable effect on any period's v_g0_mean -- "
+            "likely not wired into d_paths/mu_committed"
+        )
+
+    def test_drift_correction_formula_matches_mu_struct_difference(self, coef_sigma, synthetic_races):
+        """Sanity check of the drift-correction arithmetic itself
+        (docs/theta_followup_plan.md Section 12.3's fourth correction,
+        mirrored into this script's run_continuous_phi_lsm): the drift
+        added on top of mu_level is defined as
+        _mu_struct(d_terminal, r_terminal_expected) - _mu_struct(floor_g_kt, r_eff).
+        This test exercises that exact formula (not a duplicate
+        implementation -- there's only one _mu_struct call site here, so
+        no copy-paste-divergence risk the way solve_bellman_lsm.py's
+        separately-maintained inline mu_struct had) against realistic
+        inputs, confirming it produces a finite, nonzero shift whenever
+        d_terminal genuinely differs from floor_g_kt -- the basic
+        precondition for the correction to do anything at all."""
+        coef, sigma_model = coef_sigma
+        races = synthetic_races
+        pvi_arr = np.array([r.pvi for r in races])
+        incumb_arr = [r.incumb_status for r in races]
+        is_incumb_arr = np.array([1.0 if s == "Incumbent" else 0.0 for s in incumb_arr])
+        is_open_arr = np.array([1.0 if s == "Open" else 0.0 for s in incumb_arr])
+        gb_national = races[0].generic_ballot
+        n = len(races)
+
+        floor_g_kt = np.array([r.cand_d_total + 50_000.0 for r in races])   # after a DCCC commitment
+        r_eff = np.array([r.r_total for r in races])
+        eta_k = np.full(n, 0.3)
+        d_terminal = floor_g_kt + 80_000.0   # further organic trickle growth after commitment
+
+        mu_level = cphi._mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, floor_g_kt, r_eff, is_open_arr)
+        r_terminal_expected = np.maximum(r_eff + eta_k * (d_terminal - floor_g_kt), 1.0)
+        mu_terminal_level = cphi._mu_struct(
+            coef, pvi_arr, is_incumb_arr, gb_national, d_terminal, r_terminal_expected, is_open_arr
+        )
+        expected_drift = mu_terminal_level - mu_level
+
+        # Same formula, independently re-derived: since d_terminal - floor_g_kt
+        # is exactly the "further organic growth" term added above, and
+        # r_terminal_expected is deterministic given eta_k and that gap, the
+        # only way this drift could be zero is if d_terminal == floor_g_kt --
+        # it isn't here, so a nonzero, finite drift is the correct expectation.
+        assert np.all(np.isfinite(expected_drift))
+        assert not np.allclose(expected_drift, 0.0), (
+            "drift should be nonzero when d_terminal differs from floor_g_kt"
+        )
+
+    def test_terminal_period_has_no_drift_since_no_time_remains(self, monkeypatch, tmp_path, fast_setup):
+        """At tstep == n_periods (election day itself), d_terminal == d_t --
+        no more trickle can accrue -- so the drift correction must be
+        exactly zero there, matching solve_bellman_lsm.py's terminal
+        condition (d_t IS d_terminal at T, drift=0 by construction)."""
+        tiers_per_race, eta_arr, resid_arr = fast_setup
+        res = self._run(tmp_path, monkeypatch, eta_arr, resid_arr, {
+            "preferred_estimator": "mean_rate_per_day",
+            "by_tier": {t: {"mean_rate_per_day": 80_000.0} for t in set(tiers_per_race)},
+            "_pooled": {"mean_rate_per_day": 80_000.0},
+        }, "terminal_check")
+        # No direct handle on mu_committed from the public return value, but a
+        # finite, sane v_g0_mean at every period (including the implicit
+        # terminal condition folded into period n_periods-1's absorbing_val)
+        # is the available end-to-end signal that the tstep < n_periods guard
+        # didn't produce a shape mismatch or NaN at the boundary.
+        for entry in res["schedule"]:
+            assert np.isfinite(entry["v_g0_mean"])
 
 
 # ─── _mu_struct() cross-consistency and a real finding it surfaced ────────

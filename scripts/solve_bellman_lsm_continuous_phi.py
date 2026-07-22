@@ -147,29 +147,38 @@ def _mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, d_arr, r_arr, is_open_
             + coef.alpha3 * gb_national + c_arr * log_ratio)
 
 
-def _solve_committed_floor(coef, races, n, sigma_arr, pvi_arr, incumb_arr, floor_arr,
+def _solve_committed_floor(coef, races, n, sigma_arr, pvi_arr, incumb_arr, d_t,
                             mu_baseline_t, r_t, eta_arr_k, budget):
     """floor_state_g: the per-race D-level if `budget` cumulative dollars were
-    committed right now, chosen via the SAME eta-discounted linearized-MSG LP
-    allocator solve_bellman_lsm._deploy_value uses -- but genuinely
-    parameterized by `budget` instead of frozen at F0 (the fix for Section
-    1.3 item 2's identified bug)."""
+    committed right now ON TOP OF d_t, chosen via the SAME eta-discounted
+    linearized-MSG LP allocator solve_bellman_lsm._deploy_value uses -- but
+    genuinely parameterized by `budget` instead of frozen at F0 (the fix for
+    Section 1.3 item 2's identified bug).
+
+    d_t is the CURRENT candidate-committee floor at this period/path
+    (docs/theta_followup_plan.md Section 0.1.1's fix, threaded through this
+    script the same session it was added to solve_bellman_lsm.py's binary
+    framing) -- previously always the static, period-0 floor_arr regardless
+    of tstep, back when D_i,t never moved at all. Now that it does (via a
+    real, calibrated spending trickle), the floor DCCC's committed dollars
+    are layered on top of must be whatever the candidate's own committee has
+    organically raised/spent by this period, not the day-0 baseline."""
     if budget <= 0:
-        return floor_arr.copy()
+        return d_t.copy()
     p_win0 = norm.cdf(mu_baseline_t / sigma_arr)
     phi0 = norm.pdf(mu_baseline_t / sigma_arr)
     grad = np.array([
-        lsm.margin_gradient(coef, pvi_arr[i], incumb_arr[i], floor_arr[i], r_t[i], eta_arr_k[i])
+        lsm.margin_gradient(coef, pvi_arr[i], incumb_arr[i], d_t[i], r_t[i], eta_arr_k[i])
         for i in range(n)
     ])
     msg = phi0 / sigma_arr * grad
     outs = [lsm.ModelOutputs(district_id=races[i].district_id,
-                              ratio=floor_arr[i] / (floor_arr[i] + r_t[i]),
+                              ratio=d_t[i] / (d_t[i] + r_t[i]),
                               mu_hat=mu_baseline_t[i], sigma_i=sigma_arr[i],
                               p_win=p_win0[i], msg_i=msg[i])
             for i in range(n)]
     res = lsm.optimize(outs, budget=budget, cov_matrix=np.eye(n) * 1e-6, gamma=0.0,
-                        cap_fraction=0.15, floor_allocations=floor_arr, party_budget=budget)
+                        cap_fraction=0.15, floor_allocations=d_t, party_budget=budget)
     return res.allocations
 
 
@@ -184,11 +193,27 @@ def run_continuous_phi_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: n
     eta_arr = eta_arr_by_path
     resid_std_arr = resid_std_arr_by_path
 
-    # --- Exogenous shocks: identical construction to solve_bellman_lsm.run_lsm ---
+    # --- Trickle-driven D_i,t + eta-reactive R_i,t (docs/theta_followup_plan.md
+    # Section 0.1.1's fix, threaded through this script the same session it was
+    # added to solve_bellman_lsm.py's binary framing, per Section 12.4's stated
+    # gap). d_paths grows deterministically at the calibrated per-tier trickle
+    # rate (scripts/estimate_candidate_spend_trickle.py); r_paths reacts to that
+    # growth via eta_arr, on top of the residual noise this script already had.
+    tiers_per_race = [r.cook_rating for r in races]
+    trickle_per_day = lsm.load_trickle_rate_per_day(tiers_per_race)
+    trickle_per_period = trickle_per_day * lsm.PERIOD_DAYS
+
+    d_paths = np.zeros((k_paths, n_periods + 1, n))
+    d_paths[:, 0, :] = floor_arr[None, :]
     r_paths = np.zeros((k_paths, n_periods + 1, n))
     r_paths[:, 0, :] = r0_arr
     for tstep in range(n_periods):
-        r_paths[:, tstep + 1, :] = r_paths[:, tstep, :] + rng.normal(0, resid_std_arr, size=(k_paths, n))
+        d_paths[:, tstep + 1, :] = d_paths[:, tstep, :] + trickle_per_period[None, :]
+        delta_d = d_paths[:, tstep + 1, :] - d_paths[:, tstep, :]
+        reaction = eta_arr * delta_d
+        r_paths[:, tstep + 1, :] = (
+            r_paths[:, tstep, :] + reaction + rng.normal(0, resid_std_arr, size=(k_paths, n))
+        )
     r_paths = np.maximum(r_paths, 1.0)
 
     g_step_std = lsm.SIGMA_G_PER_SQRT_DAY * np.sqrt(lsm.PERIOD_DAYS)
@@ -201,13 +226,14 @@ def run_continuous_phi_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: n
         incr = rng.normal(0, np.sqrt(v), size=(k_paths, n_periods))
         eps_cum[:, 1:, i] = np.cumsum(incr, axis=1)
 
-    # mu_baseline: the wait-branch mu (D held at floor_arr throughout) -- exactly
-    # solve_bellman_lsm.run_lsm's mu_paths, and also grid state g=0 (nothing committed).
+    # mu_baseline: the wait-branch mu (D following the trickle, nothing DCCC-
+    # committed) -- exactly solve_bellman_lsm.run_lsm's mu_paths, and also grid
+    # state g=0 (nothing committed).
     mu_baseline = np.zeros((k_paths, n_periods + 1, n))
     for tstep in range(n_periods + 1):
         mu_baseline[:, tstep, :] = (
             _mu_struct(coef, pvi_arr[None, :], is_incumb_arr[None, :], gb_national,
-                       floor_arr[None, :], r_paths[:, tstep, :], is_open_arr[None, :])
+                       d_paths[:, tstep, :], r_paths[:, tstep, :], is_open_arr[None, :])
             + eps_cum[:, tstep, :]
         )
 
@@ -217,17 +243,43 @@ def run_continuous_phi_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: n
     mu_committed = [mu_baseline]  # g=0
     for g in range(1, n_grid):
         budget_g = grid_fracs[g] * lsm.F0
+        is_full_deploy = (g == n_grid - 1)
         mu_g = np.zeros((k_paths, n_periods + 1, n))
         for tstep in range(n_periods + 1):
             for k in range(k_paths):
+                d_t = d_paths[k, tstep, :]
                 floor_g_kt = _solve_committed_floor(
-                    coef, races, n, sigma_arr, pvi_arr, incumb_arr, floor_arr,
+                    coef, races, n, sigma_arr, pvi_arr, incumb_arr, d_t,
                     mu_baseline[k, tstep, :], r_paths[k, tstep, :], eta_arr[k], budget_g)
-                r_eff = r_paths[k, tstep, :] + eta_arr[k] * (floor_g_kt - floor_arr)
-                mu_g[k, tstep, :] = (
-                    _mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, floor_g_kt, r_eff, is_open_arr)
-                    + eps_cum[k, tstep, :]
-                )
+                r_eff = r_paths[k, tstep, :] + eta_arr[k] * (floor_g_kt - d_t)
+                mu_level = _mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, floor_g_kt, r_eff, is_open_arr)
+
+                # Trickle-drift correction, ONLY for the full-deployment grid level
+                # (g=n_grid-1) -- exactly the fix applied to solve_bellman_lsm.py's
+                # _deploy_value, and needed for the identical reason: this array's
+                # value at tstep is later convolved with widened_sigma
+                # (absorbing_val, below) to represent "commit fully now, then let
+                # remaining drift resolve" -- valid only for mean-zero future
+                # movement. Organic D growth after tstep is deterministic and
+                # non-zero-mean, so the expected structural mu shift from
+                # (floor_g_kt, r_eff) to the fully-trickled terminal pair is added
+                # before storing. Every OTHER grid level (gp < n_grid-1) is used
+                # directly as real current-period features in the regression basis
+                # below, never widened by a convolution shortcut, so no correction
+                # applies there -- same as mu_baseline (g=0) needing none either.
+                if is_full_deploy and tstep < n_periods:
+                    d_terminal = floor_g_kt + (d_paths[k, -1, :] - d_t)
+                    r_terminal_expected = np.maximum(
+                        r_eff + eta_arr[k] * (d_terminal - floor_g_kt), 1.0
+                    )
+                    mu_terminal_level = _mu_struct(
+                        coef, pvi_arr, is_incumb_arr, gb_national, d_terminal, r_terminal_expected, is_open_arr
+                    )
+                    trickle_drift = mu_terminal_level - mu_level
+                else:
+                    trickle_drift = 0.0
+
+                mu_g[k, tstep, :] = mu_level + eps_cum[k, tstep, :] + trickle_drift
         mu_committed.append(mu_g)
         print(f"  [{label}] grid level {grid_fracs[g]:.2f} done")
 

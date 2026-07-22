@@ -1,0 +1,333 @@
+{
+  "eta_fit_2022": {
+    "label": "eta_fit_2022",
+    "eta_summary": {
+      "single_cycle_fit": {
+        "Safe D": 1.069694529719842,
+        "Likely D": -0.21203912431649052,
+        "Lean D": 0.2938841818755611,
+        "Toss-Up": 0.729939109263241,
+        "Lean R": 0.38688841357965864,
+        "Likely R": -0.017244985216736237,
+        "Safe R": -0.0033462387436219553
+      }
+    },
+    "n_periods": 7,
+    "k_paths": 2000,
+    "theta_by_period": [
+      {
+        "period": 0,
+        "days_remaining": 98,
+        "mean_theta": 2.202134995691694,
+        "frac_deploy_now": 0.0,
+        "basis_r2": 0.0,
+        "g_t_coef": 0.0,
+        "g_t_pvalue": NaN
+      },
+      {
+        "period": 1,
+        "days_remaining": 84,
+        "mean_theta": 2.08467876392771,
+        "frac_deploy_now": 0.0,
+        "basis_r2": 0.4675877670019456,
+        "g_t_coef": 0.01995212515819811,
+        "g_t_pvalue": 0.29288845288785903
+      },
+      {
+        "period": 2,
+        "days_remaining": 70,
+        "mean_theta": 1.8266434905982105,
+        "frac_deploy_now": 0.0,
+        "basis_r2": 0.6216312455946154,
+        "g_t_coef": -0.011028113457551392,
+        "g_t_pvalue": 0.4353740343585809
+      },
+      {
+        "period": 3,
+        "days_remaining": 56,
+        "mean_theta": 1.560791528023277,
+        "frac_deploy_now": 0.004,
+        "basis_r2": 0.6880747952619094,
+        "g_t_coef": 0.0018255458583258388,
+        "g_t_pvalue": 0.8811956887791996
+      },
+      {
+        "period": 4,
+        "days_remaining": 42,
+        "mean_theta": 1.2445855234483192,
+        "frac_deploy_now": 0.023,
+        "basis_r2": 0.7634204249717981,
+        "g_t_coef": -0.008284167673183074,
+        "g_t_pvalue": 0.4390384998732129
+      },
+      {
+        "period": 5,
+        "days_remaining": 28,
+        "mean_theta": 0.8384359731625957,
+        "frac_deploy_now": 0.095,
+        "basis_r2": 0.7623010796491698,
+        "g_t_coef": 0.008501332356287916,
+        "g_t_pvalue": 0.4371641546884485
+      },
+      {
+        "period": 6,
+        "days_remaining": 14,
+        "mean_theta": 0.3535728004429275,
+        "frac_deploy_now": 0.3055,
+        "basis_r2": 0.7219366776120941,
+        "g_t_coef": -0.004000436886281794,
+        "g_t_pvalue": 0.7484538553976472
+      }
+    ]
+  },
+  "eta_fit_2024": {
+    "label": "eta_fit_2024",
+    "eta_summary": {
+      "single_cycle_fit": {
+        "Safe D": 0.3182015334975613,
+        "Likely D": -0.10149819147606648,
+        "Lean D": 0.23653211808234725,
+        "Toss-Up": 0.3414522734491998,
+        "Lean R": 0.18309963537906138,
+        "Likely R": 0.41158583593433545,
+        "Safe R": -0.16495319778952353
+      }
+    },
+    "n_periods": 7,
+    "k_paths": 2000,
+    "theta_by_period": [
+      {
+        "period": 0,
+        "days_remaining": 98,
+        "mean_theta": 2.9263272424076376,
+        "frac_deploy_now": 0.0,
+        "basis_r2": 0.0,
+        "g_t_coef": 0.0,
+        "g_t_pvalue": NaN
+      },
+      {
+        "period": 1,
+        "days_remaining": 84,
+        "mean_theta": 2.748492419921398,
+        "frac_deploy_now": 0.0,
+        "basis_r2": 0.45682943370043805,
+        "g_t_coef": -0.044335777739299975,
+        "g_t_pvalue": 0.005963682036335069
+      },
+      {
+        "period": 2,
+        "days_remaining": 70,
+        "mean_theta": 2.514486723537023,
+        "frac_deploy_now": 0.0,
+        "basis_r2": 0.5941512815460306,
+        "g_t_coef": -0.04603428971577428,
+        "g_t_pvalue": 0.0003764757242470708
+      },
+      {
+        "period": 3,
+        "days_remaining": 56,
+        "mean_theta": 2.1585980179816464,
+        "frac_deploy_now": 0.0,
+        "basis_r2": 0.6927355095511861,
+        "g_t_coef": -0.031373372929921706,
+        "g_t_pvalue": 0.005336055023162501
+      },
+      {
+        "period": 4,
+        "days_remaining": 42,
+        "mean_theta": 1.5687824048358612,
+        "frac_deploy_now": 0.005,
+        "basis_r2": 0.7412191723226456,
+        "g_t_coef": -0.025953747338643085,
+        "g_t_pvalue": 0.011595505156699583
+      },
+      {
+        "period": 5,
+        "days_remaining": 28,
+        "mean_theta": 0.9785457218946352,
+        "frac_deploy_now": 0.0705,
+        "basis_r2": 0.7480548842372501,
+        "g_t_coef": -0.007969014720339063,
+        "g_t_pvalue": 0.43526897329744496
+      },
+      {
+        "period": 6,
+        "days_remaining": 14,
+        "mean_theta": 0.3916929636050125,
+        "frac_deploy_now": 0.296,
+        "basis_r2": 0.7060681953413301,
+        "g_t_coef": -0.009297827986051832,
+        "g_t_pvalue": 0.43254868955874226
+      }
+    ]
+  },
+  "eta_bootstrap_all_cycles": {
+    "label": "eta_bootstrap_all_cycles",
+    "eta_summary": {
+      "Safe D": {
+        "n_cycles_available": 7,
+        "historical_values": [
+          0.37051564418078053,
+          0.36324702782179663,
+          0.16896310393175418,
+          0.19294798851248035,
+          -0.13717862991698573,
+          1.069694529719842,
+          0.3182015334975613
+        ],
+        "path_draw_mean": 0.34129341669103924,
+        "path_draw_sd": 0.3420777592198347
+      },
+      "Likely D": {
+        "n_cycles_available": 7,
+        "historical_values": [
+          0.17996493678014389,
+          0.5906036196686204,
+          0.5427028241936118,
+          0.423312720315018,
+          0.03479669153551908,
+          -0.21203912431649052,
+          -0.10149819147606648
+        ],
+        "path_draw_mean": 0.20778847825061575,
+        "path_draw_sd": 0.2948947829113964
+      },
+      "Lean D": {
+        "n_cycles_available": 7,
+        "historical_values": [
+          0.6371795918918658,
+          0.004641689442899721,
+          0.435826774059917,
+          -0.09656619944087723,
+          0.6619827929557665,
+          0.2938841818755611,
+          0.23653211808234725
+        ],
+        "path_draw_mean": 0.3164093117424912,
+        "path_draw_sd": 0.27001939769858535
+      },
+      "Toss-Up": {
+        "n_cycles_available": 7,
+        "historical_values": [
+          0.42215270123422527,
+          0.25216310968692635,
+          -0.2167942260713566,
+          0.07922542788070613,
+          0.11007902256006569,
+          0.729939109263241,
+          0.3414522734491998
+        ],
+        "path_draw_mean": 0.2450379421997816,
+        "path_draw_sd": 0.2766496588820013
+      },
+      "Lean R": {
+        "n_cycles_available": 6,
+        "historical_values": [
+          0.5722407455611278,
+          0.46359535448929223,
+          0.07668190565771635,
+          0.4264156791497973,
+          0.38688841357965864,
+          0.18309963537906138
+        ],
+        "path_draw_mean": 0.3502766184188375,
+        "path_draw_sd": 0.17040799604541843
+      },
+      "Likely R": {
+        "n_cycles_available": 7,
+        "historical_values": [
+          0.5617242440432889,
+          0.16672566646248785,
+          0.5286603596595743,
+          0.4502411134464164,
+          0.6251656990480305,
+          -0.017244985216736237,
+          0.41158583593433545
+        ],
+        "path_draw_mean": 0.3911740934362616,
+        "path_draw_sd": 0.2147946926174442
+      },
+      "Safe R": {
+        "n_cycles_available": 7,
+        "historical_values": [
+          0.5836100382396279,
+          0.5640322532414572,
+          0.3063260654379733,
+          0.3604121842830939,
+          0.5111953595865436,
+          -0.0033462387436219553,
+          -0.16495319778952353
+        ],
+        "path_draw_mean": 0.3128158931827885,
+        "path_draw_sd": 0.26574782127165436
+      }
+    },
+    "n_periods": 7,
+    "k_paths": 2000,
+    "theta_by_period": [
+      {
+        "period": 0,
+        "days_remaining": 98,
+        "mean_theta": 2.488909215349041,
+        "frac_deploy_now": 0.0,
+        "basis_r2": 0.0,
+        "g_t_coef": 0.0,
+        "g_t_pvalue": NaN
+      },
+      {
+        "period": 1,
+        "days_remaining": 84,
+        "mean_theta": 2.373422783382339,
+        "frac_deploy_now": 0.0005,
+        "basis_r2": 0.5536353143616202,
+        "g_t_coef": -0.008073178248934498,
+        "g_t_pvalue": 0.7723093904550268
+      },
+      {
+        "period": 2,
+        "days_remaining": 70,
+        "mean_theta": 2.015120995205035,
+        "frac_deploy_now": 0.0055,
+        "basis_r2": 0.7208169578571002,
+        "g_t_coef": 0.025871529724240894,
+        "g_t_pvalue": 0.1640157937313364
+      },
+      {
+        "period": 3,
+        "days_remaining": 56,
+        "mean_theta": 1.639835201352828,
+        "frac_deploy_now": 0.0105,
+        "basis_r2": 0.785019988816485,
+        "g_t_coef": -0.00041376838355622336,
+        "g_t_pvalue": 0.9782767255339071
+      },
+      {
+        "period": 4,
+        "days_remaining": 42,
+        "mean_theta": 1.281013621932112,
+        "frac_deploy_now": 0.035,
+        "basis_r2": 0.8211377815235423,
+        "g_t_coef": -0.0026366495453480354,
+        "g_t_pvalue": 0.8401124871368452
+      },
+      {
+        "period": 5,
+        "days_remaining": 28,
+        "mean_theta": 0.8505291669613582,
+        "frac_deploy_now": 0.1235,
+        "basis_r2": 0.837730220848051,
+        "g_t_coef": 0.0015722075701221083,
+        "g_t_pvalue": 0.8964869214824694
+      },
+      {
+        "period": 6,
+        "days_remaining": 14,
+        "mean_theta": 0.3573494675513744,
+        "frac_deploy_now": 0.321,
+        "basis_r2": 0.7875707957876339,
+        "g_t_coef": 0.002581274854524529,
+        "g_t_pvalue": 0.8550555140167554
+      }
+    ]
+  }
+}

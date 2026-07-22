@@ -30,12 +30,32 @@ class RaceState:
     committed party spend) stay distinguishable for diagnostics, even
     though both enter the optimizer's floor identically (see dynamic/ledger.py).
 
-    cash_on_hand_d / cook_rating_t / generic_ballot_t are explicit stub
-    fields (paper §3.1's state vector includes these, but no historical or
-    live data source for them exists in this repo yet — see
-    docs/paper2_draft.md §8 and the implementation plan's data-gap table).
-    They default to None; to_race_record() falls back to `base`'s static
-    values when a stub field is unset, rather than silently failing.
+    cook_rating_t / generic_ballot_t remain explicit stub fields (paper
+    §3.1's state vector includes these, but no historical or live data
+    source for them exists in this repo — see docs/paper2_draft.md §8 and
+    the implementation plan's data-gap table). They default to None;
+    to_race_record() falls back to `base`'s static values when a stub
+    field is unset, rather than silently failing.
+
+    cash_on_hand_d is no longer an unconditional stub as of data_catalog.md
+    §2.7's dated candidate-periodic-reports panel — it now has a real data
+    source (`fec.cash_on_hand_as_of()`) and is populated by
+    `dynamic/updates.py::compute_raw_snapshot`'s optional
+    `cash_on_hand_by_district` argument when the caller supplies one (which
+    `dynamic/simulate.py`'s historical harness does whenever the dated
+    panel is available for that cycle). It still defaults to None — for
+    cycles/periods the dated panel doesn't cover, "no data available" is
+    still the honest state, not a silently wrong $0.
+
+    poll_mean_t / poll_sigma_t / poll_n_t / poll_trend_t are new stub
+    fields (VoteHub `us-representative` district-level polling,
+    data_catalog.md §4.4) — live-2026-only diagnostic fields, populated
+    only where VoteHub has real district coverage (a small minority of
+    districts; see `scripts/fetch_polling.py::fetch_house_district_polls`'s
+    docstring). No historical district-level polling panel exists anywhere
+    this project has found, so these are always None for the historical
+    harness — not wired into mu_i, same treatment as the existing
+    generic-ballot-polls precedent (`fetch_polling.py`'s module docstring).
     """
 
     base: RaceRecord
@@ -52,6 +72,10 @@ class RaceState:
     cash_on_hand_d: float | None = None
     cook_rating_t: str | None = None
     generic_ballot_t: float | None = None
+    poll_mean_t: float | None = None
+    poll_sigma_t: float | None = None
+    poll_n_t: int | None = None
+    poll_trend_t: float | None = None
 
     @property
     def district_id(self) -> str:

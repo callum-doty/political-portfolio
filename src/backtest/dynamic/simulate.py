@@ -45,33 +45,60 @@ logger = logging.getLogger(__name__)
 
 
 def _static_floor_totals(cycle: int) -> pd.DataFrame:
-    """Candidate-committee + coordinated-expenditure spend per
-    (district_id, party), held fixed across every period of the historical
-    harness.
+    """Coordinated-expenditure spend per (district_id, party), held fixed
+    across every period of the historical harness.
 
-    This repo has no per-filing date source for either component (Phase 3
-    documented gap — see docs/paper2_draft.md §6.2's data-availability
-    table): `candidate_disbursements_{cycle}.csv` and
-    `coordinated_expenditures_{cycle}.csv` are both cycle-cumulative FEC
-    snapshots with no filing-date granularity. Only independent-expenditure
-    spend (`fec.cumulative_ie_as_of`) can be genuinely date-bucketed from
-    data already in this repo.
+    This repo has no per-filing date source for coordinated expenditures
+    (Phase 3 documented gap — see docs/paper2_draft.md §6.2's
+    data-availability table): `coordinated_expenditures_{cycle}.csv` is a
+    cycle-cumulative FEC (Schedule F) snapshot with no filing-date
+    granularity, and Schedule F's periodic dating has not been investigated
+    (a separate, unexplored question from the candidate-committee gap this
+    docstring used to also claim).
 
-    Returns DataFrame with columns: district_id, party, cand_plus_coord.
+    Candidate-committee spend is NOT included here as of this session —
+    unlike coordinated expenditures, it now HAS a per-filing date source
+    (`candidate_periodic_reports_{cycle}.csv`, FEC API's
+    `/committee/{id}/reports/` endpoint, confirmed live this session; see
+    data_catalog.md §2.7) and is applied dynamically in
+    `_reconstruct_races_at` via `fec.cumulative_candidate_spend_as_of`
+    instead of being folded into this fixed total.
+
+    Returns DataFrame with columns: district_id, party, coord_static.
+    """
+    coord = fec.load_coordinated_expenditures(cycle)[
+        ["district_id", "party", "coordinated_expenditures"]
+    ]
+    coord = coord.rename(columns={"coordinated_expenditures": "coord_static"})
+    coord["coord_static"] = coord["coord_static"].fillna(0.0)
+    return coord[["district_id", "party", "coord_static"]]
+
+
+def _has_dated_candidate_panel(cycle: int) -> bool:
+    """Whether candidate_periodic_reports_{cycle}.csv has been fetched
+    (data_catalog.md §2.7) — checked once per cycle by one_step_ahead, not
+    per period, so a missing panel doesn't retry a filesystem check (or log
+    a repeated warning) at every one of N reporting periods."""
+    from .. import config
+    return (config.raw_path("fec") / f"candidate_periodic_reports_{cycle}.csv").exists()
+
+
+def _candidate_fallback_totals(cycle: int) -> pd.DataFrame:
+    """Cycle-final candidate-committee disbursements, held fixed across
+    every period — the pre-dated-panel behavior, used only when
+    `candidate_periodic_reports_{cycle}.csv` has not been fetched for this
+    cycle yet (requires a registered FEC API key; not every cycle may be
+    fetched at any given time). Mirrors this project's established honest-
+    fallback pattern (e.g. dynamic/ledger.py's AdReservationProxySource)
+    rather than crashing the historical harness because one cycle's dated
+    data isn't present.
+
+    Returns DataFrame with columns: district_id, party, cand_static.
     """
     cand = fec.load_candidate_disbursements(cycle)[
         ["district_id", "party", "candidate_disbursements"]
     ]
-    coord = fec.load_coordinated_expenditures(cycle)[
-        ["district_id", "party", "coordinated_expenditures"]
-    ]
-    merged = cand.merge(coord, on=["district_id", "party"], how="outer")
-    merged["candidate_disbursements"] = merged["candidate_disbursements"].fillna(0.0)
-    merged["coordinated_expenditures"] = merged["coordinated_expenditures"].fillna(0.0)
-    merged["cand_plus_coord"] = (
-        merged["candidate_disbursements"] + merged["coordinated_expenditures"]
-    )
-    return merged[["district_id", "party", "cand_plus_coord"]]
+    return cand.rename(columns={"candidate_disbursements": "cand_static"})
 
 
 def _reconstruct_races_at(
@@ -80,26 +107,33 @@ def _reconstruct_races_at(
     cycle: int,
     base_races: list[RaceRecord],
     static_totals: pd.DataFrame,
+    use_dated_candidate_spend: bool,
+    candidate_fallback_totals: pd.DataFrame | None = None,
 ) -> list[RaceRecord]:
     """
     Reconstruct one historical period's RaceRecord snapshot from real data
     only.
 
-    Structural no-lookahead safeguard: this function's parameters are
-    exactly (period_index, period_date, cycle, base_races, static_totals).
-    There is no `PeriodResult`/`prior_results` argument — a prior period's
-    *model recommendation* cannot be passed into this call even by
-    mistake. `d_total`/`r_total` are built entirely from DCCC's real,
-    actual historical spend as of `period_date`.
+    Structural no-lookahead safeguard: none of this function's parameters
+    is a `PeriodResult`/`prior_results` — a prior period's *model
+    recommendation* cannot be passed into this call even by mistake.
+    `d_total`/`r_total` are built entirely from DCCC's real, actual
+    historical spend as of `period_date`.
 
-    Held fixed for every period (documented Phase 3 gaps): candidate
-    committee and coordinated-expenditure spend (`static_totals` — see
-    `_static_floor_totals`; no per-filing date source in this repo), Cook
-    rating (carried unchanged from `base_races` — no historical revision
-    time series exists here), and cash on hand (no data source at all;
-    stays unset downstream). The only period-varying component is
-    independent-expenditure spend, from `fec.cumulative_ie_as_of`, which
-    has real per-transaction dates.
+    Held fixed for every period (documented Phase 3 gaps, narrowed this
+    session — see data_catalog.md §2.7): coordinated-expenditure spend
+    (`static_totals` — see `_static_floor_totals`; Schedule F has no
+    investigated per-filing date source), Cook rating (carried unchanged
+    from `base_races` — no historical revision time series exists here),
+    and cash on hand (no data source at all; stays unset downstream).
+    Candidate-committee spend is now genuinely period-varying when
+    `use_dated_candidate_spend` is True (the common case once
+    `candidate_periodic_reports_{cycle}.csv` has been fetched for `cycle`
+    — `fec.cumulative_candidate_spend_as_of`); when False, it falls back to
+    `candidate_fallback_totals` (cycle-final, held fixed) — the same
+    behavior this function had before this session, for cycles the dated
+    panel hasn't been fetched for. Independent-expenditure spend
+    (`fec.cumulative_ie_as_of`) has always had real per-transaction dates.
 
     Generic ballot is held fixed too, but for a different and more
     fundamental reason than "no data source exists" — see the
@@ -117,16 +151,29 @@ def _reconstruct_races_at(
     """
     ie_asof = fec.cumulative_ie_as_of(cycle, period_date)
     ie_by_key = {(r.district_id, r.party): r.ie_net for r in ie_asof.itertuples()}
-    static_by_key = {(r.district_id, r.party): r.cand_plus_coord for r in static_totals.itertuples()}
+    coord_by_key = {(r.district_id, r.party): r.coord_static for r in static_totals.itertuples()}
+
+    if use_dated_candidate_spend:
+        cand_dated = fec.cumulative_candidate_spend_as_of(cycle, period_date)
+        cand_by_key = {(r.district_id, r.party): r.disb_cum for r in cand_dated.itertuples()}
+    else:
+        assert candidate_fallback_totals is not None
+        cand_by_key = {
+            (r.district_id, r.party): r.cand_static for r in candidate_fallback_totals.itertuples()
+        }
 
     snapshot: list[RaceRecord] = []
     for race in base_races:
-        d_static = static_by_key.get((race.district_id, "D"), 0.0)
-        r_static = static_by_key.get((race.district_id, "R"), 0.0)
+        d_cand = cand_by_key.get((race.district_id, "D"), 0.0)
+        r_cand = cand_by_key.get((race.district_id, "R"), 0.0)
+        d_coord = coord_by_key.get((race.district_id, "D"), 0.0)
+        r_coord = coord_by_key.get((race.district_id, "R"), 0.0)
         d_ie = ie_by_key.get((race.district_id, "D"), 0.0)
         r_ie = ie_by_key.get((race.district_id, "R"), 0.0)
         snapshot.append(dataclasses.replace(
-            race, d_total=d_static + d_ie, r_total=r_static + r_ie,
+            race,
+            d_total=d_cand + d_coord + d_ie,
+            r_total=r_cand + r_coord + r_ie,
         ))
     return snapshot
 
@@ -169,14 +216,33 @@ def one_step_ahead(
     separately.
     """
     static_totals = _static_floor_totals(cycle)
+    use_dated_candidate_spend = _has_dated_candidate_panel(cycle)
+    candidate_fallback_totals = None if use_dated_candidate_spend else _candidate_fallback_totals(cycle)
+    if not use_dated_candidate_spend:
+        logger.warning(
+            f"one_step_ahead(cycle={cycle}): no dated candidate periodic-reports panel found "
+            "(data_catalog.md §2.7) — falling back to cycle-final candidate spend held fixed "
+            "across every period. Run `python scripts/fetch_data.py --only fec-periodic "
+            f"--cycles {cycle} --fec-api-key YOUR_KEY` to enable genuinely dated candidate spend."
+        )
     results: list[PeriodResult] = []
     prev_state: CampaignState | None = None
 
     for rp in periods:
-        races_t = _reconstruct_races_at(rp.index, rp.period_date, cycle, base_races, static_totals)
+        races_t = _reconstruct_races_at(
+            rp.index, rp.period_date, cycle, base_races, static_totals,
+            use_dated_candidate_spend, candidate_fallback_totals,
+        )
+
+        cash_on_hand_by_district = None
+        if use_dated_candidate_spend:
+            coh = fec.cash_on_hand_as_of(cycle, rp.period_date)
+            coh_d = coh[coh["party"] == "D"]
+            cash_on_hand_by_district = dict(zip(coh_d["district_id"], coh_d["cash_on_hand"]))
 
         raw_snapshot = compute_raw_snapshot(
             races_t, coef, sigma_model, rp.index, rp.period_date, generic_ballot_national,
+            cash_on_hand_by_district=cash_on_hand_by_district,
         )
         state_t = state_updater.update(prev_state, raw_snapshot)
         prev_state = state_t

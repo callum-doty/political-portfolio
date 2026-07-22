@@ -1,0 +1,82 @@
+{
+  "2022": {
+    "check_a": {
+      "per_horizon": [
+        {
+          "horizon_days": 28,
+          "simulated_std": 0.9732639012171511,
+          "predicted_std": 0.9726092292147245,
+          "ratio": 1.0006731089761047
+        },
+        {
+          "horizon_days": 56,
+          "simulated_std": 1.3779547826677516,
+          "predicted_std": 1.3754771628447056,
+          "ratio": 1.0018012802320337
+        },
+        {
+          "horizon_days": 112,
+          "simulated_std": 1.9413089365837686,
+          "predicted_std": 1.945218458429449,
+          "ratio": 0.9979901887992381
+        }
+      ]
+    },
+    "check_b": {
+      "recovered_eta_pooled": 0.3440969019885372,
+      "input_eta_pooled_avg": 0.3211108408802077,
+      "n_obs": 1281
+    },
+    "check_c": {
+      "n_districts": 61,
+      "mean_relative_error": 0.01518392188192385,
+      "max_relative_error": 0.036529536483019064
+    },
+    "check_d": {
+      "n_districts": 61,
+      "mean_ratio": 1.0014457065624967,
+      "min_ratio": 0.9816546925145778,
+      "max_ratio": 1.0181009461163557
+    }
+  },
+  "2024": {
+    "check_a": {
+      "per_horizon": [
+        {
+          "horizon_days": 28,
+          "simulated_std": 0.9684273066430937,
+          "predicted_std": 0.9726092292147245,
+          "ratio": 0.9957003054813626
+        },
+        {
+          "horizon_days": 56,
+          "simulated_std": 1.3660116597301086,
+          "predicted_std": 1.3754771628447056,
+          "ratio": 0.9931183858443562
+        },
+        {
+          "horizon_days": 112,
+          "simulated_std": 1.92611523336704,
+          "predicted_std": 1.945218458429449,
+          "ratio": 0.9901793934868206
+        }
+      ]
+    },
+    "check_b": {
+      "recovered_eta_pooled": 0.15864446774551977,
+      "input_eta_pooled_avg": 0.17491714386813073,
+      "n_obs": 1113
+    },
+    "check_c": {
+      "n_districts": 53,
+      "mean_relative_error": 0.013329339289230344,
+      "max_relative_error": 0.042094948324521764
+    },
+    "check_d": {
+      "n_districts": 53,
+      "mean_ratio": 1.000482638616903,
+      "min_ratio": 0.9787262393925477,
+      "max_ratio": 1.0160492390397726
+    }
+  }
+}

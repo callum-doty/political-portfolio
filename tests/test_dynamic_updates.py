@@ -63,6 +63,24 @@ class TestComputeRawSnapshot:
             assert rs.mu_hat == pytest.approx(out.mu_hat)
             assert rs.sigma_hat == pytest.approx(out.sigma_i)
 
+    def test_cash_on_hand_defaults_to_none_when_not_supplied(self):
+        races = make_races(2)
+        coef, sigma_model = make_coef(), make_sigma()
+        snapshot = compute_raw_snapshot(races, coef, sigma_model, 0, date(2024, 3, 1), -1.2)
+        for rs in snapshot.races.values():
+            assert rs.cash_on_hand_d is None
+
+    def test_cash_on_hand_populated_when_dict_supplied(self):
+        races = make_races(2)   # district_ids XX-00, XX-01
+        coef, sigma_model = make_coef(), make_sigma()
+        snapshot = compute_raw_snapshot(
+            races, coef, sigma_model, 0, date(2024, 3, 1), -1.2,
+            cash_on_hand_by_district={"XX-00": 123456.0},
+        )
+        assert snapshot.races["XX-00"].cash_on_hand_d == pytest.approx(123456.0)
+        # a district absent from the dict still falls back to None, not $0
+        assert snapshot.races["XX-01"].cash_on_hand_d is None
+
 
 class TestEMAStateUpdater:
     def test_rejects_lambda_out_of_range(self):

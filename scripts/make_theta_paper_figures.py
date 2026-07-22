@@ -273,10 +273,11 @@ def fig4_binary_motivation():
     fig.text(0.5, -0.10,
              "This is the BINARY model's own path-level split (deploy-everything vs. hold-everything), shown only as motivation -- it is\n"
              "already far from 0%/100% in the 28-84 day window, which is exactly the situation where a continuous reserve fraction could\n"
-             "reveal a real small-but-nonzero optimum the binary comparison cannot express. The bootstrap line (theta_followup_plan.md §6)\n"
-             "draws each path's own eta from the empirical 7-cycle distribution -- frac(deploy now) at t=0 is a real 91.5%, not degenerate.\n"
-             "The continuous-phi generalization this motivates was since implemented and run (§1.3/§8) -- see make_continuous_phi_figure.py:\n"
-             "the answer is that the corner holds regardless, for reasons distinct from anything visible in this figure.",
+             "reveal a real small-but-nonzero optimum the binary comparison cannot express. Updated 2026-07-20 (theta_followup_plan.md §12):\n"
+             "with a real, dated candidate-spending trickle now driving D_i,t (previously held perfectly fixed), Theta is positive throughout\n"
+             "the horizon shown and every scenario recommends HOLDING the reserve, not deploying it -- the first flipped corner in this\n"
+             "research line. The continuous-phi generalization this motivates was re-run under the same fix (§12.6) -- see\n"
+             "make_continuous_phi_figure.py: the answer is that the corner holds there too, now favoring hold, for the same reason.",
              ha="center", fontsize=8.5, color="#555555", style="italic")
     fig.tight_layout(rect=[0, 0.14, 1, 0.96])
     fig.savefig(OUT / "theta_binary_decision_motivation_fig.png", bbox_inches="tight")

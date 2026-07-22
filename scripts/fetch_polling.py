@@ -42,6 +42,7 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -100,6 +101,114 @@ def fetch_generic_ballot_polls(subject: str = "2026") -> pd.DataFrame:
     return df
 
 
+def fetch_house_district_polls() -> pd.DataFrame:
+    """
+    Fetch every live 2026 district-level U.S. House race poll VoteHub has
+    (poll_type="us-representative"), the same free, no-key API this module
+    already uses for generic-ballot polls.
+
+    New this session (Paper III's feature-catalog reviewer feedback, "Tier
+    1" district polling): confirmed against live VoteHub data that this
+    poll_type exists and returns real per-district subjects (e.g.
+    "2026 PA-07"), NOT just national/generic-ballot polls. Checked:
+    coverage is real but sparse (a small minority of House districts have
+    any poll at all at any given time) and, more importantly, is LIVE
+    2026-ONLY — no historical (2022/2024) district-level panel exists at
+    this endpoint. This means district polling is usable as a live
+    monitoring/diagnostic signal (this function's purpose) but NOT as a
+    dataset to fit a historical epsilon_i,t process against — Paper III
+    §6.2's conclusion that district-level idiosyncratic uncertainty cannot
+    currently be estimated from data stands unchanged; this adds a new
+    *live* state feature, not a new *historical estimation* dataset.
+
+    Same IMPORTANT caveat as fetch_generic_ballot_polls's module docstring:
+    this is a diagnostic signal, not wired into RaceState.mu_hat or any
+    structural model input — there is no historical panel to validate a
+    within-cycle coefficient against, so treating a poll average as if it
+    were a calibrated model input would be exactly the same mistake
+    already flagged there for generic-ballot polls.
+
+    Returns DataFrame with columns: district_id, pollster, start_date,
+    end_date, sample_size, margin (leading candidate's pct minus the
+    next candidate's pct — sign not party-aligned, since VoteHub's
+    `answers` list is by candidate name, not party; see
+    house_district_poll_summary for the party-aligned trailing mean),
+    dem_pct, rep_pct (None when a poll's answers can't be matched to a
+    major-party candidate, e.g. a jungle primary or independent race), url.
+    """
+    url = f"{VOTEHUB_API_BASE}/polls"
+    params = {"poll_type": "us-representative"}
+    logger.info(f"Fetching district-level House polls from {url}…")
+    resp = requests.get(url, params=params, headers={"Accept": "application/json"}, timeout=30)
+    resp.raise_for_status()
+    records = resp.json()
+    logger.info(f"Received {len(records)} district-level poll records")
+
+    rows = []
+    for r in records:
+        seat = r.get("seat_name")
+        if not seat:
+            continue
+        answers = sorted(r.get("answers", []), key=lambda a: a.get("pct", 0), reverse=True)
+        if len(answers) < 2:
+            continue
+        rows.append({
+            "district_id": seat,
+            "pollster": r.get("pollster"),
+            "start_date": r.get("start_date"),
+            "end_date": r.get("end_date"),
+            "sample_size": r.get("sample_size"),
+            "leader_pct": answers[0]["pct"],
+            "second_pct": answers[1]["pct"],
+            "margin": answers[0]["pct"] - answers[1]["pct"],
+            "url": r.get("url"),
+        })
+
+    df = pd.DataFrame(rows)
+    if len(df):
+        df["end_date"] = pd.to_datetime(df["end_date"])
+        df = df.sort_values(["district_id", "end_date"]).reset_index(drop=True)
+    return df
+
+
+def house_district_poll_summary(polls: pd.DataFrame, as_of: date) -> dict:
+    """
+    Per-district summary as of `as_of`: poll_mean (mean margin, most-recent-
+    leader convention -- NOT signed to a party, since VoteHub's answer
+    ordering is by candidate not party), poll_sigma (spread across polls,
+    None if only one poll), poll_n (count), poll_trend (slope of margin
+    over time via a simple linear fit against days-since-first-poll, None
+    if fewer than 2 polls). This is the per-race analog of
+    trailing_average_summary's generic-ballot rollup, feeding
+    RaceState.poll_mean_t/poll_sigma_t/poll_n_t/poll_trend_t.
+    """
+    if not len(polls):
+        return {}
+    cutoff = pd.Timestamp(as_of)
+    result: dict[str, dict] = {}
+    for district_id, sub in polls[polls["end_date"] <= cutoff].groupby("district_id"):
+        n = len(sub)
+        entry = {
+            "poll_n": int(n),
+            "poll_mean": float(sub["margin"].mean()),
+            "poll_sigma": float(sub["margin"].std()) if n > 1 else None,
+            "latest_end_date": sub["end_date"].max().date().isoformat(),
+        }
+        days = (sub["end_date"] - sub["end_date"].min()).dt.days.astype(float)
+        if n >= 2 and days.nunique() > 1:
+            # nunique()>1 guard: polyfit's design matrix is singular (SVD
+            # fails to converge) when every poll in the window shares the
+            # same end_date -- e.g. two polls released the same day -- since
+            # there is then zero variance in the x (days) column to fit a
+            # slope against.
+            slope = np.polyfit(days, sub["margin"].astype(float), 1)[0]
+            entry["poll_trend"] = float(slope)
+        else:
+            entry["poll_trend"] = None
+        result[district_id] = entry
+    return result
+
+
 def trailing_average_summary(polls: pd.DataFrame, window_days: int, as_of: date) -> dict:
     """
     Simple, unweighted trailing mean of `gb` over the last `window_days`
@@ -130,20 +239,24 @@ def trailing_average_summary(polls: pd.DataFrame, window_days: int, as_of: date)
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Fetch live generic-ballot polls from VoteHub (diagnostic only — see module docstring)"
+        description="Fetch live generic-ballot and district-level polls from VoteHub "
+                     "(diagnostic only — see module docstring)"
     )
     parser.add_argument("--subject", type=str, default="2026",
                         help="VoteHub 'subject' (election cycle) to fetch (default: 2026)")
     parser.add_argument("--window-days", type=int, default=14,
                         help="Trailing-average window in days (default: 14)")
+    parser.add_argument("--skip-district-polls", action="store_true",
+                        help="Skip the district-level (us-representative) fetch; "
+                             "generic-ballot only, the original behavior of this script.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Fetch and print the summary but don't write output files")
     args = parser.parse_args()
 
     LIVE_DIR.mkdir(parents=True, exist_ok=True)
+    as_of = datetime.now(timezone.utc).date()
 
     polls = fetch_generic_ballot_polls(subject=args.subject)
-    as_of = datetime.now(timezone.utc).date()
     summary = trailing_average_summary(polls, args.window_days, as_of)
 
     print(f"\n{'─'*60}")
@@ -152,6 +265,16 @@ def main() -> None:
     if summary["gb_trailing_avg"] is not None:
         print(f" Trailing average (Dem - Rep): {summary['gb_trailing_avg']:+.2f}")
     print(f"{'─'*60}\n")
+
+    district_polls = pd.DataFrame()
+    district_summary: dict = {}
+    if not args.skip_district_polls:
+        district_polls = fetch_house_district_polls()
+        district_summary = house_district_poll_summary(district_polls, as_of)
+        print(f"{'─'*60}")
+        print(f" DISTRICT-LEVEL HOUSE POLLS — DIAGNOSTIC ONLY, NOT A MODEL INPUT")
+        print(f" {len(district_polls)} polls across {district_polls['district_id'].nunique() if len(district_polls) else 0} districts as of {as_of.isoformat()}")
+        print(f"{'─'*60}\n")
 
     if args.dry_run:
         logger.info("Dry run — no files written.")
@@ -166,6 +289,16 @@ def main() -> None:
         json.dump(summary, f, indent=2)
     logger.info(f"Trailing-average summary → {summary_path}")
 
+    if not args.skip_district_polls:
+        district_polls_path = LIVE_DIR / "house_district_polls.csv"
+        district_polls.to_csv(district_polls_path, index=False)
+        logger.info(f"Raw district-level poll list → {district_polls_path}")
+
+        district_summary_path = LIVE_DIR / "house_district_polls_summary.json"
+        with open(district_summary_path, "w") as f:
+            json.dump({"as_of": as_of.isoformat(), "districts": district_summary}, f, indent=2)
+        logger.info(f"Per-district summary → {district_summary_path}")
+
     log_path = LIVE_DIR / "polling_fetch_log.jsonl"
     with open(log_path, "a") as f:
         f.write(json.dumps({
@@ -173,6 +306,8 @@ def main() -> None:
             "subject": args.subject,
             "window_days": args.window_days,
             "n_polls_fetched": int(len(polls)),
+            "n_district_polls_fetched": int(len(district_polls)),
+            "n_districts_with_coverage": int(district_polls["district_id"].nunique()) if len(district_polls) else 0,
             **summary,
         }) + "\n")
 

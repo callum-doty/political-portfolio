@@ -417,6 +417,261 @@ def fetch_coordinated_by_committee(cycle: int, api_key: str, committee_id: str, 
     logger.info(f"Saved {len(out)} districts → {out_path}")
 
 
+# ─── Tier 2: dated candidate-committee periodic reports (Paper III, new) ─────
+# Distinct from candidate_disbursements_{cycle}.csv (weball bulk file,
+# cycle-cumulative-final TTL_DISB only): this is the genuinely dated
+# per-filing-period panel that docs/theta_followup_plan.md Section 0.1.1
+# documented as "no per-filing date field anywhere in this repository" --
+# that claim was true of the bulk files this project used, but not of the
+# FEC API's /committee/{id}/reports/ endpoint, confirmed against live data
+# this session, not assumed from documentation.
+
+def _load_candidate_committee_crosswalk(cycle: int) -> dict[str, str]:
+    """
+    Map House CAND_ID -> principal campaign committee ID for a cycle, from
+    the raw candidate-committee-linkage bulk file(s)
+    (data/raw/candidate_committee_linkage/ccl*.txt -- downloaded per cycle
+    with inconsistent filenames, e.g. "ccl.txt", "ccl 2.txt"; this reads
+    every ccl*.txt present and filters by the FEC_ELECTION_YR column rather
+    than trusting the filename).
+
+    Raw schema (pipe-delimited, no header): CAND_ID, CAND_ELECTION_YR,
+    FEC_ELECTION_YR, CMTE_ID, CMTE_TSPE, CMTE_DSGN, LINKAGE_ID.
+
+    Filters to CMTE_DSGN == "P" (principal campaign committee -- a
+    candidate can have multiple linked committees, e.g. joint fundraisers;
+    only the principal committee files the Form 3 periodic reports needed
+    here) and CAND_ID starting with "H" (House). A candidate can appear
+    more than once if their principal-committee linkage was amended
+    mid-cycle; kept the highest LINKAGE_ID (most recently created linkage
+    row) as an approximation of "most current," not a resolved amendment
+    chain like load_ie_transactions_dated's file_num/prev_file_num logic.
+    """
+    import pandas as pd
+
+    ccl_dir = config.raw_path("candidate_committee_linkage")
+    cols = ["cand_id", "cand_election_yr", "fec_election_yr", "cmte_id", "cmte_tspe", "cmte_dsgn", "linkage_id"]
+    paths = sorted(ccl_dir.glob("ccl*.txt")) if ccl_dir.exists() else []
+    if not paths:
+        raise FileNotFoundError(f"No ccl*.txt files found in {ccl_dir}")
+
+    frames = []
+    for path in paths:
+        df = pd.read_csv(path, sep="|", header=None, names=cols, dtype=str)
+        frames.append(df[df["fec_election_yr"] == str(cycle)])
+    all_df = pd.concat(frames, ignore_index=True)
+    principal = all_df[
+        (all_df["cmte_dsgn"] == "P") & (all_df["cand_id"].str.startswith("H", na=False))
+    ].copy()
+    principal["linkage_id"] = pd.to_numeric(principal["linkage_id"], errors="coerce")
+    principal = principal.sort_values("linkage_id").drop_duplicates("cand_id", keep="last")
+    return dict(zip(principal["cand_id"], principal["cmte_id"]))
+
+
+_PERIODIC_REPORT_COLUMNS = [
+    "district_id", "party", "cycle", "fec_candidate_id", "committee_id",
+    "coverage_start_date", "coverage_end_date", "receipts_period",
+    "disbursements_period", "cash_on_hand_end_period", "report_type_full",
+    "beginning_image_number",
+]
+
+
+def fetch_candidate_periodic_reports(cycle: int, api_key: str, force: bool = False) -> None:
+    """
+    Fetch dated, per-period Form 3 financial reports (quarterly + pre/post-
+    general) for every House candidate's principal campaign committee in a
+    cycle, via FEC API's /committee/{committee_id}/reports/ endpoint.
+
+    One API call (paginated) per committee -- the endpoint returns every
+    period for a committee/cycle in one call, not one call per report -- so
+    this is roughly (n nominees from fec.load_candidate_disbursements(cycle))
+    calls, NOT one per row of the raw candidate_disbursements_{cycle}.csv
+    file. This distinction matters for correctness, not just speed: that raw
+    file has one row per candidate INCLUDING primary losers (multiple D or R
+    candidates can share a district), while
+    src.backtest.data.fec.cumulative_candidate_spend_as_of groups by
+    (district_id, party) and sums -- fetching every primary loser's
+    committee too would silently double- or triple-count a district's real
+    candidate spend. fec.load_candidate_disbursements(cycle) already applies
+    the exact same top-spender-per-party-per-district nominee selection
+    (with MIT-ballot cross-referencing) this project's static pipeline uses
+    everywhere else, so fetching exactly that roster keeps the dated panel
+    consistent with it and cuts the fetch volume roughly 3-4x for free
+    (~1,750 nominees across 2022+2024 vs. ~6,400 raw candidate rows).
+    Requires a registered key (1,000 req/hr); DEMO_KEY (40 req/hr) exhausts
+    almost immediately at this volume.
+
+    Checkpointed and resumable: results are appended to a `.partial.csv`
+    file after every committee (not accumulated in memory and written once
+    at the end) and renamed to the final path only once every candidate has
+    been processed. A run that gets killed partway (observed in practice --
+    a ~3,300-candidate cycle at this endpoint's pace takes over an hour, well
+    past what a single long-running background process can be relied on to
+    complete in one sitting) can simply be re-invoked: committees already
+    present in the `.partial.csv` are skipped, not re-fetched.
+
+    Amendments are NOT resolved here -- multiple report rows can share the
+    same (coverage_start_date, coverage_end_date) if a filing was amended.
+    Raw data is written as-is; src.backtest.data.fec.load_candidate_periodic_reports
+    resolves amendments at load time (same division of responsibility as
+    load_ie_transactions_dated's file_num/prev_file_num resolution).
+
+    Output: candidate_periodic_reports_{cycle}.csv, columns:
+        district_id, party, cycle, fec_candidate_id, committee_id,
+        coverage_start_date, coverage_end_date, receipts_period,
+        disbursements_period, cash_on_hand_end_period, report_type_full,
+        beginning_image_number
+    """
+    import requests
+    import pandas as pd
+
+    out_path = config.raw_path("fec") / f"candidate_periodic_reports_{cycle}.csv"
+    if out_path.exists() and not force:
+        logger.info(f"Candidate periodic reports {cycle}: already present, skipping")
+        return
+
+    cand_path = config.raw_path("fec") / f"candidate_disbursements_{cycle}.csv"
+    if not cand_path.exists():
+        raise FileNotFoundError(
+            f"{cand_path} not found -- run fetch_candidate_totals_bulk({cycle}) first; "
+            "the periodic-reports fetch needs the candidate roster it selects nominees from."
+        )
+    from backtest.data import fec as _fec_loader   # local import: avoids a module-level
+    # dependency from this data-fetch script on the estimation-layer package for its
+    # every other function, matching this file's existing "import inside the function
+    # that needs it" convention (see fetch_ie_by_committee, etc.)
+    nominees = _fec_loader.load_candidate_disbursements(cycle)   # top spender per (district, party)
+    raw_cand_df = pd.read_csv(cand_path, dtype=str)
+    # nominees (from load_candidate_disbursements) has no fec_candidate_id column --
+    # it's dropped during nominee selection -- so recover it by re-joining on
+    # (district_id, party, candidate_disbursements), the same key that selection was
+    # performed on. This keeps this function using load_candidate_disbursements as the
+    # single source of truth for "who is the nominee" rather than re-deriving it.
+    raw_cand_df["candidate_disbursements"] = pd.to_numeric(
+        raw_cand_df["candidate_disbursements"], errors="coerce"
+    ).fillna(0)
+    merged = nominees.merge(
+        raw_cand_df[["district_id", "party", "fec_candidate_id", "candidate_disbursements"]],
+        on=["district_id", "party", "candidate_disbursements"], how="left",
+    )
+    # Collision case, checked directly against real 2022/2024 data (not hypothetical):
+    # a small number of (district_id, party) groups (~1% -- 5/875 in 2022, 11/872 in
+    # 2024) have MORE THAN ONE raw candidate row with the identical disbursement
+    # amount as the selected nominee -- e.g. WI-03 2024 D, "COOKE, REBECCA" appears
+    # under two different fec_candidate_id values (H2WI03130, H4WI03169) with the
+    # exact same $6,347,919.13 total, an FEC re-registration quirk that predates this
+    # fetch (load_candidate_disbursements's own groupby(...).first() already resolves
+    # this identically arbitrarily, since both raw rows tie on disbursement amount --
+    # this is not a new ambiguity introduced here). Logged and kept (first match
+    # taken) rather than silently resolved, since a wrong choice here fetches a real
+    # but possibly-mismatched committee's periodic reports for ~1% of districts --
+    # acceptable for a trickle-rate calibration that aggregates hundreds of
+    # district-periods to a tier median, not acceptable to leave undocumented.
+    collision_groups = merged.groupby(["district_id", "party"]).size()
+    n_collisions = int((collision_groups > 1).sum())
+    if n_collisions:
+        logger.warning(
+            f"Candidate periodic reports {cycle}: {n_collisions} (district_id, party) "
+            "nominee(s) matched more than one raw candidate row on tied disbursement "
+            "amounts (see fetch_candidate_periodic_reports docstring) -- keeping the "
+            "first match for each, not guaranteed to be the intended committee."
+        )
+    cand_df = merged.drop_duplicates(subset=["district_id", "party"])
+    n_unmatched = int(cand_df["fec_candidate_id"].isna().sum())
+    if n_unmatched:
+        logger.warning(
+            f"Candidate periodic reports {cycle}: {n_unmatched} nominee(s) could not be "
+            "re-matched to a fec_candidate_id (no raw row with a matching disbursement "
+            "amount) and will be skipped."
+        )
+        cand_df = cand_df[cand_df["fec_candidate_id"].notna()].copy()
+    crosswalk = _load_candidate_committee_crosswalk(cycle)
+
+    partial_path = config.raw_path("fec") / f"candidate_periodic_reports_{cycle}.partial.csv"
+    done_committees: set[str] = set()
+    if partial_path.exists() and not force:
+        existing = pd.read_csv(partial_path, dtype=str)
+        if len(existing):
+            done_committees = set(existing["committee_id"].dropna().unique())
+        logger.info(
+            f"Resuming {cycle}: {len(done_committees)} committees already fetched in "
+            f"{partial_path.name}, will be skipped."
+        )
+    else:
+        pd.DataFrame(columns=_PERIODIC_REPORT_COLUMNS).to_csv(partial_path, index=False)
+
+    n_no_committee = 0
+    n_resumed_skip = 0
+    n_fetched_this_run = 0
+    n_report_rows_this_run = 0
+    with requests.Session() as session:
+        for i, row in cand_df.iterrows():
+            cand_id = row.get("fec_candidate_id")
+            committee_id = crosswalk.get(cand_id)
+            if not committee_id:
+                n_no_committee += 1
+                continue
+            if committee_id in done_committees:
+                n_resumed_skip += 1
+                continue
+            try:
+                records = _fec_paginate(session, f"/committee/{committee_id}/reports/", {
+                    "api_key": api_key,
+                    "cycle": cycle,
+                })
+            except Exception as e:
+                logger.warning(f"  Failed to fetch reports for {committee_id} ({cand_id}): {e}")
+                continue
+            rows = [{
+                "district_id": row.get("district_id"),
+                "party": row.get("party"),
+                "cycle": cycle,
+                "fec_candidate_id": cand_id,
+                "committee_id": committee_id,
+                "coverage_start_date": r.get("coverage_start_date"),
+                "coverage_end_date": r.get("coverage_end_date"),
+                "receipts_period": r.get("total_receipts_period"),
+                "disbursements_period": r.get("total_disbursements_period"),
+                "cash_on_hand_end_period": r.get("cash_on_hand_end_period"),
+                "report_type_full": r.get("report_type_full"),
+                "beginning_image_number": r.get("beginning_image_number"),
+            } for r in records]
+            # Always append a row even for a committee with zero reports, so a
+            # resumed run's `done_committees` set (built from committee_id
+            # values actually present in the file) still recognizes this
+            # committee as already handled -- otherwise a zero-report
+            # committee would be re-fetched on every resume, forever.
+            if not rows:
+                rows = [{col: None for col in _PERIODIC_REPORT_COLUMNS}]
+                rows[0].update({"district_id": row.get("district_id"), "party": row.get("party"),
+                                 "cycle": cycle, "fec_candidate_id": cand_id, "committee_id": committee_id})
+            pd.DataFrame(rows, columns=_PERIODIC_REPORT_COLUMNS).to_csv(
+                partial_path, mode="a", header=False, index=False
+            )
+            n_fetched_this_run += 1
+            n_report_rows_this_run += len(records)
+            if n_fetched_this_run % 50 == 0:
+                logger.info(
+                    f"  {cycle}: {n_fetched_this_run} committees fetched this run "
+                    f"({n_resumed_skip} resumed/skipped, {i + 1}/{len(cand_df)} candidates scanned), "
+                    f"{n_report_rows_this_run} report-rows this run"
+                )
+
+    if n_no_committee:
+        logger.warning(
+            f"Candidate periodic reports {cycle}: {n_no_committee}/{len(cand_df)} candidates "
+            "had no principal-committee match in the ccl crosswalk and were skipped."
+        )
+
+    partial_path.rename(out_path)
+    final_df = pd.read_csv(out_path, dtype=str)
+    n_committees = final_df["committee_id"].nunique() if len(final_df) else 0
+    logger.info(
+        f"Complete: {len(final_df)} periodic report-rows across {n_committees} committees "
+        f"({n_fetched_this_run} fetched this run, {n_resumed_skip} resumed from a prior run) → {out_path}"
+    )
+
+
 def consolidate_fec_files(cycle: int) -> None:
     """Merge per-committee IE and coordinated files into single canonical files."""
     import pandas as pd
@@ -723,7 +978,7 @@ def main() -> None:
         default=config.panel_cycles() + [2024],
     )
     parser.add_argument(
-        "--only", choices=["fec", "incumbency", "census", "all"],
+        "--only", choices=["fec", "fec-periodic", "incumbency", "census", "all"],
         default="all",
     )
     parser.add_argument(
@@ -777,6 +1032,18 @@ def main() -> None:
     if args.only in ("fec", "incumbency", "all"):
         for cycle in args.cycles:
             derive_incumbency(cycle)
+
+    if args.only == "fec-periodic":
+        if args.fec_api_key == "DEMO_KEY":
+            logger.warning(
+                "DEMO_KEY detected (40 req/hr). This fetch makes one call per "
+                "House candidate committee (~400-800 per cycle) -- register a "
+                "free key at https://api.open.fec.gov/developers and pass "
+                "--fec-api-key YOUR_KEY, or this will be extremely slow."
+            )
+        for cycle in args.cycles:
+            logger.info(f"─── Candidate periodic reports: cycle {cycle} ───")
+            fetch_candidate_periodic_reports(cycle, args.fec_api_key)
 
     if args.only in ("census", "all"):
         fetch_census_cvap(args.census_api_key)

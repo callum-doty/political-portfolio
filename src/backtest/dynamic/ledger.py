@@ -128,11 +128,23 @@ class RealizedSpendCommitmentSource:
       - Coordinated expenditures (FEC Schedule F, via
         `fec.load_coordinated_expenditures`) — cycle-cumulative only; this
         repo has no per-filing date source for this component (the same
-        documented gap as `dynamic/simulate.py`'s historical harness), so
-        it is held at its latest fetched total regardless of `period_date`.
+        documented gap as `dynamic/simulate.py`'s `_static_floor_totals`),
+        so it is held at its latest fetched total regardless of
+        `period_date`.
       - Independent expenditures (FEC Schedule E, via
         `fec.cumulative_ie_as_of`) — genuinely date-bucketed from
         per-transaction data, so this component does respect `period_date`.
+
+    Candidate-committee spend is intentionally NOT a third component here —
+    committed capital (L_t) is party-committee money (coordinated + IE);
+    candidate-committee spend is the party's own remaining-budget floor,
+    not something the party "commits" to itself. That said, the underlying
+    per-filing-date gap this docstring used to cite for candidate spend as
+    well is resolved as of this session: `data_catalog.md` §2.7's dated
+    periodic-reports panel gives candidate-committee spend genuine
+    per-filing dating, now used in `dynamic/simulate.py`'s
+    `_reconstruct_races_at` for the floor itself. Coordinated expenditures
+    remain the one genuinely undated component in this ledger.
 
     This does NOT capture booked-but-unaired reservations (the concept
     `AdReservationProxySource` targets and cannot obtain affordably — see

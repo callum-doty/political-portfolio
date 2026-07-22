@@ -3,11 +3,13 @@
 Longstaff-Schwartz backward induction for Theta(t) (Paper III Section 7.2),
 run only after Section 7.1's simulator self-consistency gate passed.
 
-Setup: 2026 live universe (434 races), "wait" branch simulated forward
-(no discretionary deployment -- candidate-committee floors only; R_i,t
-moves via residual noise only, since eta fires only in reaction to a
-deployment that never happens on this branch), K paths, biweekly periods
-from today to Election Day 2026-11-03.
+Setup: 2026 live universe (434 races), "wait" branch simulated forward (no
+DCCC discretionary deployment; candidate-committee floors D_i,t grow via a
+calibrated non-discretionary spending trickle -- data_catalog.md Section
+2.7 / scripts/estimate_candidate_spend_trickle.py, unblocking
+docs/theta_followup_plan.md Section 0.1.1's previously-blocked fix -- and
+R_i,t reacts to that trickle via eta on top of residual noise), K paths,
+biweekly periods from today to Election Day 2026-11-03.
 
 Per (path, period), two values are compared:
   - "Deploy now": close the discretionary reserve immediately via the fast
@@ -75,6 +77,12 @@ from simulate_and_validate import incremental_variances, remaining_variance, SIG
 ROOT = Path(__file__).parent.parent
 RNG = np.random.default_rng(20260716)
 
+# Wait-branch spending trickle (docs/theta_followup_plan.md Section 0.1.1's
+# blocked fix -- unblocked this session by data_catalog.md Section 2.7's
+# dated candidate-committee periodic-reports panel). See
+# scripts/estimate_candidate_spend_trickle.py for how this is fit.
+_TRICKLE_PATH = ROOT / "data/processed/candidate_spend_trickle.json"
+
 # Single source of truth: data/processed/live_2026_state.json, written by
 # scripts/plot_2026_live_allocation.py. Previously TODAY/ELECTION_DAY/F0 were
 # independent hardcoded literals here -- a stale TODAY already caused a real
@@ -104,6 +112,39 @@ def load_coef_and_sigma():
     with open(ROOT / "data/processed/sigma_model.json") as f:
         sigma_coef = json.load(f)
     return coef, SigmaModel(_coef=sigma_coef)
+
+
+def load_trickle_rate_per_day(tiers_per_race: list[str]) -> np.ndarray:
+    """Per-race $/day candidate-committee spending trickle rate (data_catalog.md
+    Section 2.7 / scripts/estimate_candidate_spend_trickle.py), keyed by each
+    race's own Cook tier. Falls back to the pooled rate for a tier with no
+    fitted observations, and to 0.0 (the old, documented behavior -- D_i,t
+    held perfectly fixed while waiting) if the trickle file has not been
+    generated yet, so this script remains runnable before the historical
+    dated panel exists for any cycle.
+
+    Reads mean_rate_per_day, not median: checked directly against the real
+    2022/2024 panel, median is exactly $0.00/day in every tier -- FEC's
+    quarterly filing cadence against this project's biweekly period grid
+    means most 14-day windows contain no new filing, so a median across
+    mostly-zero deltas is zero regardless of real underlying growth (see
+    estimate_candidate_spend_trickle.py's module docstring for the full
+    reasoning). Uses trickle["preferred_estimator"] rather than hardcoding
+    the key name, so a future re-calibration's own choice of estimator is
+    respected here without a second edit."""
+    if not _TRICKLE_PATH.exists():
+        print(f"  [trickle] {_TRICKLE_PATH} not found -- wait-branch D_i,t will stay fixed "
+              "(pre-fix behavior). Run scripts/estimate_candidate_spend_trickle.py once the "
+              "dated candidate periodic-reports panel is fetched.")
+        return np.zeros(len(tiers_per_race))
+    with open(_TRICKLE_PATH) as f:
+        trickle = json.load(f)
+    by_tier = trickle["by_tier"]
+    estimator = trickle.get("preferred_estimator", "mean_rate_per_day")
+    pooled_rate = by_tier.get("_pooled", {}).get(estimator, 0.0)
+    return np.array([
+        by_tier.get(t, {}).get(estimator, pooled_rate) for t in tiers_per_race
+    ])
 
 
 def fit_eta_and_resid(fit_cycle: int) -> tuple[dict, dict]:
@@ -239,23 +280,46 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
     resid_std_arr = resid_std_arr_by_path
     eta_arr = eta_arr_by_path
 
-    # --- Simulate the "wait" branch forward: R moves via residual noise only ---
-    # NOTE (docs/theta_followup_plan.md Section 0.1.1): eta_arr is NOT applied here.
-    # Giving eta something to react to on this branch requires a non-discretionary
-    # baseline spending trickle (e.g. candidate-committee floor growth); that
-    # requires a dated candidate-committee disbursement panel, which does not
-    # exist in this repository -- `candidate_disbursements_{cycle}.csv` is
-    # cycle-cumulative-final only (TTL_DISB), the same permanent gap
-    # `dynamic/ledger.py`'s RealizedSpendCommitmentSource docstring already
-    # documents for coordinated expenditures. D_i,t is therefore still held
-    # exactly fixed while waiting, so eta still cannot fire on this branch --
-    # not a bug, a real, reported data constraint. eta IS wired into the
-    # deploy branch below (Section 0.1.2), where the full deployed amount is
-    # unambiguously "new" spend and no dated panel is needed.
+    # --- Simulate the "wait" branch forward (Section 0.1.1's fix, unblocked this
+    # session by data_catalog.md Section 2.7's dated candidate-periodic-reports
+    # panel): D_i,t now grows via a real, calibrated non-discretionary spending
+    # trickle (scripts/estimate_candidate_spend_trickle.py -- candidate-committee
+    # disbursement growth that happens regardless of any DCCC deployment
+    # decision), and R_i,t reacts to that trickle via eta_arr, on top of the
+    # residual noise the pre-fix model already had. Deterministic trickle (same
+    # $/day for every path, per race, at this pass's tier-median rate) --
+    # a stochastic trickle is a natural extension, not attempted here, since
+    # the calibration itself (estimate_candidate_spend_trickle.py) reports a
+    # point rate per tier, not a distribution, unlike eta's bootstrap treatment.
+    #
+    # SCOPE BOUNDARY, stated explicitly rather than left implicit: eta_by_tier
+    # (fit_eta_and_resid, above) was estimated from IE-to-IE reaction only
+    # (Paper III Section 4.1's stated scope -- opponent IE spend reacting to
+    # this side's IE spend). Applying that same eta here, to R_i,t's reaction
+    # to a candidate-COMMITTEE spending trickle rather than an IE increment,
+    # is a new, untested application of an existing estimate -- an assumption
+    # of the same kind Section 5.5 already makes explicit for alpha3 (never
+    # re-estimated for the estimand it's now applied to). This is not
+    # re-validated by simulate_and_validate.py's Section 7.1 self-consistency
+    # gate, which checks eta recovery against the same IE-to-IE mechanism it
+    # was fit on (Check B) -- not this candidate-spend-to-IE mechanism, which
+    # would require a separate regression (opponent IE reaction to candidate-
+    # committee spend specifically) not yet run. Reported here rather than
+    # silently assumed validated.
+    trickle_per_day = load_trickle_rate_per_day(tiers)          # (n,) $/day
+    trickle_per_period = trickle_per_day * PERIOD_DAYS           # (n,) $/period
+
+    d_paths = np.zeros((K_PATHS, N_PERIODS + 1, n))
+    d_paths[:, 0, :] = floor_arr[None, :]
     r_paths = np.zeros((K_PATHS, N_PERIODS + 1, n))
     r_paths[:, 0, :] = r0_arr
     for tstep in range(N_PERIODS):
-        r_paths[:, tstep + 1, :] = r_paths[:, tstep, :] + RNG.normal(0, resid_std_arr, size=(K_PATHS, n))
+        d_paths[:, tstep + 1, :] = d_paths[:, tstep, :] + trickle_per_period[None, :]
+        delta_d = d_paths[:, tstep + 1, :] - d_paths[:, tstep, :]   # (K_PATHS, n)
+        reaction = eta_arr * delta_d   # eta discounts/amplifies R's reaction to the trickle, per path/race
+        r_paths[:, tstep + 1, :] = (
+            r_paths[:, tstep, :] + reaction + RNG.normal(0, resid_std_arr, size=(K_PATHS, n))
+        )
     r_paths = np.maximum(r_paths, 1.0)
 
     # --- Simulate G_t (Section 0.1.3): standalone zero-drift random walk, matching
@@ -281,10 +345,10 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         incr = RNG.normal(0, np.sqrt(v), size=(K_PATHS, N_PERIODS))
         eps_cum[:, 1:, i] = np.cumsum(incr, axis=1)
 
-    # mu_i,t = structural(floor D fixed, simulated R_t, static GB) + accumulated epsilon
+    # mu_i,t = structural(trickled D_t, simulated R_t, static GB) + accumulated epsilon
     mu_paths = np.zeros((K_PATHS, N_PERIODS + 1, n))
     for tstep in range(N_PERIODS + 1):
-        d_t = floor_arr[None, :]
+        d_t = d_paths[:, tstep, :]
         t_t = d_t + r_paths[:, tstep, :]
         ratio = np.clip(d_t / t_t, 1e-6, 1 - 1e-6)
         log_ratio = np.log(ratio)
@@ -293,7 +357,16 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
                      + coef.alpha3 * gb_national + c_arr * log_ratio)
         mu_paths[:, tstep, :] = mu_struct + eps_cum[:, tstep, :]
 
-    def _deploy_value(mu_t, r_t, widened_sigma, eta_arr_k):
+    def _mu_struct_at(d, r):
+        """Recompute the structural mu (no epsilon) at an arbitrary (d, r)
+        pair, using the same formula as the mu_paths loop above. Shared
+        helper for _deploy_value's trickle-drift correction below."""
+        t_ = np.maximum(d + r, 1.0)
+        ratio = np.clip(d / t_, 1e-6, 1 - 1e-6)
+        c_arr = beta1_eff_arr + coef.beta2 * np.abs(pvi_arr) + coef.beta3 * is_incumb_arr
+        return coef.alpha0 + coef.alpha1 * pvi_arr + coef.alpha2 * is_incumb_arr + coef.alpha3 * gb_national + c_arr * np.log(ratio)
+
+    def _deploy_value(mu_t, r_t, widened_sigma, eta_arr_k, d_t, d_terminal):
         """Close the reserve now via the LP allocator, apply the resulting
         Delta_mu via the chain-rule gradient, then evaluate expected seats
         against widened_sigma (sigma_i, or sqrt(sigma_i^2+V_i(t)) if time
@@ -307,8 +380,40 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         so a bootstrap-drawn per-path eta (Section 6) discounts the LP's
         linearized gradient exactly like a single-cycle bracket's shared
         value did, just varying path to path instead of being identical
-        across all K paths."""
-        d_t = floor_arr.copy()
+        across all K paths.
+
+        d_t is the CURRENT (trickled) candidate floor at this period/path
+        (Section 0.1.1's fix), not the period-0 floor_arr unconditionally --
+        deploying at period t adds discretionary spend on top of however much
+        the candidate's own committee has already spent by t, consistent with
+        mu_t (passed in) already reflecting that same trickled d_t
+        structurally.
+
+        d_terminal / trickle-drift correction (found and fixed the same
+        session the trickle mechanism was added, before trusting any
+        reported Theta): the widened_sigma convolution
+        (E[Phi((mu+xi)/sigma)]=Phi(mu/sqrt(sigma^2+V)) for xi~N(0,V)) is
+        only valid when the future movement being integrated over is
+        MEAN-ZERO -- true of idiosyncratic epsilon (by construction) and,
+        pre-fix, true of D itself (D_i,t was perfectly fixed, so there was
+        no future D movement to have a mean at all). Now that D grows via a
+        real, deterministic (non-zero-mean) trickle, evaluating the deploy
+        branch at mu_t (today's mu) plus only the DCCC's own delta_mu,
+        widened by idiosyncratic sigma alone, silently omits the DETERMINISTIC
+        mu appreciation the candidate's own future organic spending will
+        produce between now and Election Day regardless of today's decision --
+        while the recursion's "wait" alternative automatically picks this up,
+        because it is fit against real future mu_paths that already reflect
+        the grown D. Leaving this uncorrected would have made "wait" look
+        favored for a reason having nothing to do with genuine option value
+        (it would just be capturing organic growth the deploy branch's
+        shortcut failed to credit itself with). The fix: recompute the
+        structural mu at the fully-trickled terminal floor d_terminal (known
+        in advance -- trickle is deterministic) and an expected terminal R
+        (r_t plus eta's deterministic reaction to the D_terminal-D_t gap;
+        the mean-zero residual noise component is correctly left to
+        widened_sigma, unchanged), and add the resulting shift on top of
+        mu_t + delta_mu before convolving."""
         p_win0 = norm.cdf(mu_t / sigma_arr)
         phi0 = norm.pdf(mu_t / sigma_arr)
         grad = np.array([margin_gradient(coef, pvi_arr[i], incumb_arr[i], d_t[i], r_t[i], eta_arr_k[i])
@@ -321,7 +426,11 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
                         gamma=0.0, cap_fraction=0.15, floor_allocations=d_t, party_budget=F0)
         delta_s = np.maximum(res.allocations - d_t, 0.0)
         delta_mu = grad * delta_s
-        deployed_mu = mu_t + delta_mu
+
+        r_terminal_expected = np.maximum(r_t + eta_arr_k * (d_terminal - d_t), 1.0)
+        trickle_drift = _mu_struct_at(d_terminal, r_terminal_expected) - _mu_struct_at(d_t, r_t)
+
+        deployed_mu = mu_t + delta_mu + trickle_drift
         return norm.cdf(deployed_mu / widened_sigma).sum()
 
     # --- Backward induction ---
@@ -329,8 +438,9 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
 
     print(f"  [{label}] computing terminal condition (forced deploy, {K_PATHS} paths)...")
     V_star = np.array([
-        _deploy_value(mu_paths[k, -1, :], r_paths[k, -1, :], sigma_arr, eta_arr[k])   # V=0 at T: no widening
-        for k in range(K_PATHS)
+        _deploy_value(mu_paths[k, -1, :], r_paths[k, -1, :], sigma_arr, eta_arr[k],
+                       d_paths[k, -1, :], d_paths[k, -1, :])   # at T, d_t IS d_terminal: drift=0
+        for k in range(K_PATHS)   # V=0 at T: no widening
     ])
 
     theta_by_period = []
@@ -339,7 +449,8 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         widened_sigma = np.sqrt(sigma_arr ** 2 + v_remaining)
 
         deploy_vals = np.array([
-            _deploy_value(mu_paths[k, tstep, :], r_paths[k, tstep, :], widened_sigma, eta_arr[k])
+            _deploy_value(mu_paths[k, tstep, :], r_paths[k, tstep, :], widened_sigma,
+                           eta_arr[k], d_paths[k, tstep, :], d_paths[k, -1, :])
             for k in range(K_PATHS)
         ])
 

@@ -369,3 +369,203 @@ def cumulative_ie_as_of(cycle: int, as_of_date) -> pd.DataFrame:
     )
     ie["cycle"] = cycle
     return ie[["district_id", "party", "cycle", "ie_net"]]
+
+
+# ─── Paper III: dated candidate-committee financial panel (new) ─────────────
+# candidate_periodic_reports_{cycle}.csv (scripts/fetch_data.py's
+# fetch_candidate_periodic_reports) is genuinely dated, per-filing-period
+# candidate-committee financial data from the FEC API's
+# /committee/{id}/reports/ endpoint — resolving the gap
+# docs/theta_followup_plan.md Section 0.1.1 documented as "no per-filing
+# date field anywhere in this repository" (true of the bulk weball files
+# load_candidate_disbursements reads; not true of this API endpoint, which
+# nobody had checked until this session). Distinct from
+# load_candidate_disbursements() above, which stays cycle-cumulative-final
+# (TTL_DISB) and is Paper I's frozen input — unmodified by anything below.
+
+
+def load_candidate_periodic_reports(cycle: int) -> pd.DataFrame:
+    """
+    Return dated, amendment-resolved candidate-committee periodic reports
+    for a cycle.
+
+    Amendment resolution: a filing that was later amended can appear more
+    than once with the identical (committee_id, coverage_start_date,
+    coverage_end_date) — the raw fetch does not resolve this (see
+    fetch_candidate_periodic_reports's docstring). Kept: the row with the
+    lexicographically largest `beginning_image_number` per
+    (committee_id, coverage_start_date, coverage_end_date) group —
+    FEC image numbers are date-prefixed and monotonically increasing with
+    filing time, so the largest value is the most recently filed version of
+    that period's report. This is an approximation (unlike
+    load_ie_transactions_dated's exact file_num/prev_file_num chain
+    resolution), stated as such rather than assumed exact.
+
+    Returns DataFrame with columns: district_id, party, cycle,
+    fec_candidate_id, committee_id, coverage_start_date (datetime64),
+    coverage_end_date (datetime64), receipts_period (float),
+    disbursements_period (float), cash_on_hand_end_period (float).
+    """
+    path = config.raw_path("fec") / f"candidate_periodic_reports_{cycle}.csv"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} not found — run "
+            f"`python scripts/fetch_data.py --only fec-periodic --cycles {cycle} "
+            "--fec-api-key YOUR_KEY` first (requires a registered FEC API key)."
+        )
+    df = pd.read_csv(path, dtype={"district_id": str, "party": str,
+                                   "fec_candidate_id": str, "committee_id": str})
+    df["coverage_start_date"] = pd.to_datetime(df["coverage_start_date"], errors="coerce")
+    df["coverage_end_date"] = pd.to_datetime(df["coverage_end_date"], errors="coerce")
+    for col in ["receipts_period", "disbursements_period", "cash_on_hand_end_period"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+
+    n_before = len(df)
+    df = df[df["coverage_end_date"].notna()].copy()
+    n_dropped = n_before - len(df)
+    if n_dropped:
+        logger.warning(
+            f"load_candidate_periodic_reports({cycle}): dropped {n_dropped}/{n_before} "
+            "rows with an unparseable coverage_end_date."
+        )
+
+    df["_img_sort_key"] = df["beginning_image_number"].astype(str)
+    df = (
+        df.sort_values("_img_sort_key")
+        .drop_duplicates(
+            subset=["committee_id", "coverage_start_date", "coverage_end_date"], keep="last"
+        )
+        .drop(columns=["_img_sort_key"])
+    )
+    return df[["district_id", "party", "cycle", "fec_candidate_id", "committee_id",
+               "coverage_start_date", "coverage_end_date", "receipts_period",
+               "disbursements_period", "cash_on_hand_end_period"]]
+
+
+def cumulative_candidate_spend_as_of(cycle: int, as_of_date) -> pd.DataFrame:
+    """
+    Return cumulative candidate-committee disbursements per (district,
+    party), summing every periodic report with coverage_end_date <=
+    as_of_date — the dated analog of load_candidate_disbursements() for
+    point-in-time reconstruction (dynamic/simulate.py), replacing what was
+    previously held fixed at the cycle-final total for every period.
+
+    Returns DataFrame with columns: district_id, party, cycle, disb_cum.
+    """
+    as_of = pd.Timestamp(as_of_date)
+    reports = load_candidate_periodic_reports(cycle)
+    cum = reports[reports["coverage_end_date"] <= as_of]
+    out = (
+        cum.groupby(["district_id", "party"])["disbursements_period"]
+        .sum()
+        .reset_index()
+        .rename(columns={"disbursements_period": "disb_cum"})
+    )
+    out["cycle"] = cycle
+    return out[["district_id", "party", "cycle", "disb_cum"]]
+
+
+def cumulative_candidate_receipts_as_of(cycle: int, as_of_date) -> pd.DataFrame:
+    """
+    Return cumulative candidate-committee receipts per (district, party) as
+    of as_of_date — same shape as cumulative_candidate_spend_as_of, for
+    fundraising-velocity features.
+
+    Returns DataFrame with columns: district_id, party, cycle, receipts_cum.
+    """
+    as_of = pd.Timestamp(as_of_date)
+    reports = load_candidate_periodic_reports(cycle)
+    cum = reports[reports["coverage_end_date"] <= as_of]
+    out = (
+        cum.groupby(["district_id", "party"])["receipts_period"]
+        .sum()
+        .reset_index()
+        .rename(columns={"receipts_period": "receipts_cum"})
+    )
+    out["cycle"] = cycle
+    return out[["district_id", "party", "cycle", "receipts_cum"]]
+
+
+def cash_on_hand_as_of(cycle: int, as_of_date) -> pd.DataFrame:
+    """
+    Return each (district, party) candidate committee's most recently
+    reported cash_on_hand_end_period at or before as_of_date — populates
+    dynamic/state.py's long-stubbed RaceState.cash_on_hand_d field, which
+    previously had no data source anywhere in this repo.
+
+    Districts/parties with no report on or before as_of_date are absent
+    from the result (not zero-filled) — a candidate with no filing yet as
+    of a given date has genuinely unknown cash on hand, not $0.
+
+    Returns DataFrame with columns: district_id, party, cycle, cash_on_hand.
+    """
+    as_of = pd.Timestamp(as_of_date)
+    reports = load_candidate_periodic_reports(cycle)
+    cum = reports[reports["coverage_end_date"] <= as_of]
+    if not len(cum):
+        return pd.DataFrame(columns=["district_id", "party", "cycle", "cash_on_hand"])
+    latest = (
+        cum.sort_values("coverage_end_date")
+        .groupby(["district_id", "party"])
+        .last()
+        .reset_index()
+        .rename(columns={"cash_on_hand_end_period": "cash_on_hand"})
+    )
+    latest["cycle"] = cycle
+    return latest[["district_id", "party", "cycle", "cash_on_hand"]]
+
+
+def spend_velocity(cycle: int, as_of_date, window_days: int = 30) -> pd.DataFrame:
+    """
+    Return each (district, party) candidate committee's average daily
+    disbursement rate over the trailing window_days ending at as_of_date —
+    "candidate spending velocity" (paper3_draft.md's feedback catalog).
+
+    A report whose coverage window only partially overlaps
+    [as_of_date - window_days, as_of_date] contributes its full
+    disbursements_period (no intra-report proration — FEC periodic reports
+    don't have finer-grained dating than their own coverage window, so this
+    is the finest resolution available), divided by window_days to express
+    a $/day rate.
+
+    Returns DataFrame with columns: district_id, party, cycle,
+    disb_velocity_per_day.
+    """
+    as_of = pd.Timestamp(as_of_date)
+    window_start = as_of - pd.Timedelta(days=window_days)
+    reports = load_candidate_periodic_reports(cycle)
+    windowed = reports[
+        (reports["coverage_end_date"] > window_start) & (reports["coverage_end_date"] <= as_of)
+    ]
+    out = (
+        windowed.groupby(["district_id", "party"])["disbursements_period"]
+        .sum()
+        .reset_index()
+    )
+    out["disb_velocity_per_day"] = out["disbursements_period"] / window_days
+    out["cycle"] = cycle
+    return out[["district_id", "party", "cycle", "disb_velocity_per_day"]]
+
+
+def receipts_velocity(cycle: int, as_of_date, window_days: int = 30) -> pd.DataFrame:
+    """
+    Fundraising-velocity analog of spend_velocity — average daily receipts
+    rate over the trailing window_days ending at as_of_date.
+
+    Returns DataFrame with columns: district_id, party, cycle,
+    receipts_velocity_per_day.
+    """
+    as_of = pd.Timestamp(as_of_date)
+    window_start = as_of - pd.Timedelta(days=window_days)
+    reports = load_candidate_periodic_reports(cycle)
+    windowed = reports[
+        (reports["coverage_end_date"] > window_start) & (reports["coverage_end_date"] <= as_of)
+    ]
+    out = (
+        windowed.groupby(["district_id", "party"])["receipts_period"]
+        .sum()
+        .reset_index()
+    )
+    out["receipts_velocity_per_day"] = out["receipts_period"] / window_days
+    out["cycle"] = cycle
+    return out[["district_id", "party", "cycle", "receipts_velocity_per_day"]]

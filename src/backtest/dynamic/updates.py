@@ -36,6 +36,7 @@ def compute_raw_snapshot(
     period: int,
     period_date: date,
     generic_ballot_national: float,
+    cash_on_hand_by_district: dict[str, float] | None = None,
 ) -> CampaignState:
     """Re-run Paper I's fitted pipeline (unmodified) on this period's
     RaceRecord snapshot to produce the pre-smoothing raw state.
@@ -45,6 +46,17 @@ def compute_raw_snapshot(
     spend ratio) varies by period. `mu_hat`/`sigma_hat` are initialized to
     the raw values here — `EMAStateUpdater.update()` (or any other
     `StateUpdater`) is what actually smooths them against the prior period.
+
+    `cash_on_hand_by_district` (district_id -> dollars) is optional and, if
+    supplied, populates `RaceState.cash_on_hand_d` — previously an
+    unconditional stub (this module's docstring history / data_catalog.md
+    §2.7). This module stays decoupled from `backtest.data.fec` (dynamic/
+    depends on data/, never the reverse, per the rest of this package's
+    convention); the caller (e.g. `dynamic/simulate.py`'s historical
+    harness) is responsible for building this dict via
+    `fec.cash_on_hand_as_of()` and passing it in. Districts absent from the
+    dict, or when the dict itself is None, leave `cash_on_hand_d` as None —
+    the pre-existing, still-valid "no data for this district/period" state.
     """
     outputs = compute_outputs_batch(races, coef, sigma_model)
     race_states: dict[str, RaceState] = {}
@@ -60,6 +72,10 @@ def compute_raw_snapshot(
             d_total_t=race.d_total,
             r_total_t=race.r_total,
             cand_d_total_t=race.cand_d_total,
+            cash_on_hand_d=(
+                cash_on_hand_by_district.get(race.district_id)
+                if cash_on_hand_by_district is not None else None
+            ),
         )
     return CampaignState(
         period=period,

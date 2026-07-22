@@ -14,7 +14,10 @@ from backtest.model.margin import MarginModelCoefficients
 from backtest.dynamic.ledger import ZeroCommitmentSource
 from backtest.dynamic.updates import EMAStateUpdater
 from backtest.dynamic.periods import ReportingPeriod
-from backtest.dynamic.simulate import one_step_ahead, _reconstruct_races_at
+from backtest.dynamic.simulate import (
+    one_step_ahead, _reconstruct_races_at, _static_floor_totals,
+    _has_dated_candidate_panel, _candidate_fallback_totals,
+)
 
 
 def make_coef() -> MarginModelCoefficients:
@@ -46,7 +49,16 @@ class TestNoLookaheadSafeguard:
             f"_reconstruct_races_at must not accept a prior-results-shaped "
             f"parameter; found {param_names & forbidden}"
         )
-        expected = {"period_index", "period_date", "cycle", "base_races", "static_totals"}
+        # use_dated_candidate_spend/candidate_fallback_totals (added when
+        # candidate-committee spend gained a per-filing-date source,
+        # data_catalog.md §2.7) are a data-source selector and its static
+        # fallback, resolved once per cycle before the period loop starts —
+        # not a prior period's model output, so they don't violate the
+        # no-lookahead safeguard this test enforces.
+        expected = {
+            "period_index", "period_date", "cycle", "base_races", "static_totals",
+            "use_dated_candidate_spend", "candidate_fallback_totals",
+        }
         assert param_names == expected
 
 
@@ -130,6 +142,89 @@ class TestOneStepAheadIndependence:
         for ra, rb in zip(races_1_a, races_1_b):
             assert ra.d_total == pytest.approx(rb.d_total)
             assert ra.r_total == pytest.approx(rb.r_total)
+
+
+class TestDatedCandidateSpendReconstruction:
+    """Paper III (dated candidate periodic reports, data_catalog.md §2.7):
+    _reconstruct_races_at must use genuinely period-varying candidate spend
+    when the dated panel is present, and fall back cleanly to the old
+    cycle-final-held-fixed behavior when it isn't."""
+
+    def _base_race(self) -> RaceRecord:
+        return RaceRecord(
+            district_id="TX-01", state="TX", district=1,
+            cook_rating="Toss-Up", incumb_status="Challenger",
+            pvi=0.0, d_total=0.0, r_total=0.0,
+            cvap=400_000, generic_ballot=-1.2, cand_d_total=0.0,
+        )
+
+    def test_dated_panel_present_makes_candidate_spend_period_varying(self, tmp_path, monkeypatch):
+        cycle = 2024
+        monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
+
+        (tmp_path / f"independent_expenditure_{cycle}.csv").write_text(
+            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date,file_num,prev_file_num\n"
+        )
+        (tmp_path / f"coordinated_expenditures_{cycle}.csv").write_text(
+            "district_id,party,coordinated_expenditures\n"
+        )
+        (tmp_path / f"candidate_periodic_reports_{cycle}.csv").write_text(
+            "district_id,party,cycle,fec_candidate_id,committee_id,coverage_start_date,"
+            "coverage_end_date,receipts_period,disbursements_period,cash_on_hand_end_period,"
+            "report_type_full,beginning_image_number\n"
+            f"TX-01,D,{cycle},H1,C1,2024-01-01,2024-01-31,50000,20000,30000,Q1,202402010001\n"
+            f"TX-01,D,{cycle},H1,C1,2024-02-01,2024-02-29,60000,25000,65000,Q2,202403010001\n"
+        )
+
+        assert _has_dated_candidate_panel(cycle) is True
+
+        static_totals = _static_floor_totals(cycle)
+        races_early = _reconstruct_races_at(
+            0, date(2024, 1, 15), cycle, [self._base_race()], static_totals,
+            use_dated_candidate_spend=True,
+        )
+        races_late = _reconstruct_races_at(
+            1, date(2024, 3, 1), cycle, [self._base_race()], static_totals,
+            use_dated_candidate_spend=True,
+        )
+        # Jan 15 is before the Q1 report's coverage_end_date (Jan 31), so
+        # cumulative candidate spend as-of that date is still 0 -- only IE
+        # would show up, and there isn't any here.
+        assert races_early[0].d_total == pytest.approx(0.0)
+        # March 1 is after both reports -> cumulative D spend = 20000 + 25000.
+        assert races_late[0].d_total == pytest.approx(45000.0)
+
+    def test_falls_back_to_static_totals_when_dated_panel_absent(self, tmp_path, monkeypatch):
+        cycle = 2018
+        monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
+
+        (tmp_path / f"independent_expenditure_{cycle}.csv").write_text(
+            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date,file_num,prev_file_num\n"
+        )
+        (tmp_path / f"coordinated_expenditures_{cycle}.csv").write_text(
+            "district_id,party,coordinated_expenditures\n"
+        )
+        (tmp_path / f"candidate_disbursements_{cycle}.csv").write_text(
+            "district_id,party,candidate_disbursements\n"
+            "TX-01,D,500000\n"
+        )
+        # Deliberately no candidate_periodic_reports_2018.csv written.
+
+        assert _has_dated_candidate_panel(cycle) is False
+
+        static_totals = _static_floor_totals(cycle)
+        fallback_totals = _candidate_fallback_totals(cycle)
+        races_early = _reconstruct_races_at(
+            0, date(2018, 1, 15), cycle, [self._base_race()], static_totals,
+            use_dated_candidate_spend=False, candidate_fallback_totals=fallback_totals,
+        )
+        races_late = _reconstruct_races_at(
+            1, date(2018, 10, 1), cycle, [self._base_race()], static_totals,
+            use_dated_candidate_spend=False, candidate_fallback_totals=fallback_totals,
+        )
+        # Fallback behavior: held fixed at the cycle-final total at every period.
+        assert races_early[0].d_total == pytest.approx(500000.0)
+        assert races_late[0].d_total == pytest.approx(500000.0)
 
 
 class TestDatedIEReconstruction:

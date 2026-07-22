@@ -117,26 +117,33 @@ def main():
                    fontsize=11, fontweight="bold")
     axB.legend(frameon=False, fontsize=8, loc="upper left")
 
-    # ── Panel C: margin between full-deploy and next-best option at t=0 ──
+    # ── Panel C: margin between the winning corner and next-best option at t=0 ──
+    # Data-driven, not hardcoded to "full deploy wins" -- that assumption held
+    # pre-trickle-fix but is now false (hold wins in every scenario, §12.6).
+    # win_fracs lets the label/annotation reflect whichever fraction actually
+    # wins in each scenario, rather than silently mislabeling a "hold wins" bar
+    # as "Full deploy (winner)".
     x = np.arange(len(SCENARIOS))
-    full_vals, next_vals = [], []
+    win_vals, next_vals, win_fracs = [], [], []
     for label in SCENARIOS:
         fracs, vals = _t0_curve(d5[label])
         order = np.argsort(vals)[::-1]
-        full_vals.append(vals[order[0]])
+        win_vals.append(vals[order[0]])
         next_vals.append(vals[order[1]])
-    full_vals, next_vals = np.array(full_vals), np.array(next_vals)
-    margin = full_vals - next_vals
+        win_fracs.append(fracs[order[0]])
+    win_vals, next_vals, win_fracs = np.array(win_vals), np.array(next_vals), np.array(win_fracs)
+    margin = win_vals - next_vals
 
-    axC.bar(x - 0.16, full_vals, width=0.32, color=[SCEN_COLOR[l] for l in SCENARIOS],
-             label="Full deploy (winner)")
+    axC.bar(x - 0.16, win_vals, width=0.32, color=[SCEN_COLOR[l] for l in SCENARIOS],
+             label="Winning action")
     axC.bar(x + 0.16, next_vals, width=0.32, color=[SCEN_COLOR[l] for l in SCENARIOS],
              alpha=0.35, label="Next-best option")
-    ymin = min(next_vals.min(), full_vals.min()) - 0.15
-    ymax = max(next_vals.max(), full_vals.max()) + 0.15
+    ymin = min(next_vals.min(), win_vals.min()) - 0.15
+    ymax = max(next_vals.max(), win_vals.max()) + 0.15
     axC.set_ylim(ymin, ymax)
     for i, m in enumerate(margin):
-        axC.text(i, full_vals[i] + 0.02, f"+{m:.2f}", ha="center", fontsize=9, fontweight="bold")
+        win_label = "hold" if win_fracs[i] == 0.0 else ("deploy" if win_fracs[i] == 1.0 else f"{win_fracs[i]:.0%}")
+        axC.text(i, win_vals[i] + 0.02, f"+{m:.2f}\n({win_label})", ha="center", fontsize=8.5, fontweight="bold")
     axC.set_xticks(x)
     axC.set_xticklabels([SCEN_LABEL[l].replace("eta ", "").replace(", ", "\n") for l in SCENARIOS],
                           fontsize=8.5)
@@ -145,11 +152,14 @@ def main():
                    fontsize=11, fontweight="bold")
     axC.legend(frameon=False, fontsize=8, loc="upper left")
 
-    fig.suptitle("Does a Continuous Deployment Fraction Beat the Corners? No. (Paper III §8.4)",
+    fig.suptitle("Does a Continuous Deployment Fraction Beat the Corners? No. (Paper III §8.4/§8.6)",
                  fontsize=14, fontweight="bold", y=1.06)
     fig.text(0.5, -0.06,
              "A genuinely concave, sequential, carried-forward-budget generalization of the binary deploy/hold decision (theta_followup_plan.md §1.3)\n"
-             "still recommends full deployment today, unanimously across all K=2000 simulated paths, in all three eta scenarios, confirmed at an 11-point grid.",
+             "still lands on a corner, not an interior fraction, in all three eta scenarios, confirmed at an 11-point grid. Updated 2026-07-20 (§12.6):\n"
+             "with a real, dated candidate-spending trickle now driving D_i,t, the corner that wins has flipped from full deployment to HOLDING the\n"
+             "reserve entirely (100% hold in two of three scenarios, 92% in the third) -- the mechanism behind the step shape (panel A) is unrelated\n"
+             "to the trickle fix and persists regardless of which corner wins.",
              ha="center", fontsize=9, color="#555555", style="italic")
     fig.tight_layout(rect=[0, 0.02, 1, 0.94])
     fig.savefig(OUT / "continuous_phi_result_fig.png", bbox_inches="tight")

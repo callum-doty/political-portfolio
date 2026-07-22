@@ -14,6 +14,7 @@ paths:
     bulk_all:         data/raw/bulk_all
     ie_comprehensive: data/raw/independent_expenditure
     generic_ballot:   data/raw/generic_ballot
+    candidate_committee_linkage: data/raw/candidate_committee_linkage
   processed:      data/processed
   outputs:        outputs
 
