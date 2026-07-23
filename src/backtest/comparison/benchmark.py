@@ -12,7 +12,9 @@ from __future__ import annotations
 import logging
 import numpy as np
 import pandas as pd
-from ..types import RaceRecord, ModelOutputs
+from ..types import RaceRecord, ModelOutputs, SigmaModel
+from ..model.margin import MarginModelCoefficients
+from ..optimizer.allocator import nonlinear_expected_seats_at_party_dollars
 from .. import config
 
 logger = logging.getLogger(__name__)
@@ -117,35 +119,66 @@ def expected_seats(p_win: np.ndarray) -> float:
 def compare_allocators(
     races: list[RaceRecord],
     model_outputs: list[ModelOutputs],
+    coef: MarginModelCoefficients,
+    sigma_model: SigmaModel,
     model_shares: np.ndarray,
     null_shares: np.ndarray,
     cook_shares: np.ndarray,
     budget: float,
+    party_budget: float,
     model_label: str = "Model optimizer",
+    eta: float = 0.0,
 ) -> pd.DataFrame:
     """
     Four-way E[Seats] comparison table.
 
+    Every row uses the true nonlinear Φ(μ/σ) evaluation
+    (optimizer.allocator.nonlinear_expected_seats_at_party_dollars()), and
+    every hypothetical row (Null, Cook-implied, Model) redistributes only
+    the DCCC-controllable party_budget, holding every race's own
+    candidate-committee floor fixed -- the only fair basis for comparing
+    allocators against each other, since that is the actual budget any of
+    them could really control. DCCC observed uses its real historical party
+    spend instead (floors fixed, same as the others, but not a
+    reallocation).
+
+    This function went through two rounds of correction on 2026-07-22, both
+    prompted by an anomalous 2022 OOS result where Null appeared to edge out
+    the model optimizer (scripts/investigate_null_benchmark_bias.py):
+      1. Originally used a linearized P_win⁰+MSG·Δspend approximation for
+         Null/Cook while the Model row was patched post-hoc with the
+         optimizer's own nonlinear result -- an inconsistency large enough
+         to flip which allocator looked better in 2022.
+      2. After fixing (1), Null/Cook were still scaled against the *entire*
+         two-party spending pool across all 433 races -- including every
+         candidate's own committee money in every safe seat -- while the
+         Model optimizer only ever redistributed the DCCC-controllable party
+         budget. This is the fix in this version: Null and Cook-implied now
+         compete over the same $party_budget as the Model optimizer, never
+         money DCCC does not control.
+
     Returns DataFrame with columns: allocator, expected_seats, description
     """
-    cook_map = config.cook_win_probs()
-    p_win_model = np.array([o.p_win for o in model_outputs])
+    floors = np.array([r.cand_d_total for r in races])
+    observed_d = np.array([r.d_total for r in races])
 
-    # E[Seats] under DCCC observed (evaluated at model win probs)
-    observed_shares = np.array([r.d_total / budget for r in races])
+    def true_seats(party_dollars: np.ndarray) -> float:
+        return nonlinear_expected_seats_at_party_dollars(races, coef, sigma_model, party_dollars, eta=eta)
+
+    dccc_party = np.maximum(observed_d - floors, 0.0)
+    null_party = null_shares * party_budget
+    cook_party = cook_shares * party_budget
+    model_party = np.maximum(model_shares * budget - floors, 0.0)
 
     rows = [
-        {"allocator": "DCCC observed",     "expected_seats": expected_seats(p_win_model),
-         "description": "Actual 2024 DCCC spending shares, model P_win"},
-        {"allocator": "Null (equal-weight)", "expected_seats": _expected_seats_at_shares(
-            races, model_outputs, null_shares),
-         "description": "Uniform across competitive races"},
-        {"allocator": "Cook-implied",        "expected_seats": _expected_seats_at_shares(
-            races, model_outputs, cook_shares),
-         "description": "Proportional to Cook win probability"},
-        {"allocator": model_label,           "expected_seats": _expected_seats_at_shares(
-            races, model_outputs, model_shares),
-         "description": "Marginal seat gain optimization"},
+        {"allocator": "DCCC observed",     "expected_seats": true_seats(dccc_party),
+         "description": "Actual DCCC party+IE spend (floors fixed), true nonlinear P_win"},
+        {"allocator": "Null (equal-weight)", "expected_seats": true_seats(null_party),
+         "description": "DCCC party budget spread uniformly across competitive races (floors fixed)"},
+        {"allocator": "Cook-implied",        "expected_seats": true_seats(cook_party),
+         "description": "DCCC party budget proportional to Cook win probability (floors fixed)"},
+        {"allocator": model_label,           "expected_seats": true_seats(model_party),
+         "description": "DCCC party budget via marginal seat gain optimization (floors fixed)"},
     ]
 
     return pd.DataFrame(rows)
@@ -160,6 +193,14 @@ def _expected_seats_at_shares(
     Approximate E[Seats] by re-evaluating P_win at the scaled spending implied
     by the new shares.  Uses the linearized MSG approximation:
         P_win_i(new) ≈ P_win_i⁰ + MSG_i · (new_spend_i − observed_spend_i)
+
+    No longer used by compare_allocators() or the permutation tests (both
+    switched to optimizer.allocator.nonlinear_expected_seats_at_party_dollars()
+    on 2026-07-22 after this approximation was found to bias several reported
+    comparisons -- see that function's docstring for the full correction
+    history). Retained only for scripts/investigate_null_benchmark_bias.py,
+    which uses it deliberately to quantify the size of the bias by comparing
+    against the true nonlinear evaluation side by side.
     """
     p_win0 = np.array([o.p_win for o in outputs])
     msg = np.array([o.msg_i for o in outputs])
@@ -173,20 +214,20 @@ def _expected_seats_at_shares(
 
 def permutation_test_allocation_efficiency(
     races: list[RaceRecord],
-    outputs: list[ModelOutputs],
+    coef: MarginModelCoefficients,
+    sigma_model: SigmaModel,
     model_shares: np.ndarray,
     n_permutations: int = 2000,
     rng: np.random.Generator | None = None,
+    eta: float = 0.0,
 ) -> dict:
     """
     Permutation null distribution for DCCC's spending-to-race assignment.
 
-    Randomly reassigns DCCC's observed per-race dollar amounts across
-    competitive races (same multiset of dollars, no relationship to MSG) and
-    evaluates E[Seats] under each shuffled allocation with the same
-    linearized approximation _expected_seats_at_shares() already uses for
-    the Null and Cook-implied benchmark rows. This is a direct robustness
-    check on two distinct claims:
+    Randomly reassigns DCCC's observed per-race PARTY-DOLLAR amounts (its
+    own coordinated + IE spend, not the candidate committee's own money)
+    across competitive races, holding every race's own candidate-committee
+    floor fixed. This is a direct robustness check on two distinct claims:
 
       1. Is DCCC's *actual* choice of which race gets which dollar amount
          worse than a random shuffle of its own dollars? This is a stronger,
@@ -200,10 +241,31 @@ def permutation_test_allocation_efficiency(
          not of MSG-based targeting), that is a real problem for the
          targeting claim, not just a footnote.
 
+    Uses optimizer.allocator.nonlinear_expected_seats_at_party_dollars() --
+    the true Φ(μ/σ) evaluation over the DCCC-controllable budget only, not
+    the linearized P_win⁰+MSG·Δspend approximation in _expected_seats_at_shares()
+    below. Two corrections were made to this function on 2026-07-22, both
+    triggered by an anomalous 2022 OOS result in the sibling comparison
+    (compare_allocators()):
+      1. An earlier version used the linearized approximation for DCCC, the
+         model, and every null draw; checked against the true nonlinear
+         evaluation, P(random reshuffle ≥ DCCC) dropped from a reported 100%
+         to 35.6% (2024) / 85.4% (2022) -- the model-side finding (0%) was
+         unaffected in both cycles.
+      2. That fix still reshuffled full observed d_total amounts, which
+         include each race's own candidate-committee money -- not something
+         DCCC actually decided. This version reshuffles only the
+         party-controllable increment (d_total − cand_d_total), holding
+         floors fixed, matching compare_allocators()'s same-day fix.
+      See scripts/investigate_null_benchmark_bias.py for the diagnostics
+      that surfaced both.
+
     Returns dict with: dccc_expected_seats, model_expected_seats,
     null_mean_expected_seats, null_ci_95, n_permutations, n_competitive,
     p_value_dccc_below_null (fraction of null ≥ DCCC's actual E[Seats]),
-    p_value_model_exceeds_null (fraction of null ≥ the optimizer's E[Seats])
+    p_value_model_exceeds_null (fraction of null ≥ the optimizer's E[Seats]),
+    null_seats (the raw null distribution, for plotting -- not written to
+    the JSON summary by callers)
     """
     rng = rng or np.random.default_rng(42)
     competitive = set(config.competitive_ratings())
@@ -211,17 +273,24 @@ def permutation_test_allocation_efficiency(
     if len(comp_idx) == 0:
         raise ValueError("No competitive races for permutation test")
 
+    floors = np.array([r.cand_d_total for r in races])
     observed_d = np.array([r.d_total for r in races])
+    observed_party = np.maximum(observed_d - floors, 0.0)
     total_budget = observed_d.sum()
 
-    dccc_expected_seats = _expected_seats_at_shares(races, outputs, observed_d / total_budget)
-    model_expected_seats = _expected_seats_at_shares(races, outputs, model_shares)
+    def true_seats(party_dollars: np.ndarray) -> float:
+        return nonlinear_expected_seats_at_party_dollars(races, coef, sigma_model, party_dollars, eta=eta)
+
+    model_party = np.maximum(model_shares * total_budget - floors, 0.0)
+
+    dccc_expected_seats = true_seats(observed_party)
+    model_expected_seats = true_seats(model_party)
 
     null_seats = np.empty(n_permutations)
-    permuted_d = observed_d.copy()
+    permuted_party = observed_party.copy()
     for i in range(n_permutations):
-        permuted_d[comp_idx] = rng.permutation(observed_d[comp_idx])
-        null_seats[i] = _expected_seats_at_shares(races, outputs, permuted_d / total_budget)
+        permuted_party[comp_idx] = rng.permutation(observed_party[comp_idx])
+        null_seats[i] = true_seats(permuted_party)
 
     p_dccc_below_null = float(np.mean(null_seats >= dccc_expected_seats))
     p_model_exceeds_null = float(np.mean(null_seats >= model_expected_seats))
@@ -243,4 +312,5 @@ def permutation_test_allocation_efficiency(
         "n_competitive": int(len(comp_idx)),
         "p_value_dccc_below_null": p_dccc_below_null,
         "p_value_model_exceeds_null": p_model_exceeds_null,
+        "null_seats": null_seats,
     }

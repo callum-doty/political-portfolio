@@ -87,7 +87,8 @@ def permutation_test_spearman_efficiency(
     |ρ|, with no distributional assumption.
 
     Returns dict with: rho, p_value_asymptotic, p_value_permutation,
-    n_permutations, n_competitive
+    n_permutations, n_competitive, null_rhos (the raw null distribution,
+    for plotting -- not written to the JSON summary by callers)
     """
     rng = rng or np.random.default_rng(42)
     competitive = set(config.competitive_ratings())
@@ -123,6 +124,7 @@ def permutation_test_spearman_efficiency(
         "p_value_permutation": p_permutation,
         "n_permutations": n_permutations,
         "n_competitive": len(comp_races),
+        "null_rhos": null_rhos,
     }
 
 

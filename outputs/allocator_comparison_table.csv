@@ -1,5 +1,5 @@
 allocator,expected_seats,description
-DCCC observed,215.17940744457155,"Actual 2024 DCCC spending shares, model P_win"
-Null (equal-weight),219.00959452013132,Uniform across competitive races
-Cook-implied,217.709567241664,Proportional to Cook win probability
-Model optimizer,220.51988298445917,Marginal seat gain optimization
+DCCC observed,215.1794074446727,"Actual DCCC party+IE spend (floors fixed), true nonlinear P_win"
+Null (equal-weight),215.88995718494257,DCCC party budget spread uniformly across competitive races (floors fixed)
+Cook-implied,215.4451387791069,DCCC party budget proportional to Cook win probability (floors fixed)
+Model optimizer,220.51988298445917,DCCC party budget via marginal seat gain optimization (floors fixed)

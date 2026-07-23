@@ -3,7 +3,11 @@
 import pytest
 import numpy as np
 import pandas as pd
+from itertools import permutations
 from backtest.types import RaceRecord, ModelOutputs
+from backtest.model.margin import MarginModelCoefficients
+from backtest.types import SigmaModel
+from backtest.optimizer.allocator import nonlinear_expected_seats_at_party_dollars, optimize_nonlinear
 from backtest.comparison.benchmark import (
     brier_score,
     null_equal_weight_shares,
@@ -185,80 +189,237 @@ class TestExpectedSeats:
         assert expected_seats(np.array([0.7])) == pytest.approx(0.7)
 
 
+# ─── compare_allocators ─────────────────────────────────────────────────────────
+
+class TestCompareAllocators:
+    """
+    Had zero test coverage (imported, never called) until 2026-07-22 --
+    closed the same day compare_allocators() was rewritten twice, both
+    prompted by scripts/investigate_null_benchmark_bias.py finding an
+    anomalous 2022 OOS result (Null appeared to edge out the model
+    optimizer): first to use the true nonlinear evaluation for every row
+    (not just the Model row), then to constrain Null/Cook to the same
+    DCCC-controllable party_budget the Model optimizer is constrained to,
+    rather than the entire two-party spending pool including candidate
+    money DCCC never controls.
+
+    Races carry a nonzero cand_d_total floor deliberately -- with floors at
+    zero, "scale to total budget" and "scale to party budget, floors fixed"
+    are much harder to tell apart in a test; a real floor exercises the
+    actual bug this fixture is meant to catch.
+    """
+
+    def _coef(self):
+        return MarginModelCoefficients(
+            alpha0=0.0, alpha1=0.5, alpha2=2.0, alpha3=0.3,
+            beta1=3.0, beta2=0.05, beta3=1.0,
+        )
+
+    def _sigma(self):
+        return SigmaModel(_coef={
+            "intercept": 2.0, "abs_pvi": 0.02,
+            "is_open": 0.3, "is_challenger": 0.15,
+        })
+
+    def _races(self, n: int = 6):
+        return [
+            RaceRecord(
+                district_id=f"XX-{i:02d}", state="TX", district=i + 1,
+                cook_rating="Toss-Up", incumb_status="Challenger",
+                pvi=float(i * 5), d_total=float(i + 1) * 2e6, r_total=float(i + 1) * 1e6,
+                cvap=400_000, generic_ballot=-1.2, cand_d_total=float(i + 1) * 1e6,
+            )
+            for i in range(n)
+        ]
+
+    def test_returns_four_rows(self):
+        races = self._races()
+        coef, sigma = self._coef(), self._sigma()
+        outputs = [
+            ModelOutputs(r.district_id, 0.5, 0.0, 5.0, 0.5, 1e-7) for r in races
+        ]
+        budget = sum(r.d_total for r in races)
+        party_budget = sum(r.d_total - r.cand_d_total for r in races)
+        null_shares = null_equal_weight_shares(races)
+        cook_shares = cook_proportional_shares(races)
+        model_shares = null_shares  # arbitrary valid shares vector for this test
+        table = compare_allocators(races, outputs, coef, sigma, model_shares,
+                                   null_shares, cook_shares, budget, party_budget)
+        assert len(table) == 4
+        assert set(table["allocator"]) == {
+            "DCCC observed", "Null (equal-weight)", "Cook-implied", "Model optimizer",
+        }
+
+    def test_every_row_matches_direct_party_dollar_evaluation(self):
+        """Each hypothetical row should equal a direct call to the same
+        nonlinear evaluator on party dollars scaled to party_budget, not
+        total budget -- i.e. no row is still using the retired linearized
+        approximation or the retired total-budget scope."""
+        races = self._races()
+        coef, sigma = self._coef(), self._sigma()
+        outputs = [
+            ModelOutputs(r.district_id, 0.5, 0.0, 5.0, 0.5, 1e-7) for r in races
+        ]
+        budget = sum(r.d_total for r in races)
+        party_budget = sum(r.d_total - r.cand_d_total for r in races)
+        floors = np.array([r.cand_d_total for r in races])
+        null_shares = null_equal_weight_shares(races)
+        cook_shares = cook_proportional_shares(races)
+        observed_party = np.array([r.d_total for r in races]) - floors
+
+        table = compare_allocators(races, outputs, coef, sigma, cook_shares,
+                                   null_shares, cook_shares, budget, party_budget)
+
+        expected = {
+            "DCCC observed": nonlinear_expected_seats_at_party_dollars(races, coef, sigma, observed_party),
+            "Null (equal-weight)": nonlinear_expected_seats_at_party_dollars(
+                races, coef, sigma, null_shares * party_budget),
+            "Cook-implied": nonlinear_expected_seats_at_party_dollars(
+                races, coef, sigma, cook_shares * party_budget),
+            # model_shares uses the OptimizerResult.shares convention (fraction of
+            # TOTAL budget, allocs = floor + party), not the null/cook weight-vector
+            # convention (fraction of party_budget directly) -- compare_allocators()
+            # converts it via model_shares*budget - floors, not model_shares*party_budget.
+            "Model optimizer": nonlinear_expected_seats_at_party_dollars(
+                races, coef, sigma, np.maximum(cook_shares * budget - floors, 0.0)),
+        }
+        for _, row in table.iterrows():
+            assert row["expected_seats"] == pytest.approx(expected[row["allocator"]], abs=1e-9)
+
+    def test_null_and_cook_never_exceed_party_budget(self):
+        """Regression test for the exact bug found 2026-07-22: Null/Cook
+        should never be credited with reallocating candidate money in
+        races DCCC doesn't control. Their implied party spend, summed
+        across races, must not exceed party_budget."""
+        races = self._races()
+        coef, sigma = self._coef(), self._sigma()
+        party_budget = sum(r.d_total - r.cand_d_total for r in races)
+        null_shares = null_equal_weight_shares(races)
+        cook_shares = cook_proportional_shares(races)
+        assert (null_shares * party_budget).sum() == pytest.approx(party_budget, rel=1e-6)
+        assert (cook_shares * party_budget).sum() <= party_budget + 1.0
+
+    def test_model_row_matches_optimizer_own_result_exactly(self):
+        """The historical reason compare_allocators() needed a post-hoc
+        override: its Model row didn't match optimize_nonlinear()'s own
+        answer. It now should, to high precision, with no override."""
+        races = self._races()
+        coef, sigma = self._coef(), self._sigma()
+        outputs = [
+            ModelOutputs(r.district_id, 0.5, 0.0, 5.0, 0.5, 1e-7) for r in races
+        ]
+        budget = sum(r.d_total for r in races)
+        party_budget = sum(r.d_total - r.cand_d_total for r in races)
+        cov = np.eye(len(races)) * 0.01
+        result = optimize_nonlinear(races, coef, sigma, budget, cov, gamma=0.0, cap_fraction=0.5,
+                                     party_budget=party_budget)
+
+        table = compare_allocators(
+            races, outputs, coef, sigma, result.shares,
+            null_equal_weight_shares(races), cook_proportional_shares(races), budget, party_budget,
+        )
+        model_row = table[table["allocator"] == "Model optimizer"].iloc[0]
+        assert model_row["expected_seats"] == pytest.approx(result.expected_seats, abs=1e-6)
+
+
 # ─── permutation_test_allocation_efficiency ────────────────────────────────────
 
 class TestPermutationAllocationEfficiency:
-    def _worst_and_best_fixture(self, n: int = 15):
-        """
-        DCCC's observed d_total is assigned in exactly the rank-inverse order
-        of MSG (most money on the lowest-MSG race) -- the worst possible
-        assignment of this exact dollar multiset. model_shares is built by
-        reassigning the same multiset of dollars in exactly rank-aligned
-        order (most money on the highest-MSG race) -- the best possible
-        assignment. Both are literally inside the permutation null's support,
-        so their percentile ranks are unambiguous: DCCC should sit at the
-        very bottom, the model at the very top.
+    """
+    Uses the true nonlinear Φ(μ/σ) evaluation (nonlinear_expected_seats_at_shares),
+    not a linearized MSG-delta approximation -- an earlier version of this
+    function used the linear approximation throughout and was found
+    (2026-07-22, scripts/investigate_null_benchmark_bias.py) to substantially
+    overstate P(random reshuffle >= DCCC) on real data (100% vs. a true 35.6%
+    in 2024). Fixture below establishes "worst" and "best" allocations by
+    exhaustive search over all permutations of a small (n=6) dollar multiset,
+    not by guessing a direction from intuition -- with the real nonlinear
+    model, which reallocation is best is not obvious by inspection.
+    """
 
-        msg_i is scaled small (3e-9) so that msg_i * delta_i stays within
-        [-1, 1] for every race at these dollar magnitudes -- otherwise
-        _expected_seats_at_shares's clip(0, 1) saturates every race and the
-        permutation stops being able to discriminate between allocations.
-        """
+    def _coef(self):
+        return MarginModelCoefficients(
+            alpha0=0.0, alpha1=0.5, alpha2=2.0, alpha3=0.3,
+            beta1=3.0, beta2=0.05, beta3=1.0,
+        )
+
+    def _sigma(self):
+        return SigmaModel(_coef={
+            "intercept": 2.0, "abs_pvi": 0.02,
+            "is_open": 0.3, "is_challenger": 0.15,
+        })
+
+    def _worst_and_best_fixture(self, n: int = 6):
         races = [
-            _make_race(f"TX-{i:02d}", cook_rating="Toss-Up", d_total=float(i + 1) * 1e6)
+            RaceRecord(
+                district_id=f"XX-{i:02d}", state="TX", district=i + 1,
+                cook_rating="Toss-Up", incumb_status="Challenger",
+                pvi=float(i * 5), d_total=float(i + 1) * 1e6, r_total=float(i + 1) * 1e6,
+                cvap=400_000, generic_ballot=-1.2, cand_d_total=0.0,
+            )
             for i in range(n)
         ]
-        outputs = [_make_output(f"TX-{i:02d}", msg_i=float(n - i) * 3e-9) for i in range(n)]
+        coef, sigma = self._coef(), self._sigma()
+        amounts = np.array([r.d_total for r in races])  # floors are 0.0, so amounts == party dollars
+        total_budget = amounts.sum()
 
-        observed_d = np.array([r.d_total for r in races])
-        msg_vals = np.array([o.msg_i for o in outputs])
+        best_val, best_perm = -1.0, None
+        worst_val, worst_perm = float("inf"), None
+        for perm in permutations(amounts):
+            val = nonlinear_expected_seats_at_party_dollars(races, coef, sigma, np.array(perm))
+            if val > best_val:
+                best_val, best_perm = val, perm
+            if val < worst_val:
+                worst_val, worst_perm = val, perm
 
-        sorted_msg_idx = np.argsort(-msg_vals)          # highest MSG first
-        sorted_amounts_desc = np.sort(observed_d)[::-1]  # largest $ first
-        model_d = np.empty(n)
-        model_d[sorted_msg_idx] = sorted_amounts_desc     # best: largest $ -> highest MSG
-        model_shares = model_d / observed_d.sum()
+        # DCCC "observed" IS the exhaustively-verified worst permutation of
+        # this multiset (set directly on the race records); model_shares IS
+        # the exhaustively-verified best.
+        for r, amt in zip(races, worst_perm):
+            r.d_total = float(amt)
+        model_shares = np.array(best_perm) / total_budget
 
-        return races, outputs, model_shares
+        return races, coef, sigma, model_shares
 
     def test_returns_all_required_keys(self):
-        races, outputs, model_shares = self._worst_and_best_fixture()
+        races, coef, sigma, model_shares = self._worst_and_best_fixture()
         result = permutation_test_allocation_efficiency(
-            races, outputs, model_shares, n_permutations=200, rng=np.random.default_rng(0))
+            races, coef, sigma, model_shares, n_permutations=200, rng=np.random.default_rng(0))
         for key in ["dccc_expected_seats", "model_expected_seats", "null_mean_expected_seats",
                     "null_ci_95", "n_permutations", "n_competitive",
                     "p_value_dccc_below_null", "p_value_model_exceeds_null"]:
             assert key in result
 
     def test_worst_possible_dccc_allocation_sits_at_bottom_of_null(self):
-        races, outputs, model_shares = self._worst_and_best_fixture()
+        races, coef, sigma, model_shares = self._worst_and_best_fixture()
         result = permutation_test_allocation_efficiency(
-            races, outputs, model_shares, n_permutations=2000, rng=np.random.default_rng(1))
-        # observed_d is literally the worst-scoring permutation of its own
-        # multiset, so ~every random reshuffle should do at least as well.
-        assert result["p_value_dccc_below_null"] > 0.98
+            races, coef, sigma, model_shares, n_permutations=2000, rng=np.random.default_rng(1))
+        # observed_d is the exhaustively-verified global-worst permutation of
+        # its own multiset, so literally every random reshuffle does at
+        # least as well: p == 1.0 exactly, not just close to it.
+        assert result["p_value_dccc_below_null"] == 1.0
 
     def test_best_possible_model_allocation_sits_at_top_of_null(self):
-        races, outputs, model_shares = self._worst_and_best_fixture()
+        races, coef, sigma, model_shares = self._worst_and_best_fixture()
         result = permutation_test_allocation_efficiency(
-            races, outputs, model_shares, n_permutations=2000, rng=np.random.default_rng(1))
-        # model_shares is literally the best-scoring permutation of DCCC's
-        # own multiset, so ~no random reshuffle should exceed it.
-        assert result["p_value_model_exceeds_null"] < 0.02
+            races, coef, sigma, model_shares, n_permutations=2000, rng=np.random.default_rng(1))
+        # model_shares is the exhaustively-verified global-best permutation,
+        # so no random reshuffle can exceed it: p == 0.0 exactly.
+        assert result["p_value_model_exceeds_null"] == 0.0
         assert result["model_expected_seats"] > result["dccc_expected_seats"]
 
     def test_no_competitive_races_raises(self):
         races = [_make_race("TX-01", cook_rating="Safe R")]
-        outputs = [_make_output("TX-01")]
         with pytest.raises(ValueError, match="No competitive"):
-            permutation_test_allocation_efficiency(races, outputs, np.array([1.0]))
+            permutation_test_allocation_efficiency(
+                races, self._coef(), self._sigma(), np.array([1.0]))
 
     def test_deterministic_with_seeded_rng(self):
-        races, outputs, model_shares = self._worst_and_best_fixture()
+        races, coef, sigma, model_shares = self._worst_and_best_fixture()
         result_a = permutation_test_allocation_efficiency(
-            races, outputs, model_shares, n_permutations=300, rng=np.random.default_rng(7))
+            races, coef, sigma, model_shares, n_permutations=300, rng=np.random.default_rng(7))
         result_b = permutation_test_allocation_efficiency(
-            races, outputs, model_shares, n_permutations=300, rng=np.random.default_rng(7))
+            races, coef, sigma, model_shares, n_permutations=300, rng=np.random.default_rng(7))
         assert result_a["null_mean_expected_seats"] == result_b["null_mean_expected_seats"]
 
 

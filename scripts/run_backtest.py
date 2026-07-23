@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -263,12 +264,16 @@ def main() -> None:
     null_shares = null_equal_weight_shares(races)
     cook_shares = cook_proportional_shares(races)
     model_shares = primary_result.shares
-    allocator_table = compare_allocators(races, outputs, model_shares, null_shares, cook_shares, budget)
-    # Replace the model row's linearized E[Seats] estimate with the nonlinear truth.
-    # _expected_seats_at_shares uses MSG · Δspend linearization, which overestimates
-    # because MSG decays as spending increases. The optimizer's Φ(μ/σ) sum is authoritative.
-    allocator_table.loc[allocator_table["allocator"] == "Model optimizer", "expected_seats"] = (
-        primary_result.expected_seats)
+    allocator_table = compare_allocators(
+        races, outputs, coef, sigma_model, model_shares, null_shares, cook_shares,
+        budget, party_budget, eta=eta)
+    # compare_allocators() now evaluates every row with the true nonlinear
+    # Φ(μ/σ), so the Model row already matches primary_result.expected_seats
+    # exactly -- no post-hoc override needed (removed 2026-07-22; see
+    # compare_allocators()'s docstring for why one was needed before).
+    assert abs(allocator_table.loc[allocator_table["allocator"] == "Model optimizer",
+                                    "expected_seats"].iloc[0] - primary_result.expected_seats) < 1e-6, \
+        "compare_allocators()'s Model row should exactly match the optimizer's own result"
     logger.info("\n" + allocator_table.to_string(index=False))
 
     # Save for make_charts.py (avoids hardcoded values in chart script)
@@ -281,7 +286,18 @@ def main() -> None:
         f"(random reshuffle of DCCC's own dollars, {n_permutations} shuffles)…"
     )
     perm_allocation = permutation_test_allocation_efficiency(
-        races, outputs, model_shares, n_permutations=n_permutations, rng=np.random.default_rng(42))
+        races, coef, sigma_model, model_shares, n_permutations=n_permutations,
+        rng=np.random.default_rng(42), eta=eta)
+
+    # Raw null distributions are large and not meaningful in a JSON summary;
+    # save them separately (for plot_permutation_tests.py) and keep the
+    # summary JSON to scalar results only.
+    null_rhos = perm_spearman.pop("null_rhos")
+    null_seats = perm_allocation.pop("null_seats")
+    pd.DataFrame({"null_rho": null_rhos}).to_csv(
+        out_dir / f"permutation_null_spearman{suffix}.csv", index=False)
+    pd.DataFrame({"null_expected_seats": null_seats}).to_csv(
+        out_dir / f"permutation_null_allocation{suffix}.csv", index=False)
 
     perm_path = out_dir / f"permutation_tests{suffix}.json"
     with open(perm_path, "w") as f:

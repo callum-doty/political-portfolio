@@ -13,7 +13,11 @@ how much money each allocation strategy directs to that race:
 Races are sorted by DCCC observed spending (descending) so the DCCC's
 concentration pattern is immediately visible against the alternatives.
 
-Output: outputs/allocator_comparison.png
+Output: outputs/allocator_spending_by_race.png
+(Renamed 2026-07-22 from outputs/allocator_comparison.png -- that filename
+collided with make_charts.py's aggregate E[Seats] bar chart, a different
+chart documented under the same name in FINDINGS.md Section 11. Whichever
+script ran last was silently overwriting the other's output.)
 """
 from __future__ import annotations
 
@@ -172,7 +176,7 @@ ax.set_xlim(-1, n_comp)
 ax.set_ylim(-0.5, comp["dccc_m"].max() * 1.12)
 
 fig.tight_layout()
-out = ROOT / "outputs" / "allocator_comparison.png"
+out = ROOT / "outputs" / "allocator_spending_by_race.png"
 plt.savefig(out, dpi=150, bbox_inches="tight")
 print(f"Saved → {out}")
 

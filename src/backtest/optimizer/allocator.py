@@ -150,6 +150,45 @@ def _msg_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
     return (phi / sigma) * d_mu_d_d
 
 
+def nonlinear_expected_seats_at_party_dollars(
+    races: list[RaceRecord],
+    coef: MarginModelCoefficients,
+    sigma_model: SigmaModel,
+    party_dollars: np.ndarray,
+    eta: float = 0.0,
+) -> float:
+    """
+    True nonlinear E[Seats] = Σ Φ(μᵢ(Dᵢ)/σᵢ) for an explicit DCCC party-dollar
+    allocation, added on top of each race's own (fixed) candidate-committee
+    floor: Dᵢ = cand_floorᵢ + party_dollarsᵢ.
+
+    This is the only fair basis for comparing allocators against each other:
+    every strategy competes over the same pool of money DCCC actually
+    controls, and no race's own candidate-committee money (which DCCC did
+    not raise and cannot redirect) is treated as available for any strategy
+    to reallocate.
+
+    Two prior versions of this comparison were found and fixed (2026-07-22)
+    for not respecting this:
+      1. comparison.benchmark._expected_seats_at_shares() (retired) used a
+         linearized P_win⁰+MSG·Δspend approximation, flagged in its own
+         docstring as overestimating for large reallocations.
+      2. An intermediate version of this function (nonlinear_expected_seats_at_shares,
+         retired) fixed (1) but still scaled Null/Cook-implied against the
+         *entire* two-party spending pool across all 433 races — including
+         every candidate's own committee money in every safe seat — while
+         the model optimizer, correctly, only ever redistributed the
+         DCCC-controllable party budget. Null and Cook were effectively
+         being credited with the power to seize a self-funded candidate's
+         personal war chest and redirect it to a Toss-Up, a power no real
+         committee has and the model optimizer was never given.
+    Both are confirmed fixed by scripts/investigate_null_benchmark_bias.py.
+    """
+    arrays = _precompute_race_arrays(races, coef, sigma_model, eta=eta)
+    party = np.maximum(party_dollars, 0.0)
+    return float(_p_win_vec(party, arrays).sum())
+
+
 def optimize_nonlinear(
     races: list[RaceRecord],
     coef: MarginModelCoefficients,

@@ -186,7 +186,7 @@ The estimate is statistically significant (t ≈ 3.44). It implies that for a ch
 | 95% CI | [2.349, 8.565] | [2.811, 8.616] |
 | Skew | 0 (assumed) | +0.197 |
 
-The two CIs are comparable in width, but the bootstrap's lower bound sits meaningfully higher than the parametric one (2.81 vs. 2.35). The "low-end collapse" scenario cited in §9 and §10.1 (β_RC ≈ 2.35) is *less* likely under the empirical resampling distribution than the normal approximation implies — a mild point against the causal-fragility concern in §10.1, not a confirmation of it. Stable across five random seeds at n=10,000 (skew 0.24–0.27 throughout). See `data/processed/beta_rc_bootstrap.json` and `docs/data_catalog.md` §3.2b.
+The two CIs are comparable in width, but the bootstrap's lower bound sits meaningfully higher than the parametric one (2.81 vs. 2.35). The "low-end collapse" scenario cited in §9 and §10.1 (β_RC ≈ 2.35) is *less* likely under the empirical resampling distribution than the normal approximation implies — a mild point against the causal-fragility concern in §10.1, not a confirmation of it. Stable across five random seeds at n=10,000 (skew 0.24–0.27 throughout). See `data/processed/beta_rc_bootstrap.json` and `docs/data_catalog.md` §3.2b. `outputs/beta_rc_bootstrap_distribution.png` (`scripts/plot_beta_rc_bootstrap.py`) plots the bootstrap histogram against the parametric normal — the histogram's right tail visibly extends past the symmetric curve.
 
 ### 5.3 σ model
 
@@ -263,57 +263,68 @@ Among the 53 competitive races, there is a strong negative correlation between D
 
 | Statistic | Value |
 |-----------|-------|
-| Spearman ρ | **−0.597** |
+| Spearman ρ | **−0.582** |
 | p-value | **< 0.0001** |
-| 95% CI | [−0.787, −0.330] |
+| 95% CI | [−0.789, −0.307] |
 | n races | 53 |
 
 **Interpretation:** DCCC systematically concentrates more money in races where the marginal return per dollar is *lower*. This is a structural pattern, not random noise.
 
-**By Cook category** (within competitive subset):
+**Corrected MSG gradient (2026-07-22 backport).** The figures in this section were regenerated against the current pipeline. An earlier implementation of the MSG gradient omitted the Rᵢ/Dᵢ factor (∂μᵢ/∂Dᵢ = cᵢ·Rᵢ/(Dᵢ·Tᵢ), exact only at spending parity Dᵢ=Rᵢ), biasing MSG for the many lopsided-spending races in this sample. The fix is documented in `docs/paper1_draft.md` §9.1. It moved this section's ρ from −0.597 to −0.582 and, more consequentially, changed the by-category breakdown below qualitatively, not just numerically. The allocator-comparison figures in §7.3 (220.52, +5.34, DCCC=215.18) were unaffected — that solve path already used the correct gradient — and are unchanged by this backport.
+
+**By Cook category** (within competitive subset; regenerated under the corrected gradient, verified against `outputs/spearman_by_category.csv`):
 
 | Category | n | ρ | p |
 |----------|---|---|---|
-| Likely D | 39 | −0.383 | 0.016 |
-| Lean D | 29 | −0.150 | 0.437 |
-| Toss-Up | 18 | +0.005 | 0.984 |
-| Lean R | 7 | +0.643 | 0.119 |
-| Likely R | 37 | +0.443 | 0.006 |
+| Likely D | 40 | −0.131 | 0.421 |
+| Lean D | 28 | −0.389 | 0.041 |
+| Toss-Up | 18 | −0.932 | < 0.001 |
+| Lean R | 7 | −0.929 | 0.003 |
+| Likely R | 36 | +0.277 | 0.102 |
 
-The negative correlation is strongest in Likely D and Likely R races — the DCCC spends most heavily in Likely D races (protecting existing seats), where MSG is low because win probabilities are already high. The positive ρ in Lean R/Likely R reflects that spending is lower but MSG is also lower (opposing-territory races with diminished returns).
+**This is a materially different, and more concerning, pattern than the pre-correction table above previously showed (superseded).** Misallocation is *not* concentrated in defensively over-funded Likely D/Likely R seats — Likely D is statistically indistinguishable from zero (ρ=−0.131, p=0.421) and Likely R is now weakly *positive* (ρ=+0.277, p=0.102), the opposite sign from before. The strongest negative correlations are now at the most contested tier: **Toss-Up (ρ=−0.932, p<0.001, n=18) and Lean R (ρ=−0.929, p=0.003, n=7)** — races where marginal dollars are most decisive for the House majority threshold, and exactly where the model's MSG estimate and DCCC's actual spending are most sharply misaligned. The Lean R estimate should be read cautiously given its small category size (n=7).
+
+**Matched-group test.** Restricting to Lean D and Toss-Up races matched on partisan lean (±5 PVI points), where the risk-adjustment term γ·∂Var/∂sᵢ is approximately constant (Section 3.3 of `docs/paper1_draft.md`): n=44, ρ = −0.559 (p = 0.0001) — the negative correlation cannot be attributed to differential risk profiles within a structurally comparable subsample.
 
 ### 7.2b Permutation tests (added 2026-07-22)
-
-**Note on ρ:** the current pipeline reports ρ = −0.582 for the 2024 competitive set, not the −0.597 shown in §7.2 above. A bug in the MSG gradient (missing Rᵢ/Dᵢ factor) was corrected after this document was last fully updated; the fix is documented in `docs/paper1_draft.md` §9.1 and confirmed directly against the live pipeline in this session, but has not been backported to §7.2/§8 of this document. The permutation tests below use the corrected, current pipeline; the allocator-comparison figures in §7.3/§8.2 (220.52, +5.34, DCCC=215.18, etc.) are unaffected by the gradient bug and remain correct as written.
 
 Two permutation tests were added to remove reliance on asymptotic significance assumptions (`permutation_test_spearman_efficiency()` in `comparison/efficiency.py`; `permutation_test_allocation_efficiency()` in `comparison/benchmark.py`). Both run automatically in `run_backtest.py` and save to `outputs/permutation_tests.json`. Run against the real 2024 pipeline, 2000 shuffles each, seed 42:
 
 1. **Spearman ρ permutation test.** Randomly reassign DCCC's observed spending across the 53 competitive races (breaking any link to MSG) and recompute ρ 2000 times: **0 of 2000 shuffles produced |ρ| ≥ 0.582.** Permutation p = 0.0 vs. asymptotic p = 4.7×10⁻⁶ — the asymptotic test is not overstating significance here.
 
-2. **Allocation-efficiency permutation test.** A stronger, assumption-lighter check: randomly reshuffle DCCC's own per-race dollar amounts across the same 53 races (same multiset of dollars, no MSG relationship) and evaluate E[Seats] under each shuffle via the same linearized approximation used for the Null/Cook benchmark rows in §7.3.
-   - DCCC's actual E[Seats] = 215.18 vs. a null mean of 218.29 (95% CI [216.89, 219.62]) — **100% of 2000 random reshuffles of DCCC's own dollars scored at least as well as DCCC's actual allocation.** DCCC's specific choice of which race gets which dollar is not just rank-correlated with low MSG — it underperformed every single random alternative reshuffle of the same money.
-   - The model optimizer's linearized E[Seats] = 224.91 (the nonlinear SLSQP figure remains 220.52, §7.3) vs. the same null — **0 of 2000 reshuffles matched or exceeded it.** The optimizer's gain is not explainable as "any reshuffle beats DCCC" (a real concern, since the win-probability curve's concavity alone could produce that pattern) — it is specifically finding structure beyond what random reallocation of the same dollars achieves.
+2. **Allocation-efficiency permutation test.** A stronger, assumption-lighter check: randomly reshuffle DCCC's own per-race **party-dollar** amounts (its coordinated + IE spend, not each race's own candidate-committee money) across the same 53 races and evaluate E[Seats] under each shuffle using the **true nonlinear Φ(μ/σ) evaluation** (`optimizer.allocator.nonlinear_expected_seats_at_party_dollars()`), holding every floor fixed.
+   - DCCC's actual E[Seats] = 215.18 vs. a null mean of 214.28 (95% CI [213.08, 215.42]) — **7.7% of 2000 random reshuffles of DCCC's own party dollars scored at least as well as DCCC's actual allocation.** Restricting the reshuffle to only the money DCCC actually controls makes this finding *sharper*, not weaker: DCCC's real choice sits near the bottom of a tightly-clustered null.
+   - The model optimizer's true nonlinear E[Seats] = 220.52 vs. the same null — **0 of 2000 reshuffles matched or exceeded it.** The optimizer's gain is not explainable as "any reshuffle beats DCCC" (a real concern, since the win-probability curve's concavity alone could produce that pattern) — it is specifically finding structure beyond what random reallocation of the same dollars achieves.
 
-Configurable via `config.yaml: uncertainty.permutation_draws` (default 2000).
+**Correction history (2026-07-22, two rounds, same day as the original finding — see §7.3 for the parallel history in `compare_allocators()`).** Round 1: this test originally used the linearized MSG-delta approximation for DCCC, the model, and every null draw — internally consistent, but not checked against the true nonlinear evaluation until an anomalous 2022 OOS comparison surfaced that the linearization mattered enough to change conclusions. Fixing that alone gave 35.1% (2024) / 87.5% (2022) in place of a reported 100%. Round 2, same day: the round-1 fix still reshuffled each race's *full* observed dollar total, including candidate-committee money DCCC never controlled — inconsistent with the instruction that every allocator comparison in this project should use only the DCCC budget. Restricting the reshuffle to party-only dollars gives the figures above (7.7% in 2024) and 72.3% in 2022 (§8.2b) — notably, this final correction makes the 2024 finding *stronger* while making 2022 *weaker*, reversing which cycle shows the sharper DCCC-side finding relative to round 1. The model-side finding (0 of 2000) was completely robust across every round, in both cycles — the bias only ever ran in DCCC's favor (making it look worse than it should), never affecting the model. `permutation_test_allocation_efficiency()` now uses the true nonlinear, party-budget-only evaluation by default; the figures above and the chart (`outputs/permutation_tests_null_distributions.png`) are final.
+
+Configurable via `config.yaml: uncertainty.permutation_draws` (default 2000). `outputs/permutation_tests_null_distributions.png` (`scripts/plot_permutation_tests.py`) plots both null distributions against the real observed values — DCCC's actual allocation sits outside the null cloud in both panels.
 
 ### 7.3 Allocator comparison
 
+**Table corrected 2026-07-22 (three times, same day — see the note after the table for the full history).** `compare_allocators()` now evaluates all four rows the same way: the true nonlinear Φ(μ/σ), and — per explicit instruction ("All models/methods when compared to each other should only use the DCCC budget, that is the whole point") — every hypothetical row (Null, Cook, Model) redistributes only the $465M DCCC-controllable party budget, holding every race's own candidate-committee money fixed. No strategy is credited with money it doesn't actually control.
+
 | Strategy | Expected Seats | vs. DCCC |
 |----------|---------------|----------|
-| Cook-implied | 214.79 | −0.39 |
 | **DCCC observed** | **215.18** | — |
-| Null (equal-weight) | 215.86 | **+0.68** |
+| Cook-implied | 215.45 | **+0.27** |
+| Null (equal-weight) | 215.89 | **+0.71** |
 | Model optimizer | 220.52 | **+5.34** |
-
-**Methodology note:** DCCC, null, and Cook expected seats are computed via the linearized MSG approximation (P_win⁰ + MSG·Δspend). The model optimizer uses direct Φ(μ/σ) evaluation at the optimal allocation. This means the three-way comparison between DCCC, null, and Cook (all linearized) is internally consistent, while the model optimizer's gain must be interpreted as the nonlinear improvement available to a large reallocation — not a marginal one.
 
 **Key results:**
 
-1. **The model optimizer gains +5.34 expected seats** from the same $465M party budget, without changing total spending. This is achieved by moving party money from low-MSG safe seats into high-MSG competitive races, exploiting the S-curve in win probability that the linearization cannot capture. It is equivalent to flipping roughly 4–5 additional seats from Republican to Democratic control.
+1. **The model optimizer gains +5.34 expected seats** from the same $465M party budget, without changing total spending. This is achieved by moving party money from low-MSG safe seats into high-MSG competitive races, exploiting the S-curve in win probability. It is equivalent to flipping roughly 4–5 additional seats from Republican to Democratic control.
 
-2. **The null equal-weight strategy beats DCCC by +0.68 seats.** Simply distributing party money uniformly across 53 competitive races outperforms the actual allocation. This is a model-agnostic result requiring no coefficient assumptions.
+2. **Both zero-information benchmarks now barely beat DCCC** — Null by +0.71 seats, Cook-implied by +0.27 — once every strategy is held to the same real budget constraint. Both are still positive (DCCC's real choices are still not the best of the three simple alternatives), but the margins are narrow.
 
-3. **Cook-implied strategy underperforms DCCC** (−0.39 seats). Allocating in proportion to Cook win probabilities concentrates money in high-probability races where MSG is lowest — a more extreme version of the DCCC's own over-investment in safe seats.
+3. **The real headline is the Model's dominance over every alternative, once the comparison is fair.** The model beats Null by +4.63 seats and Cook by +5.07 — not the diluted +1.51/+2.81 an earlier, budget-inconsistent version of this table showed. MSG-based targeting is doing almost all of the work in this comparison; generic diversification (Null) or competitiveness information (Cook) alone captures only a small fraction of the achievable gain.
+
+**Correction history, preserved for the audit trail (this table's own figures above are already final and correct):**
+- **First pass** (pre-existing, before this session): Null/Cook computed via a linearized MSG-delta approximation, inconsistent with the Model row (already true nonlinear via a post-hoc override) — 215.86(+0.68)/214.79(−0.39).
+- **Second pass** (2026-07-22): fixed the linearization inconsistency, but Null/Cook still scaled against the *entire* two-party spending pool across all 433 races (including candidate-committee money in safe seats DCCC never controls) — 217.62(+2.44)/217.04(+1.86). This is where the 2022 OOS anomaly (Null appearing to edge out the Model) first surfaced and got investigated (`scripts/investigate_null_benchmark_bias.py`).
+- **Third pass, same day** (this table): Null and Cook now also constrained to the DCCC-controllable party budget only, matching the Model's actual constraint exactly. This is the version to trust going forward.
+
+Each pass moved Null/Cook *down*, never up — the bias in every earlier version ran entirely in Null/Cook's favor. The Model's true advantage over simple alternatives was understated at every prior stage, not overstated.
 
 ### 7.4 What the optimizer actually does
 
@@ -342,11 +353,11 @@ To test whether the inefficiency finding is an artifact of 2024-specific conditi
 
 | Metric | 2024 | 2022 (OOS) |
 |--------|------|------------|
-| **Spearman ρ (DCCC vs MSG)** | **−0.597** (p<0.0001) | **−0.647** (p<0.0001) |
-| 95% CI on ρ | [−0.787, −0.330] | [−0.782, −0.446] |
+| **Spearman ρ (DCCC vs MSG)** | **−0.582** (p<0.0001) | **−0.750** (p<0.0001) |
+| 95% CI on ρ | [−0.789, −0.307] | [−0.837, −0.589] |
 | DCCC expected seats | 215.18 | 214.87 |
-| Null (equal-weight) | 215.86 (+0.68) | 219.34 (+4.47) |
-| Cook-implied | 214.79 (−0.39) | 218.18 (+3.31) |
+| Null (equal-weight) | 215.89 (+0.71) | 216.17 (**+1.30**) |
+| Cook-implied | 215.45 (+0.27) | 215.64 (+0.77) |
 | Model optimizer | 220.52 (+5.34) | 221.66 (+6.79) |
 | **Brier (model)** | **0.0283** | — |
 | **Brier (Cook)** | **0.0380** | — |
@@ -354,13 +365,34 @@ To test whether the inefficiency finding is an artifact of 2024-specific conditi
 | Model optimizer beats DCCC? | Yes (+5.34) | **Yes (+6.79)** |
 | Concentration cap gap | 0.0 seats | 0.0 seats |
 
+**Null/Cook-implied rows corrected 2026-07-22 (three times, same day) — see §7.3 for the full correction history.** The figures above are the final pass: every strategy (Null, Cook, Model) redistributes only the DCCC-controllable party budget ($465M in 2024, $322M in 2022), holding every race's own candidate-committee money fixed — "All models/methods when compared to each other should only use the DCCC budget." Null and Cook's advantage over DCCC shrinks substantially from the intermediate (nonlinear-but-full-budget) pass — 2024: +2.44→+0.71 and +1.86→+0.27; 2022: +4.27→+1.30 and +3.69→+0.77 — while the Model optimizer, already correctly budget-constrained, is unaffected in both cycles.
+
+### 8.2b Permutation tests replicate out-of-sample (added 2026-07-22, allocation-efficiency figures corrected same day — see §7.2b/§8.3)
+
+Both permutation tests from §7.2b were re-run on the 2022 OOS cycle (61 competitive races, 2000 shuffles, seed 42, `outputs/permutation_tests_2022.json`, chart `outputs/permutation_tests_null_distributions_2022.png`), reshuffling only DCCC's own party-controllable dollars (not candidate-committee money) among competitive races:
+
+- **Spearman ρ permutation test.** 0 of 2000 shuffles reached |ρ| ≥ 0.750 (permutation p = 0.0 vs. asymptotic p = 3.5×10⁻¹²). Unaffected by any correction — this is a pure rank-correlation test, no expected-seats evaluation involved.
+- **Allocation-efficiency permutation test (true nonlinear evaluation, party-budget-only reshuffling).** DCCC's actual E[Seats] = 214.87 vs. a null mean of 215.10 (95% CI [214.26, 215.83]) — **72.3% of 2000 random reshuffles of DCCC's own party dollars scored at least as well as DCCC's actual allocation.** The model optimizer's true E[Seats] = 221.66 vs. the same null — **0 of 2000 reshuffles matched or exceeded it.**
+
+**The Spearman test replicates identically in strength across cycles; the allocation-efficiency test's DCCC-side finding does not, and this is a genuinely new, honest divergence worth reading carefully rather than smoothing over.** Once reshuffling is restricted to DCCC's own party dollars only, 2024's DCCC-side finding is *stronger* than 2022's (7.7% vs. 72.3% — DCCC's 2024 allocation choice is far more distinguishable from random than its 2022 choice), the opposite ordering from every other robustness check in this document, which consistently finds 2022 misallocation more severe than 2024 (the ρ finding, the Null/Cook comparison in §7.3/§8.2). The model-side finding (0 of 2000) is identical and robust in both cycles regardless.
+
 ### 8.3 Interpretation
 
-**The efficiency finding is stronger out-of-sample.** The negative Spearman correlation replicates with a larger magnitude in 2022 than in 2024: ρ = −0.647 (p<0.0001, CI [−0.782, −0.446]) vs ρ = −0.597 in 2024. Using a model estimated on 2012–2020 data only, applied to an entirely unseen cycle, the DCCC spending–MSG misalignment is more pronounced, not less. This is the opposite of the attenuation one would expect from overfitting.
+**The efficiency finding is stronger out-of-sample.** The negative Spearman correlation replicates with a larger magnitude in 2022 than in 2024: ρ = −0.750 (p<0.0001, CI [−0.837, −0.589]) vs ρ = −0.582 in 2024. Using a model estimated on 2012–2020 data only, applied to an entirely unseen cycle, the DCCC spending–MSG misalignment is more pronounced, not less. This is the opposite of the attenuation one would expect from overfitting. (Under the corrected MSG gradient — §7.2 — this gap is wider than a pre-correction reading suggested: −0.647 vs. −0.597.)
 
-**The optimizer gain generalizes.** The model optimizer outperforms DCCC by +6.79 seats in 2022 and +5.34 seats in 2024. Both figures use the same nonlinear SLSQP optimizer with α₅ = 0 constrained throughout. The consistency of direction and order of magnitude across cycles — different estimation windows, different generic ballot environments, different competitive maps — is the primary evidence that the finding is structural.
+**The optimizer gain generalizes.** The model optimizer outperforms DCCC by +6.79 seats in 2022 and +5.34 seats in 2024. Both figures use the same nonlinear SLSQP optimizer with α₅ = 0 constrained throughout, and are unaffected by the §7.2 gradient correction (that solve path already used the correct gradient). The consistency of direction and order of magnitude across cycles — different estimation windows, different generic ballot environments, different competitive maps — is the primary evidence that the finding is structural.
 
-**The null equal-weight story strengthens in 2022.** Equal-weight distribution beats DCCC by +4.47 seats in 2022 vs +0.68 in 2024. The 2022 result implies more severe baseline misallocation: even a zero-information rule substantially outperforms the observed professional allocation. The model optimizer exceeds the null by an additional +2.32 seats (6.79 − 4.47), demonstrating that MSG-targeted reallocation adds value beyond simple diversification.
+**Zero-information benchmarks barely beat DCCC once every strategy is held to the DCCC's real budget.** Equal-weight distribution beats DCCC by +1.30 seats in 2022 vs +0.71 in 2024 (final, fully-corrected pipeline, see note above). Both are still positive — DCCC's real choices are not the best of the simple alternatives in either cycle — but the margins are narrow, not the dramatic +4–7 seats an intermediate, budget-inconsistent version of this comparison showed.
+
+**Historical record of how this section's numbers were found and fixed, preserved for the audit trail (the live numbers above are already final and correct; this describes how they got that way, in three stages, all the same day).** A first pass at this section claimed "the optimizer no longer beats the null in 2022... MSG-targeting adds no additional value beyond diversification" — based on the table's numbers *before* they had been checked. That claim was wrong. Investigating it directly (`scripts/investigate_null_benchmark_bias.py`, run against the real 2022 OOS coefficients) surfaced two compounding artifacts in how Null/Cook were scored, both now fixed at the source:
+
+1. **Linearization bias (fixed first).** Null/Cook were scored with a linearized MSG-delta approximation that structurally overstates their value; the Model row used the true nonlinear evaluation. This alone accounted for a **2.73-seat overstatement** of Null's 2022 figure (reported 221.87 vs. corrected 219.14). Fixing this alone already resolved the "Null beats Model" anomaly (219.14 < 221.66).
+
+2. **Budget-scope asymmetry (fixed second, same day, on explicit instruction: "All models/methods when compared to each other should only use the DCCC budget, that is the whole point").** `null_equal_weight_shares()`/`cook_proportional_shares()` had still been scaled to the *entire* two-party spending pool across all 433 races ($1.184B in 2022), including every candidate's own committee money in safe seats the DCCC never controls — while the Model optimizer, correctly, only ever reallocated the $322M DCCC-controllable party budget. `compare_allocators()` was rewritten so Null and Cook now also compete over the party budget only, floors fixed everywhere — the table in §8.2 reflects this final version (Null 2022 = 216.17/+1.30, down from the intermediate 219.14/+4.27).
+
+**Net: both mechanisms are now fixed at the source, not just diagnosed.** Every allocator in the §8.2 table competes over the identical, real DCCC-controllable budget. The "Null beats Model" anomaly no longer exists at any level, and the true magnitude of the Model's advantage over simple alternatives is now visible directly in the table rather than requiring a separate diagnostic script to see it.
+
+**Confirmed as a general pattern, not 2022-specific: 2024 shows the identical direction through both corrections, just smaller in magnitude, never large enough to flip a sign there.** DCCC=215.18, Null=215.89 (+0.71), Cook=215.45 (+0.27), Model=220.52 (+5.34) — the Model's lead over Null/Cook (+4.63/+5.07) is nearly as large as its lead over DCCC itself (+5.34), a materially different picture from the intermediate pass's +2.90/+3.48.
 
 **Important caveat on the Spearman ρ comparison.** The 2022 competitive set has 61 races vs 53 in 2024, reflecting different Cook ratings distributions and a different national environment (R+1.0 GB vs R+1.2 in 2024). The ρ values are not directly comparable across cycles, but both are highly significant and in the same direction with overlapping confidence intervals.
 
@@ -372,9 +404,9 @@ To test whether the inefficiency finding is an artifact of 2024-specific conditi
 
 **MSG as a marginal-dollar decision tool.** Before committing the next tranche of party money to any race, the MSG calculation identifies where returns are highest given current spending levels. This is most useful for late-cycle allocation decisions when partial spending data is available.
 
-**The equal-weight finding as a process audit.** An uninformed equal-weight rule beats the DCCC in both cycles: +0.68 seats in 2024 and +4.47 seats in 2022. This is a model-agnostic result that does not require accepting any specific coefficient. The finding is operationally valuable as a real-time calibration check: compute the null advantage using partial-cycle FEC filings and a simple equal-weight benchmark. A large positive value signals a 2022-style misallocation regime; a near-zero or negative value (if it ever occurs) would suggest the DCCC is allocating efficiently at the margin.
+**The equal-weight finding as a process audit.** An uninformed equal-weight rule beats the DCCC in both cycles, though narrowly once every allocator is constrained to the DCCC's real budget: +0.71 seats in 2024 and +1.30 seats in 2022 (§7.3, §8.2, final correction 2026-07-22). This is a model-agnostic result that does not require accepting any specific coefficient — though on its own, a margin this narrow is a weaker practical signal than the MSG optimizer's own advantage (§7.3's real headline: the Model beats Null by +4.6–5.1 seats, not the reverse). The finding remains operationally valuable as a real-time calibration check: compute the null advantage using partial-cycle FEC filings and a simple equal-weight benchmark. A large positive value signals a misallocation regime; a near-zero or negative value would suggest the DCCC is allocating efficiently at the margin — worth noting that "near-zero" is now what both 2022 and 2024 actually show for this specific benchmark, once correctly scoped.
 
-**The Spearman ρ as a diagnostic.** The negative ρ can be computed in real time during an election cycle using partial FEC filings. It replicates out-of-sample (ρ = −0.647 in 2022, p<0.001), with the 2022 efficiency signal stronger than the primary 2024 result. A negative ρ emerging during a cycle is an early warning signal that allocation is drifting away from efficient targeting.
+**The Spearman ρ as a diagnostic.** The negative ρ can be computed in real time during an election cycle using partial FEC filings. It replicates out-of-sample (ρ = −0.750 in 2022, p<0.001), with the 2022 efficiency signal stronger than the primary 2024 result. A negative ρ emerging during a cycle is an early warning signal that allocation is drifting away from efficient targeting.
 
 ### Requires additional validation before operational use
 
@@ -384,7 +416,7 @@ To test whether the inefficiency finding is an artifact of 2024-specific conditi
 
 **The game-theoretic problem.** This model produces the optimal *unilateral* deviation from the observed 2024 spending equilibrium. A full reallocation of ~$200M by the DCCC would not go unnoticed by the NRCC and CLF. Republican counter-investment in the newly targeted races would partially flatten the gains. The true gain from implementing the optimizer recommendation is likely less than the +5.34 seat point estimate, and could be substantially less if NRCC/CLF respond aggressively. The η sensitivity model (§9.4) quantifies this tradeoff; those numbers were computed against an earlier baseline and should be treated as illustrative of the directional effect rather than precise estimates. A more defensible operationalization: use MSG targeting for incremental late-cycle dollars rather than a wholesale early-cycle reallocation, which minimizes NRCC intelligence on the strategic shift.
 
-**The private signals problem.** The model interprets the negative Spearman ρ as pure inefficiency — spending where marginal returns are lowest. A portion of the DCCC's Likely D over-investment may instead reflect rational responses to internal polling showing candidates in danger in seats the model rates as safe. Two observations mitigate but do not eliminate this concern: (1) the ρ pattern replicates — and strengthens — in 2022 (ρ = −0.647), suggesting it is structural rather than cycle-specific private intelligence, and (2) the equal-weight rule beats DCCC in both cycles without any private-signal advantage, which is harder to explain by private signals alone. The model should not be used to recommend abandoning spending in any Likely D seat without explicit validation against internal polling — the catastrophic downside of losing an unexpectedly competitive seat is not captured in the symmetric expected-value objective.
+**The private signals problem.** The model interprets the negative Spearman ρ as pure inefficiency — spending where marginal returns are lowest. A portion of the DCCC's Likely D over-investment may instead reflect rational responses to internal polling showing candidates in danger in seats the model rates as safe. Two observations mitigate but do not eliminate this concern: (1) the ρ pattern replicates — and strengthens — in 2022 (ρ = −0.750), suggesting it is structural rather than cycle-specific private intelligence, and (2) the equal-weight rule beats DCCC in both cycles without any private-signal advantage, which is harder to explain by private signals alone. The model should not be used to recommend abandoning spending in any Likely D seat without explicit validation against internal polling — the catastrophic downside of losing an unexpectedly competitive seat is not captured in the symmetric expected-value objective.
 
 ### 9.4 Adversarial Response Sensitivity (η Model)
 
@@ -455,7 +487,7 @@ The model's win probability calibration (Brier score) was better than Cook in 20
 
 A subtle numerical scaling bug was identified and corrected during the audit. Raw party allocations are on the order of $0–$70M per race, while the MSG gradient values are on the order of 1e-7 (seats per dollar). In SLSQP's convergence check the projected Lagrangian gradient (MSG × allocation scale) appeared near-zero relative to the solver's `ftol=1e-10` threshold, causing the optimizer to terminate after a single iteration at the DCCC starting point and report false convergence.
 
-The fix was to scale party allocations to $M units before passing to SLSQP and apply the corresponding chain-rule correction to the gradient. The current result is **220.52 expected seats (+5.34 vs DCCC = 215.18)**. This supersedes the erroneous +0.88 (pre-scaling-fix) and the interim +4.46 (post-scaling-fix, pre-α₅). A subsequent addition of `indiv_share` (α₅ = −3.99) inflated the apparent gain to +11.9 by suppressing the DCCC baseline by 6.56 seats — without changing the optimizer's allocation at all (confirmed: max allocation difference between α₅ and no-α₅ optimizer = $0.00 across 433 races). Zeroing α₅ is now hardcoded in `src/backtest/model/margin.py` rather than patched in the JSON, so re-running estimation can never revert it. The 2022 OOS results were also affected: the old aggregate CSV (DCCC=206.49, gain=+5.54, ρ=−0.380) was generated with α₅=−3.99 active in the OOS estimation path. With α₅=0 consistently enforced, the correct 2022 OOS figures are DCCC=214.87, gain=+6.79, ρ=−0.647 (p<0.001).
+The fix was to scale party allocations to $M units before passing to SLSQP and apply the corresponding chain-rule correction to the gradient. The current result is **220.52 expected seats (+5.34 vs DCCC = 215.18)**. This supersedes the erroneous +0.88 (pre-scaling-fix) and the interim +4.46 (post-scaling-fix, pre-α₅). A subsequent addition of `indiv_share` (α₅ = −3.99) inflated the apparent gain to +11.9 by suppressing the DCCC baseline by 6.56 seats — without changing the optimizer's allocation at all (confirmed: max allocation difference between α₅ and no-α₅ optimizer = $0.00 across 433 races). Zeroing α₅ is now hardcoded in `src/backtest/model/margin.py` rather than patched in the JSON, so re-running estimation can never revert it. The 2022 OOS results were also affected: the old aggregate CSV (DCCC=206.49, gain=+5.54, ρ=−0.380) was generated with α₅=−3.99 active in the OOS estimation path. With α₅=0 consistently enforced, the correct 2022 OOS figures are DCCC=214.87, gain=+6.79, ρ=−0.647 (p<0.001) — the ρ figure was itself superseded again by the MSG gradient correction (§7.2), giving the current ρ=−0.750; the α₅ fix and the gradient fix are independent corrections, and both are reflected in §8.2's table.
 
 Global optimality of 220.52 is not guaranteed (SLSQP is a local solver), but the result is robust to initialization and consistent with the response-curve analysis.
 
@@ -494,10 +526,12 @@ All outputs are in `outputs/`.
 
 | File | Description |
 |------|-------------|
-| `msg_efficiency.png` | MSG vs. D total spend for competitive races. The headline Spearman ρ = −0.49 result. |
+| `msg_efficiency.png` | MSG vs. D total spend for competitive races. The headline Spearman ρ = −0.582 result (§7.2). Regenerated 2026-07-22 against the corrected gradient — six charts (`msg_efficiency.png`, `model_calibration.png`, `spending_by_cook.png`, `allocation_shift.png`, `spending_ratio_vs_pvi.png`, `allocator_comparison.png`) were stale from before that fix and are now current. |
 | `model_calibration.png` | Predicted P_win bins vs. actual D win rate. Model vs. Cook calibration comparison. |
 | `spending_by_cook.png` | Median D and R spending by Cook category; box plots for competitive races. |
 | `allocator_comparison.png` | Expected seats comparison: DCCC, Cook-implied, equal-weight, model optimizer. |
+| `allocator_spending_by_race.png` | Per-race spending across the 53 competitive races, all four strategies overlaid, sorted by optimizer-minus-DCCC delta (`scripts/plot_allocator_comparison.py`). Renamed 2026-07-22 from `allocator_comparison.png`, which collided with the chart above — the two scripts were silently overwriting each other's output under the same filename. |
+| `permutation_tests_null_distributions.png` | Both permutation-test null distributions (§7.2b) plotted against DCCC's real observed values (`scripts/plot_permutation_tests.py`). |
 | `allocation_shift.png` | Per-district recommended vs. DCCC allocation shift. Top and bottom 20 races. |
 | `spending_ratio_vs_pvi.png` | D share of total spending vs. Cook PVI for all 433 races. |
 | `efficiency_frontier.png` | E[Seats] vs. risk (Var[Seats]) across γ and cap combinations (pipeline output). |
@@ -513,6 +547,8 @@ All outputs are in `outputs/`.
 | `spearman_by_cook_category.csv` | Spearman ρ broken out by Cook rating category. |
 | `race_table_preelection.csv` | Race table from the pre-election model run. |
 | `permutation_tests.json` | Permutation-test results for the Spearman ρ and allocation-efficiency tests (§7.2b). |
+| `permutation_null_spearman.csv` | Raw null distribution (2000 draws) for the Spearman ρ permutation test — feeds `plot_permutation_tests.py`. |
+| `permutation_null_allocation.csv` | Raw null distribution (2000 draws) for the allocation-efficiency permutation test — feeds `plot_permutation_tests.py`. |
 
 ### Model artifacts
 

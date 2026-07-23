@@ -1,0 +1,22 @@
+{
+  "spearman_efficiency": {
+    "rho": -0.7500793231094658,
+    "p_value_asymptotic": 3.463857967670836e-12,
+    "p_value_permutation": 0.0,
+    "n_permutations": 2000,
+    "n_competitive": 61
+  },
+  "allocation_efficiency": {
+    "dccc_expected_seats": 214.8723077507613,
+    "model_expected_seats": 221.6635802077637,
+    "null_mean_expected_seats": 215.09526839298732,
+    "null_ci_95": [
+      214.25979886023472,
+      215.82745088041446
+    ],
+    "n_permutations": 2000,
+    "n_competitive": 61,
+    "p_value_dccc_below_null": 0.7225,
+    "p_value_model_exceeds_null": 0.0
+  }
+}

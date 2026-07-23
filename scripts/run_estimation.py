@@ -170,6 +170,11 @@ def main() -> None:
         }, f, indent=2)
     logger.info(f"β_RC bootstrap distribution saved to {boot_path}")
 
+    boot_draws_path = config.outputs_path() / "beta_rc_bootstrap_distribution.csv"
+    boot_draws_path.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame({"beta_rc_draw": boot_draws}).to_csv(boot_draws_path, index=False)
+    logger.info(f"β_RC raw bootstrap draws saved to {boot_draws_path} (for plot_beta_rc_bootstrap.py)")
+
     # ── Step 2: Full margin model ─────────────────────────────────────────────
     logger.info("Loading CVAP data…")
     cvap_df = census.load_cvap()
