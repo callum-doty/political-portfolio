@@ -246,7 +246,8 @@ def main() -> None:
     # ── Step 3: σᵢ model ─────────────────────────────────────────────────────
     logger.info("Computing margin residuals for σᵢ estimation…")
     alpha_coef = {"intercept": coef.alpha0, "pvi": coef.alpha1,
-                  "incumb": coef.alpha2, "gb": coef.alpha3, "alpha4": coef.alpha4}
+                  "incumb": coef.alpha2, "gb": coef.alpha3, "alpha4": coef.alpha4,
+                  "alpha5": coef.alpha5}
     beta_coef = {"b1": coef.beta1, "b2": coef.beta2, "b3": coef.beta3,
                  "b1_open": coef.beta1_open}
 
@@ -259,6 +260,7 @@ def main() -> None:
         beta_coef=beta_coef,
         generic_ballot_by_cycle=GENERIC_BALLOT_BY_CYCLE,
         cvap_df=cvap_df,
+        panel_indiv_df=panel_indiv_df,
     )
 
     logger.info("Estimating σᵢ model…")

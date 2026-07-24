@@ -110,6 +110,7 @@ def compute_residuals_from_panel(
     beta_coef: dict,
     generic_ballot_by_cycle: dict[int, float],
     cvap_df: pd.DataFrame | None = None,
+    panel_indiv_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
     Compute margin residuals for all historical panel observations.
@@ -123,13 +124,28 @@ def compute_residuals_from_panel(
     panel_spend   : [district_id, cycle, d_total, r_total]
     panel_incumb  : [district_id, cycle, incumb_status]
     panel_pvi     : [district_id, cycle, pvi]
-    alpha_coef    : {"intercept", "pvi", "incumb", "gb"} — control surface coefficients
+    alpha_coef    : {"intercept", "pvi", "incumb", "gb", "alpha4", "alpha5"} —
+                    control surface coefficients. "alpha4"/"alpha5" default to
+                    0.0 if omitted. "alpha5" (indiv_share) requires
+                    panel_indiv_df to have an effect — see below.
     beta_coef     : {"b1", "b2", "b3", "b1_open"} — spending response coefficients.
                     "b1_open" (optional) is substituted for "b1" on Open-seat rows,
                     matching model.margin.predict()'s beta1/beta1_open switch —
                     otherwise Open-seat residuals are computed against the wrong
                     μ̂ and bias the σᵢ "is_open" coefficient.
     generic_ballot_by_cycle : {cycle: GB_value}
+    panel_indiv_df : [district_id, cycle, indiv_share], optional. Mirrors
+                    model.margin.estimate_from_panel()'s own panel_indiv_df
+                    parameter — omitted rows (or a fully-omitted argument)
+                    fall back to indiv_share=0.0, matching that function's
+                    fallback. Needed so alpha_coef["alpha5"] (if non-zero)
+                    is applied against the same indiv_share values the
+                    margin model itself was fit on, rather than silently
+                    computing residuals against a μ̂ that omits the α₅ term
+                    entirely (found in the 2026-07-24 codebase audit —
+                    alpha5 is currently hardcoded to 0.0 in
+                    model.margin.estimate_from_panel(), so this was dormant,
+                    not yet a live bias).
 
     Returns
     -------
@@ -158,6 +174,13 @@ def compute_residuals_from_panel(
         df["cvap"] = 500_000
     df["log_total_per_voter"] = np.log((df["d_total"] + df["r_total"]) / df["cvap"])
 
+    if panel_indiv_df is not None:
+        df = df.merge(panel_indiv_df[["district_id", "cycle", "indiv_share"]],
+                      on=["district_id", "cycle"], how="left")
+        df["indiv_share"] = df["indiv_share"].fillna(0.0)
+    else:
+        df["indiv_share"] = 0.0
+
     # Fitted margin from the full model
     a = alpha_coef
     b = beta_coef
@@ -169,6 +192,7 @@ def compute_residuals_from_panel(
         + a["incumb"] * df["is_incumb"]
         + a["gb"] * df["gb"]
         + a.get("alpha4", 0.0) * df["log_total_per_voter"]
+        + a.get("alpha5", 0.0) * df["indiv_share"]
         + b1_eff * df["log_ratio"]
         + b["b2"] * df["log_ratio"] * df["abs_pvi"]
         + b["b3"] * df["log_ratio"] * df["is_incumb"]

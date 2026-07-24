@@ -85,8 +85,12 @@ def load_processed_artifacts(processed: Path) -> tuple[BetaRC, MarginModelCoeffi
 def build_dummy_factor_model(races: list, generic_ballot: float) -> FactorModel:
     """
     Placeholder factor model using only the national generic ballot factor.
-    Replace with estimation.factors.build_factor_matrix() when urbanicity
-    and regional data are available.
+    A prior multi-factor ridge-regression implementation
+    (estimation/factors.py, regional + urbanicity loadings) was removed
+    2026-07-24: it was never wired into any pipeline and had its own
+    unfixed bug (fitted ridge coefficients were never applied to the
+    loadings matrix). Reintroduce as a new module if that approach is
+    revisited, rather than resurrecting the removed file as-is.
     """
     n = len(races)
     loadings = np.ones((n, 1)) * generic_ballot
