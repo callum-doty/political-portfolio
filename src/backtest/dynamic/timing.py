@@ -45,6 +45,15 @@ def build_timing_table(results: list[PeriodResult]) -> list[TimingComparison]:
     recomputed from any separate "actual" argument: the one-step-ahead
     harness (paper §6.2) never lets model output enter that state, so it is
     safe to treat as ground truth here.
+
+    A district's first appearance in `results` produces no row: coordinated
+    expenditures (RealizedSpendCommitmentSource) are held at their
+    cycle-final total at every period rather than genuinely date-bucketed,
+    so that static component cancels correctly in every period-over-period
+    difference from the second observation onward, but would appear as one
+    giant fabricated "incremental" spend if diffed against an assumed-zero
+    baseline at the first observation. Rather than report a number known to
+    be an artifact, the first period only seeds `prev_cumulative`.
     """
     comparisons: list[TimingComparison] = []
     prev_cumulative: dict[str, float] = {}
@@ -56,7 +65,10 @@ def build_timing_table(results: list[PeriodResult]) -> list[TimingComparison]:
 
         for i, race in enumerate(races):
             cumulative_actual = race.d_total - race.cand_d_total
-            incremental_actual = cumulative_actual - prev_cumulative.get(race.district_id, 0.0)
+            if race.district_id not in prev_cumulative:
+                prev_cumulative[race.district_id] = cumulative_actual
+                continue
+            incremental_actual = cumulative_actual - prev_cumulative[race.district_id]
             model_recommended = float(allocations[i] - floor[i])
             comparisons.append(TimingComparison(
                 district_id=race.district_id,

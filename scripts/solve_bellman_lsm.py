@@ -423,7 +423,8 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
                               mu_hat=mu_t[i], sigma_i=sigma_arr[i], p_win=p_win0[i], msg_i=msg[i])
                 for i in range(n)]
         res = optimize(outs, budget=F0, cov_matrix=np.eye(n) * 1e-6,
-                        gamma=0.0, cap_fraction=0.15, floor_allocations=d_t, party_budget=F0)
+                        gamma=0.0, cap_fraction=0.15, floor_allocations=d_t, party_budget=F0,
+                        d_total_obs=d_t)
         delta_s = np.maximum(res.allocations - d_t, 0.0)
         delta_mu = grad * delta_s
 
@@ -477,15 +478,24 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         deploy_now = deploy_vals >= wait_vals
         V_star = np.where(deploy_now, deploy_vals, wait_vals)
 
+        # rsquared = 1 - ssr/centered_tss is -inf, not the mathematically
+        # sensible 0, when V_star has ~zero cross-path variance (centered_tss
+        # underflows to exactly 0.0) -- a legitimate outcome, not a bug: the
+        # allocator can be structurally deterministic enough (same top-MSG
+        # race funded to cap regardless of path noise) that the continuation
+        # value doesn't vary path-to-path at a given (t, small-universe) cell.
+        _r2 = float(cont_fit.rsquared)
+        basis_r2 = _r2 if np.isfinite(_r2) else 0.0
+
         theta_by_period.append({
             "period": tstep, "days_remaining": int(remaining_days[tstep]),
             "mean_theta": float(np.mean(theta_t)), "frac_deploy_now": float(np.mean(deploy_now)),
-            "basis_r2": float(cont_fit.rsquared),
+            "basis_r2": basis_r2,
             "g_t_coef": float(cont_fit.params[5]), "g_t_pvalue": float(cont_fit.pvalues[5]),
         })
         print(f"  [{label}] t={tstep} ({remaining_days[tstep]}d left): "
               f"mean Theta={np.mean(theta_t):+.4f} seats, frac(deploy now)={np.mean(deploy_now):.3f}, "
-              f"basis R2={cont_fit.rsquared:.3f}, g_t_coef={cont_fit.params[5]:+.5f} (p={cont_fit.pvalues[5]:.3f})")
+              f"basis R2={basis_r2:.3f}, g_t_coef={cont_fit.params[5]:+.5f} (p={cont_fit.pvalues[5]:.3f})")
 
     theta_by_period = list(reversed(theta_by_period))
     return {"label": label, "eta_summary": eta_summary, "n_periods": N_PERIODS, "k_paths": K_PATHS,

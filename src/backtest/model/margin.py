@@ -177,10 +177,16 @@ def predict(
     total_spend     : D + R total spending ($); used for spending intensity term
     cvap            : citizen voting age population; used for per-voter normalization
     """
-    if beta1_override is not None:
-        b1 = beta1_override
-    elif coef.beta1_open is not None and incumb_status == "Open":
+    # beta1_open (Open-seat calibration) takes priority over beta1_override:
+    # beta1_override carries β_RC bootstrap-draw uncertainty (uncertainty.py),
+    # a different, separately-calibrated quantity from beta1_open -- letting
+    # it clobber beta1_open would recenter every Open race's elasticity on
+    # β_RC (~5.46) instead of its own calibrated value (~6.98) in 100% of
+    # draws, not add noise around the right point.
+    if coef.beta1_open is not None and incumb_status == "Open":
         b1 = coef.beta1_open
+    elif beta1_override is not None:
+        b1 = beta1_override
     else:
         b1 = coef.beta1
     is_incumb = 1.0 if incumb_status == "Incumbent" else 0.0
@@ -206,9 +212,17 @@ def predict_batch(df: pd.DataFrame, coef: MarginModelCoefficients) -> pd.Series:
     """Vectorised version of predict() for a DataFrame with precomputed columns.
 
     Requires df to have: pvi, is_incumb, gb, log_ratio, log_total_per_voter
+    Optional: is_open (0/1) — substitutes coef.beta1_open for open-seat rows,
+    matching predict()'s single-row beta1/beta1_open switch (§8.3). Without
+    this column (or before beta1_open is calibrated), every row falls back to
+    coef.beta1, same as predict() would for a non-open-seat race.
     """
     log_tpv = df["log_total_per_voter"] if "log_total_per_voter" in df.columns else 0.0
     indiv = df["indiv_share"] if "indiv_share" in df.columns else 0.0
+    if coef.beta1_open is not None and "is_open" in df.columns:
+        b1 = np.where(df["is_open"].astype(bool), coef.beta1_open, coef.beta1)
+    else:
+        b1 = coef.beta1
     return (
         coef.alpha0
         + coef.alpha1 * df["pvi"]
@@ -216,7 +230,7 @@ def predict_batch(df: pd.DataFrame, coef: MarginModelCoefficients) -> pd.Series:
         + coef.alpha3 * df["gb"]
         + coef.alpha4 * log_tpv
         + coef.alpha5 * indiv
-        + coef.beta1 * df["log_ratio"]
+        + b1 * df["log_ratio"]
         + coef.beta2 * df["log_ratio"] * df["pvi"].abs()
         + coef.beta3 * df["log_ratio"] * df["is_incumb"]
     )

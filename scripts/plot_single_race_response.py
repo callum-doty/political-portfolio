@@ -12,9 +12,11 @@ Race: VA-10 (Virginia's 10th Congressional District, 2024)
   indiv_share:    0.800 (share of D receipts from individual donors)
   Outcome:        D won
 
-Despite a favorable PVI, Republicans outspent Democrats 3:1, producing a
-model win probability of only 20.1% at observed spending. The optimizer
-identified VA-10 as sharply underfunded and recommended a 5× increase.
+Despite a favorable PVI, Republicans outspent Democrats 3:1 -- see the
+printed "Key numbers" at the bottom of this script's output for the current
+model win probability at observed spending (a coefficient/sigma-model
+update will shift the exact figure; do not hardcode it here). The optimizer
+identified VA-10 as sharply underfunded and recommended a large increase.
 The linear MSG approximation overestimates the gain from additional spending
 because it cannot capture the S-curve's diminishing returns.
 
@@ -28,6 +30,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy.stats import norm
 
 ROOT = Path(__file__).parent.parent
@@ -46,15 +49,25 @@ with open(ROOT / "data/processed/sigma_model.json") as f:
 sigma_model = SigmaModel(_coef=sigma_coef)
 
 
-# ── VA-10 real parameters (from build_universe + race_table_baseline.csv) ────
+# ── VA-10 real parameters ──────────────────────────────────────────────────────
+# PVI/incumbency/GB/indiv_share are static district facts (don't move when the
+# model is re-estimated) and stay hardcoded. D_OBS/D_OPT are *model outputs*
+# (observed spend, optimizer recommendation) — read live from the current
+# race_table_baseline.csv / aggregate_summary_baseline.csv instead of being
+# hardcoded, so they can't silently go stale after a coefficient update.
 
 PVI        = 4.930169768920273   # Cook PVI, D-favoring
 INCUMB     = "Open"              # open seat
 GB         = -1.2                # 2024 generic ballot
 INDIV_SHR  = 0.7997268729439285  # share of D receipts from individuals
 R_FIXED    = 9.517135            # $M, Republican total spending
-D_OBS      = 2.945645            # $M, observed Democratic spending
-D_OPT      = 14.711              # $M, model optimizer recommendation
+
+_table = pd.read_csv(ROOT / "outputs" / "race_table_baseline.csv")
+_row = _table[_table["district_id"] == "VA-10"].iloc[0]
+_agg = pd.read_csv(ROOT / "outputs" / "aggregate_summary_baseline.csv").iloc[0]
+
+D_OBS = float(_row["d_total"]) / 1e6                                    # $M, observed Democratic spending
+D_OPT = float(_row["recommended_share"]) * float(_agg["total_budget"]) / 1e6   # $M, model optimizer recommendation
 
 
 # ── Model helpers ─────────────────────────────────────────────────────────────
@@ -106,10 +119,10 @@ gap_opt       = p_linear_opt - p_true_opt  # positive = linear overestimates
 p_asymptote = norm.cdf(mu_const / sigma)
 
 
-# ── Sanity-check against race table ──────────────────────────────────────────
+# ── Sanity-check against race table (read live, never hardcoded) ─────────────
 print("Sanity check vs. race_table_baseline.csv:")
-print(f"  p_win at D_OBS:  computed={p_obs:.4f}  table=0.2005")
-print(f"  sigma:           computed={sigma:.3f}   table=9.450")
+print(f"  p_win at D_OBS:  computed={p_obs:.4f}  table={float(_row['p_win']):.4f}")
+print(f"  sigma:           computed={sigma:.3f}   table={float(_row['sigma_i']):.3f}")
 
 # ── Plot ──────────────────────────────────────────────────────────────────────
 

@@ -73,6 +73,10 @@ def optimizer_cfg() -> dict:
     return _cfg["optimizer"]
 
 
+def persuasion_ceiling_c_max() -> float:
+    return float(_cfg["persuasion_ceiling"]["c_max"])
+
+
 def validation_cfg() -> dict:
     return _cfg["validation"]
 
@@ -122,6 +126,14 @@ def election_day(cycle: int):
 
 def competitive_ratings() -> list[str]:
     return _cfg["universe"]["competitive_ratings"]
+
+
+def live_cycle_ballot_exclusions(cycle: int) -> list[dict]:
+    """Manually verified interim substitute for MIT's ballot-membership check
+    on a cycle still in progress (see config.yaml's `live_cycle_ballot_exclusions`
+    block and fec.py's `_ballot_last_names()`). Returns [] for any cycle not
+    explicitly listed -- most cycles rely on MIT data instead and need no entry."""
+    return _cfg.get("live_cycle_ballot_exclusions", {}).get(cycle, [])
 
 
 def reload() -> None:

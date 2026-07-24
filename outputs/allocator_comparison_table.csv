@@ -1,5 +1,5 @@
 allocator,expected_seats,description
-DCCC observed,215.1794074446727,"Actual DCCC party+IE spend (floors fixed), true nonlinear P_win"
-Null (equal-weight),215.88995718494257,DCCC party budget spread uniformly across competitive races (floors fixed)
-Cook-implied,215.4451387791069,DCCC party budget proportional to Cook win probability (floors fixed)
-Model optimizer,220.51988298445917,DCCC party budget via marginal seat gain optimization (floors fixed)
+DCCC observed,215.11518484604997,"Actual DCCC party+IE spend (floors fixed), true nonlinear P_win"
+Null (equal-weight),215.34168901377362,DCCC party budget spread uniformly across competitive races (floors fixed)
+Cook-implied,215.183901671069,DCCC party budget proportional to Cook win probability (floors fixed)
+Model optimizer,217.94030193971952,DCCC party budget via marginal seat gain optimization (floors fixed)

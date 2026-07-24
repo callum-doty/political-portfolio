@@ -25,6 +25,12 @@ Outputs:
     data/live/spending_live.json      — per-district {d_total, r_total}
     data/live/msg_live.csv            — competitive races with real-time MSG
     data/live/fetch_log.jsonl         — append-only fetch audit trail
+    data/live/processed_ie_ids.json   — sub_ids already folded into spending_live.json;
+                                         required because lookback windows overlap by
+                                         design (e.g. daily runs at --lookback-hours 48),
+                                         so the same filing is fetched more than once —
+                                         this ledger is what keeps apply_new_ies() from
+                                         double-counting it.
 """
 
 from __future__ import annotations
@@ -58,11 +64,19 @@ FEC_API_BASE = "https://api.open.fec.gov/v1"
 
 # Major IE committees to track (DCCC, NRCC, HMP, CLF, DCCC super PAC affiliates)
 # Add CLF and HMP committee IDs — these are the dominant outside groups
+#
+# Corrected 2026-07-23 (codebase audit, verified against fec.gov/data/committee/<id>/):
+#   old "C00075473" (NRCC)  -> actually CMS Energy Corp Employees for Better Government
+#   old "C00500884" (HMP)   -> did not resolve to House Majority PAC
+#   old "C00571372" (CLF)   -> actually Right to Rise USA (terminated Jeb Bush 2016 super PAC)
+# Only "C00000935" (DCCC) was correct. All three R-side/other IDs below are
+# fixed; any data/live/*.json or data/raw/fec IE files fetched under the old
+# IDs must be re-fetched.
 COMMITTEE_WATCH = {
     "C00000935": "D",   # DCCC
-    "C00075473": "R",   # NRCC
-    "C00500884": "D",   # House Majority PAC (HMP)
-    "C00571372": "R",   # Congressional Leadership Fund (CLF)
+    "C00075820": "R",   # NRCC
+    "C00495028": "D",   # House Majority PAC (HMP)
+    "C00504530": "R",   # Congressional Leadership Fund (CLF)
 }
 
 LIVE_DIR = Path(__file__).parent.parent / "data" / "live"
@@ -130,12 +144,20 @@ def fetch_recent_ies(
                 if not state:
                     continue
                 amount  = float(r.get("expenditure_amount") or 0)
+                # sub_id is the FEC's own unique identifier for this individual
+                # Schedule E line item (distinct from file_number, which
+                # identifies the whole filing and can cover many line items).
+                # Required for dedup: fetch windows overlap by design (24h/48h
+                # lookback re-run on a cadence shorter than the lookback), so
+                # the same expenditure is returned by more than one fetch.
+                sub_id = r.get("sub_id")
                 # Support = positive, Oppose = negative net effect on opposing party
                 # We track D/R total spend (gross IE amounts)
                 rows.append({
                     "district_id":     f"{state}-{dist}",
                     "party":           party,
                     "amount":          amount,
+                    "sub_id":          str(sub_id) if sub_id is not None else "",
                     "filed_at":        r.get("file_number") or "",
                     "expenditure_date": r.get("expenditure_date") or "",
                     "support_oppose":   r.get("support_oppose_indicator") or "S",
@@ -143,7 +165,7 @@ def fetch_recent_ies(
 
     if not rows:
         logger.warning("No new IE filings found in the lookback window.")
-        return pd.DataFrame(columns=["district_id", "party", "amount"])
+        return pd.DataFrame(columns=["district_id", "party", "amount", "sub_id"])
 
     return pd.DataFrame(rows)
 
@@ -170,26 +192,73 @@ def load_baseline_spending(cycle: int) -> dict[str, dict]:
     }
 
 
+def load_processed_ie_ids() -> set[str]:
+    """sub_ids already folded into spending_live.json by a prior run.
+
+    Fetch windows (24h/48h lookback) overlap by design, so the same FEC
+    Schedule E line item is returned by more than one call to
+    fetch_recent_ies() — without this ledger, apply_new_ies() would add its
+    amount into the cumulative total again on every overlapping run.
+    """
+    path = LIVE_DIR / "processed_ie_ids.json"
+    if not path.exists():
+        return set()
+    with open(path) as f:
+        return set(json.load(f))
+
+
+def save_processed_ie_ids(ids: set[str]) -> None:
+    path = LIVE_DIR / "processed_ie_ids.json"
+    with open(path, "w") as f:
+        json.dump(sorted(ids), f, indent=2)
+
+
 def apply_new_ies(
     baseline: dict[str, dict],
     new_ies: pd.DataFrame,
-) -> dict[str, dict]:
+    processed_ids: set[str],
+) -> tuple[dict[str, dict], set[str]]:
     """
     Merge new IE amounts into the baseline spending snapshot.
 
     For the log-ratio model, what matters is the total gross spend per party
-    per district.  We add new IE amounts to the existing totals.
+    per district.  We add new IE amounts to the existing totals — but only
+    for sub_ids not already in `processed_ids`, so a transaction already
+    folded into `baseline` by an earlier, overlapping fetch is never added
+    twice.  Rows with a missing/blank sub_id can't be deduped and are always
+    applied, with a warning, since skipping them silently would just as
+    silently undercount instead.
+
+    Returns (updated_spending, newly_applied_ids) — the caller persists
+    newly_applied_ids into the processed-ids ledger.
     """
     updated = {k: dict(v) for k, v in baseline.items()}
+    newly_applied: set[str] = set()
 
+    n_skipped_dupe = 0
+    n_missing_id = 0
     for _, row in new_ies.iterrows():
-        did  = row["district_id"]
+        sub_id = row.get("sub_id", "")
+        if sub_id:
+            if sub_id in processed_ids:
+                n_skipped_dupe += 1
+                continue
+            newly_applied.add(sub_id)
+        else:
+            n_missing_id += 1
+
+        did = row["district_id"]
         if did not in updated:
             updated[did] = {"d_total": 0.0, "r_total": 0.0}
         key = "d_total" if row["party"] == "D" else "r_total"
         updated[did][key] = updated[did].get(key, 0.0) + row["amount"]
 
-    return updated
+    if n_skipped_dupe:
+        logger.info(f"Skipped {n_skipped_dupe} IE(s) already applied in a prior fetch (overlapping window).")
+    if n_missing_id:
+        logger.warning(f"{n_missing_id} IE(s) had no sub_id — applied without dedup protection.")
+
+    return updated, newly_applied
 
 
 # ─── MSG computation ──────────────────────────────────────────────────────────
@@ -294,9 +363,10 @@ def main() -> None:
     # 1. Fetch new IEs
     new_ies = fetch_recent_ies(args.api_key, args.lookback_hours, args.cycle)
 
-    # 2. Load baseline and apply updates
+    # 2. Load baseline + processed-ids ledger, apply updates (deduped)
     baseline = load_baseline_spending(args.cycle)
-    updated  = apply_new_ies(baseline, new_ies)
+    processed_ids = load_processed_ie_ids()
+    updated, newly_applied_ids = apply_new_ies(baseline, new_ies, processed_ids)
 
     # 3. Compute live MSG
     msg_df = compute_live_msg(updated, cycle=args.cycle)
@@ -323,6 +393,10 @@ def main() -> None:
     msg_path = LIVE_DIR / "msg_live.csv"
     msg_df.to_csv(msg_path, index=False)
     logger.info(f"MSG dashboard → {msg_path}")
+
+    save_processed_ie_ids(processed_ids | newly_applied_ids)
+    logger.info(f"Processed-IE ledger → {len(processed_ids | newly_applied_ids)} sub_ids "
+                f"({len(newly_applied_ids)} new this run)")
 
     # Audit trail
     log_path = LIVE_DIR / "fetch_log.jsonl"

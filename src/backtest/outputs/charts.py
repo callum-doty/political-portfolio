@@ -40,6 +40,7 @@ def efficiency_frontier(
     cook_point: tuple[float, float] | None = None,
     null_point: tuple[float, float] | None = None,
     save_path: Path | None = None,
+    cycle: int = 2024,
 ) -> plt.Figure:
     """
     Plot E[Seats] vs SD[Seats] for all allocators.
@@ -51,6 +52,8 @@ def efficiency_frontier(
     cook_point    : (expected_seats, sd_seats) or None
     null_point    : (expected_seats, sd_seats) or None
     save_path     : write PNG if provided
+    cycle         : election cycle shown in the title (defaults to 2024;
+                    pass the actual --cycle for OOS runs like 2022)
     """
     fig, ax = plt.subplots(figsize=(8, 6))
 
@@ -59,7 +62,7 @@ def efficiency_frontier(
         xs = [p[1] for p in model_points]
         ys = [p[0] for p in model_points]
         ax.plot(xs, ys, "-o", color=_COLORS["model"], lw=2, label="Model optimizer (γ frontier)")
-        for sd, es, lbl in model_points:
+        for es, sd, lbl in model_points:
             ax.annotate(lbl, xy=(sd, es), xytext=(4, 2), textcoords="offset points",
                         fontsize=8, color=_COLORS["model"])
 
@@ -78,7 +81,7 @@ def efficiency_frontier(
 
     ax.set_xlabel("SD[Seats]")
     ax.set_ylabel("E[Seats]")
-    ax.set_title("Risk-Return Frontier: Democratic House Spending Allocations (2024)")
+    ax.set_title(f"Risk-Return Frontier: Democratic House Spending Allocations ({cycle})")
     ax.legend(loc="lower right", framealpha=0.9)
 
     fig.tight_layout()
@@ -123,33 +126,4 @@ def allocation_difference_scatter(
     if save_path:
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
         logger.info(f"Allocation scatter saved to {save_path}")
-    return fig
-
-
-def msg_rank_chart(
-    race_ids: list[str],
-    msg_vals: list[float],
-    observed_spend: list[float],
-    save_path: Path | None = None,
-) -> plt.Figure:
-    """Bar chart of MSG rank vs observed spending rank for competitive races."""
-    n = len(race_ids)
-    msg_ranks = np.argsort(np.argsort(msg_vals)[::-1]) + 1
-    spend_ranks = np.argsort(np.argsort(observed_spend)[::-1]) + 1
-
-    fig, ax = plt.subplots(figsize=(10, 4))
-    x = np.arange(n)
-    width = 0.35
-    ax.bar(x - width / 2, msg_ranks, width, label="MSG rank", color=_COLORS["model"], alpha=0.8)
-    ax.bar(x + width / 2, spend_ranks, width, label="Spend rank", color=_COLORS["dccc"], alpha=0.8)
-    ax.set_xticks(x)
-    ax.set_xticklabels(race_ids, rotation=90, fontsize=6)
-    ax.set_ylabel("Rank (1 = highest)")
-    ax.set_title("MSG Rank vs Observed Spending Rank — Competitive Races")
-    ax.legend()
-
-    fig.tight_layout()
-    if save_path:
-        fig.savefig(save_path, dpi=150, bbox_inches="tight")
-        logger.info(f"MSG rank chart saved to {save_path}")
     return fig

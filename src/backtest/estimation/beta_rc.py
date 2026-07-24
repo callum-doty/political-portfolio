@@ -142,9 +142,10 @@ def estimate_beta_rc(pairs: pd.DataFrame) -> BetaRC:
     logger.info(f"Identified {n_pairs} repeat-challenger pairs")
 
     if n_pairs < min_pairs:
-        logger.warning(
-            f"Only {n_pairs} pairs found (minimum {min_pairs}). "
-            "β_RC will be imprecisely estimated — consider widening τ."
+        raise ValueError(
+            f"Only {n_pairs} repeat-challenger pairs found (minimum {min_pairs}). "
+            "β_RC would be imprecisely estimated — widen τ (config.yaml "
+            "panel.repeat_challenger_tau) or investigate a name-matching regression."
         )
 
     # ΔGB is intentionally excluded here. GB enters the full margin model as

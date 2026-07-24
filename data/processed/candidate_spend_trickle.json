@@ -44,20 +44,20 @@
     "Likely R": {
       "n_obs": 4404,
       "median_rate_per_day": 0.0,
-      "mean_rate_per_day": 4507.361760088232,
-      "std_rate_per_day": 18999.71343560665
+      "mean_rate_per_day": 4507.105601887894,
+      "std_rate_per_day": 18999.73218585886
     },
     "Safe R": {
-      "n_obs": 18780,
+      "n_obs": 18774,
       "median_rate_per_day": 0.0,
-      "mean_rate_per_day": 1273.9327948045034,
-      "std_rate_per_day": 8460.166338124416
+      "mean_rate_per_day": 1274.3399321630218,
+      "std_rate_per_day": 8461.487538335705
     },
     "_pooled": {
-      "n_obs": 57763,
+      "n_obs": 57757,
       "median_rate_per_day": 0.0,
-      "mean_rate_per_day": 3332.0577897492462,
-      "std_rate_per_day": 16398.228039482732
+      "mean_rate_per_day": 3332.384403424198,
+      "std_rate_per_day": 16399.044871410526
     }
   },
   "preferred_estimator": "mean_rate_per_day",

@@ -115,10 +115,14 @@ def run_all_gates(
     # Corner solutions (races at 0 or cap) are expected under risk-neutral (γ=0)
     # LP — the optimal LP solution IS a corner. Only check corner fraction for γ>0.
     corner_frac = n_corner_solutions / max(len(races), 1)
+    # Note: allocator.py's optimize_nonlinear() only ever prefixes a status with
+    # "slsqp:" when result.success is False (status = "optimal" if result.success
+    # else f"slsqp:{result.message}") — any "slsqp:"-prefixed status is a real
+    # failure and must not pass this gate, regardless of what result.message says.
     _ok_statuses = ("optimal", "optimal_inaccurate", "Optimization terminated successfully.")
     g5 = GateResult(
         name="Optimizer convergence",
-        passed=optimizer_status in _ok_statuses or optimizer_status.startswith("slsqp:Optimization"),
+        passed=optimizer_status in _ok_statuses,
         value=optimizer_status,
         threshold="status=optimal or optimal_inaccurate",
         notes=f"{n_corner_solutions} corner solutions ({corner_frac:.0%})",

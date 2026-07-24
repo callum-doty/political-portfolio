@@ -11,6 +11,17 @@ ridge-regularized regression (λ selected by leave-one-cycle-out CV).
 
 The covariance matrix Cov(Yᵢ, Yⱼ) = fᵢᵀ · Var(F) · fⱼ is used in the
 portfolio optimizer to compute Var[Seats].
+
+NOT CURRENTLY WIRED IN (as of 2026-07-23 audit): build_factor_matrix() has
+no call sites in run_backtest.py / run_dynamic_backtest.py / any live-2026
+script. Every real caller uses run_backtest.build_dummy_factor_model(), a
+single-factor GB-only placeholder — that is what actually produces every
+Var[Seats]/γ-penalty figure currently reported. This module also has an
+open bug independent of being unwired: `ridge.coef_` is fit but never
+applied to `loadings` below (loadings are the raw regressor values, not
+those values scaled by the estimated ridge sensitivities), so `factor_cov`
+covaries the raw covariates rather than anything the regression estimated.
+Fix that before wiring this in. See docs/full_derivation.md §II.15.
 """
 
 from __future__ import annotations

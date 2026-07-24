@@ -137,12 +137,16 @@ def main() -> None:
     forecast_d_total = cand_d_forecast + committed_d_arr
     forecast_r_total = cand_r_forecast + committed_r_arr
 
-    # Forecast floor = projected candidate-committee spend only (not
-    # coordinated/IE -- that money is the party's own, exactly what the
-    # optimizer is deciding whether to add to, same convention
-    # dynamic/ledger.py already uses for cand_d_total).
+    # Forecast floor = projected candidate-committee spend PLUS already-committed
+    # coordinated/IE party spend -- both are irreversible by the optimizer's
+    # decision date, so both belong in the floor `optimize_nonlinear()` reads
+    # from `cand_d_total` (it takes no separate floor argument). This matches
+    # dynamic/ledger.py's `apply_to_races`/`deployable_floor_for`, which bakes
+    # committed capital into `cand_d_total` the same way. Only the *remaining*
+    # deployable party budget (party_budget = budget - committed_total, below)
+    # is left for the optimizer to allocate on top of this floor.
     forecast_races = [
-        replace(r, cand_d_total=float(cand_d_forecast[i]),
+        replace(r, cand_d_total=float(forecast_d_total[i]),
                 d_total=float(forecast_d_total[i]), r_total=float(forecast_r_total[i]))
         for i, r in enumerate(races)
     ]

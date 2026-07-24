@@ -12,6 +12,8 @@ import numpy as np
 from scipy.stats import norm
 from ..types import RaceRecord, ModelOutputs, SigmaModel
 from ..model.margin import MarginModelCoefficients, predict
+from ..model import ceiling
+from .. import config
 
 
 def compute_outputs(
@@ -38,7 +40,7 @@ def compute_outputs(
 
     ratio = np.clip(ratio, 1e-6, 1 - 1e-6)
 
-    mu = predict(
+    mu_raw = predict(
         pvi=race.pvi,
         incumb_status=race.incumb_status,
         generic_ballot=race.generic_ballot,
@@ -51,6 +53,30 @@ def compute_outputs(
     )
 
     sigma = sigma_model.predict(abs(race.pvi), race.incumb_status, race.generic_ballot)
+
+    # Persuasion ceiling (model/ceiling.py, FINDINGS.md): cap the achievable
+    # shift from the race's own candidate-only floor (no party money) at
+    # C_i = c_max * persuadability(mu_floor, sigma) — prevents the log-ratio
+    # gradient's 1/D blowup at near-zero floors from being read as a real,
+    # unbounded spending effect.
+    floor_d = race.cand_d_total
+    floor_total = floor_d + r_total
+    floor_ratio = (floor_d / floor_total) if floor_total > 0 else 0.5
+    floor_ratio = np.clip(floor_ratio, 1e-6, 1 - 1e-6)
+    mu_floor = predict(
+        pvi=race.pvi,
+        incumb_status=race.incumb_status,
+        generic_ballot=race.generic_ballot,
+        ratio=floor_ratio,
+        coef=coef,
+        beta1_override=beta1_override,
+        total_spend=floor_total,
+        cvap=race.cvap,
+        indiv_share=race.indiv_share,
+    )
+    c_max = config.persuasion_ceiling_c_max()
+    mu, grad_factor = ceiling.apply(mu_raw, mu_floor, sigma, c_max)
+
     p_win = float(norm.cdf(mu / sigma))
 
     msg = _marginal_seat_gain(
@@ -62,7 +88,7 @@ def compute_outputs(
         r_total=r_total,
         coef=coef,
         beta1_override=beta1_override,
-    )
+    ) * grad_factor
 
     return ModelOutputs(
         district_id=race.district_id,
@@ -100,7 +126,10 @@ def _marginal_seat_gain(
 
     b1 mirrors predict()'s open-seat substitution: β₁ is replaced by
     coef.beta1_open for Open races when set, so MSG differentiates the
-    same effective β that predict() used to produce mu.
+    same effective β that predict() used to produce mu. beta1_open takes
+    priority over beta1_override for the same reason as predict(): the
+    override carries beta_RC bootstrap-draw uncertainty, a different
+    quantity from the separately-calibrated beta1_open.
 
     Returns MSG per dollar. Multiply by 1e6 externally for per-$1M.
     """
@@ -108,10 +137,10 @@ def _marginal_seat_gain(
     if total_spend <= 0 or d_total <= 0:
         return 0.0
 
-    if beta1_override is not None:
-        b1 = beta1_override
-    elif coef.beta1_open is not None and incumb_status == "Open":
+    if coef.beta1_open is not None and incumb_status == "Open":
         b1 = coef.beta1_open
+    elif beta1_override is not None:
+        b1 = beta1_override
     else:
         b1 = coef.beta1
     is_incumb = 1.0 if incumb_status == "Incumbent" else 0.0

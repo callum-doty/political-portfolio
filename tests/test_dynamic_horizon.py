@@ -114,6 +114,42 @@ class TestRunRecedingHorizon:
         assert deployable == sorted(deployable, reverse=True)
         assert deployable[0] > deployable[-1]
 
+    def test_total_d_spend_denominator_does_not_double_count_committed_capital(self):
+        """The `budget` denominator _solve_one_period() reports shares
+        against (cand_total + B_t) is independent of how B_t splits between
+        L_t and F_t -- deployable_floor_for() already folds L_t into the
+        floor, so adding ledger.total_budget on top of that floor sum must
+        not add L_t a second time. Regression for a bug where it did:
+        total_d_spend came out as cand_total + F_t + 2*L_t instead of
+        cand_total + B_t, growing with L_t across periods."""
+        races = make_races(3)
+        one_period = make_periods(1)
+
+        zero_commitment = run_receding_horizon(
+            one_period, races, make_coef(), make_sigma(),
+            ZeroCommitmentSource(), EMAStateUpdater(lam=0.7),
+            cov_matrix_fn, gamma=0.0, cap_fraction=0.9,
+            total_budget_fn=lambda t: 9_000_000.0,
+            generic_ballot_national=-1.2,
+        )
+        with_commitment = run_receding_horizon(
+            one_period, races, make_coef(), make_sigma(),
+            GrowingCommitmentSource(per_period_per_race=500_000.0), EMAStateUpdater(lam=0.7),
+            cov_matrix_fn, gamma=0.0, cap_fraction=0.9,
+            total_budget_fn=lambda t: 9_000_000.0,   # same B_t both runs
+            generic_ballot_national=-1.2,
+        )
+
+        def inferred_budget(res):
+            race = races[0]
+            alloc = next(a for a in res.recommended_allocation if a.district_id == race.district_id)
+            assert alloc.observed_share > 0
+            return race.d_total / alloc.observed_share
+
+        assert inferred_budget(zero_commitment[0]) == pytest.approx(
+            inferred_budget(with_commitment[0]), rel=1e-9
+        )
+
     def test_lower_deployable_capital_constrains_allocation(self):
         """F_t < B_t should produce a lower total allocation than the
         equivalent uncommitted case — proves the ledger's floor/budget
@@ -139,6 +175,27 @@ class TestRunRecedingHorizon:
         assert constrained[0].ledger.deployable_total < uncommitted[0].ledger.deployable_total
         assert (constrained[0].optimizer_result.budget_used
                 <= uncommitted[0].optimizer_result.budget_used + 1.0)
+
+    def test_committed_t_mirrors_ledger_committed_by_race(self):
+        """RaceState.committed_t (state.py) is a diagnostic mirror of
+        ledger.committed_by_race, populated after the period's ledger is
+        built. Regression for a bug where it was always left at its 0.0
+        default regardless of the commitment source actually used."""
+        races = make_races(3)
+        one_period = make_periods(1)
+
+        results = run_receding_horizon(
+            one_period, races, make_coef(), make_sigma(),
+            GrowingCommitmentSource(per_period_per_race=500_000.0), EMAStateUpdater(lam=0.7),
+            cov_matrix_fn, gamma=0.0, cap_fraction=0.9,
+            total_budget_fn=lambda t: 9_000_000.0,
+            generic_ballot_national=-1.2,
+        )
+        state = results[0].state
+        ledger = results[0].ledger
+        for did, race_state in state.races.items():
+            assert race_state.committed_t == pytest.approx(ledger.committed_by_race[did])
+            assert race_state.committed_t > 0.0
 
 
 class TestRealArtifactIntegration:

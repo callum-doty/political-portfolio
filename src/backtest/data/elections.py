@@ -16,6 +16,18 @@ from .. import config
 
 _FILENAME = "1976-2024-house.tab"
 
+# MEDSL records state-affiliate party labels literally, not normalized to the
+# national party a candidate caucuses with. Minnesota's Democratic-Farmer-
+# Labor party and North Dakota's Democratic-NPL fusion label are the two
+# variants confirmed present in this repo's panel cycles (2012-2024) via
+# direct inspection of 1976-2024-house.tab -- an exact "DEMOCRAT" match alone
+# silently coded every MN/ND Democratic candidate as 0 votes (100%-R
+# landslide), corrupting the historical panel used to fit beta_RC and the
+# margin model for both states, every cycle.
+_DEMOCRAT_LABELS = {"DEMOCRAT", "DEMOCRATIC", "DEMOCRATIC-FARMER-LABOR",
+                     "DEMOCRATIC-NPL", "DEMOCRATIC-NONPARTISAN LEAGUE"}
+_REPUBLICAN_LABELS = {"REPUBLICAN", "INDEPENDENT-REPUBLICAN"}
+
 
 def _load_raw() -> pd.DataFrame:
     path = config.raw_path("mit") / _FILENAME
@@ -62,12 +74,12 @@ def load_results(cycle: int) -> pd.DataFrame:
     # Sum votes per party × district (handles fusion tickets and multi-candidate primaries
     # where the same party has more than one general-election row)
     d = (
-        yr[yr["party"].str.upper() == "DEMOCRAT"]
+        yr[yr["party"].str.upper().isin(_DEMOCRAT_LABELS)]
         .groupby("district_id")["candidatevotes"].sum()
         .rename("d_votes")
     )
     r = (
-        yr[yr["party"].str.upper() == "REPUBLICAN"]
+        yr[yr["party"].str.upper().isin(_REPUBLICAN_LABELS)]
         .groupby("district_id")["candidatevotes"].sum()
         .rename("r_votes")
     )

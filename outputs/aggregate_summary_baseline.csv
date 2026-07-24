@@ -1,2 +1,2 @@
 expected_seats_dccc_observed,expected_seats_model_recommended,spearman_rho,spearman_p_value,spearman_ci_low,spearman_ci_high,n_competitive,n_material_divergence,material_divergence_budget_share,n_concentration_flags,total_budget,concentration_cap_gap
-215.179,220.52,-0.582,0.0,-0.789,-0.307,53,4,0.0449,0,1291230252.36,0.0
+215.115,217.94,-0.809,0.0,-0.936,-0.618,53,3,0.0323,0,1303118518.98,0.0

@@ -20,6 +20,8 @@ from scipy.stats import norm as scipy_norm
 from ..types import ModelOutputs, AllocationResult, RaceRecord
 from ..model.margin import MarginModelCoefficients
 from ..types import SigmaModel
+from ..model import ceiling
+from .. import config
 
 logger = logging.getLogger(__name__)
 
@@ -85,9 +87,34 @@ def _precompute_race_arrays(
     cvap = np.array([max(r.cvap, 1) for r in races])
     alpha4 = coef.alpha4
 
+    # Persuasion ceiling (model/ceiling.py, FINDINGS.md): mu_floor is mu at
+    # party=0 (candidate-only spend); C is the per-race cap on achievable
+    # shift above mu_floor. Both depend only on static per-race quantities,
+    # so they're computed once here rather than every SLSQP iteration.
+    d0 = np.maximum(floors, 1.0)
+    r0 = np.maximum(r_total, 1.0)
+    t0 = d0 + r0
+    ratio0 = np.clip(d0 / t0, 1e-15, 1 - 1e-15)
+    mu_floor = mu_const + c_spend * np.log(ratio0) + alpha4 * np.log(t0 / cvap)
+    c_max = config.persuasion_ceiling_c_max()
+    C = ceiling.ceiling(mu_floor, sigma, c_max)
+
     return dict(mu_const=mu_const, c_spend=c_spend, sigma=sigma,
                 r_total=r_total, floors=floors, cvap=cvap, alpha4=alpha4,
-                party_obs=party_obs, eta=eta)
+                party_obs=party_obs, eta=eta, mu_floor=mu_floor, C=C)
+
+
+def _apply_ceiling(mu_raw: np.ndarray, arrays: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Cap mu_raw at mu_floor + C using precomputed per-race mu_floor/C.
+
+    Returns (mu_capped, gradient_factor) — see model/ceiling.py's apply().
+    """
+    mu_floor = arrays["mu_floor"]
+    C = arrays["C"]
+    delta = np.maximum(mu_raw - mu_floor, 0.0)
+    decay = np.exp(-delta / C)
+    mu_capped = mu_floor + C * (1.0 - decay)
+    return mu_capped, decay
 
 
 def _reactive_r(party: np.ndarray, arrays: dict) -> np.ndarray:
@@ -113,8 +140,9 @@ def _p_win_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
     ratio = np.clip(d / t, 1e-15, 1 - 1e-15)
     log_ratio = np.log(ratio)
     log_total_pv = np.log(t / arrays["cvap"])
-    mu = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
-    return scipy_norm.cdf(mu / arrays["sigma"])
+    mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+    mu_capped, _ = _apply_ceiling(mu_raw, arrays)
+    return scipy_norm.cdf(mu_capped / arrays["sigma"])
 
 
 def _msg_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
@@ -135,9 +163,10 @@ def _msg_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
     ratio = np.clip(d / t, 1e-15, 1 - 1e-15)
     log_ratio = np.log(ratio)
     log_total_pv = np.log(t / arrays["cvap"])
-    mu = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+    mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+    mu_capped, grad_factor = _apply_ceiling(mu_raw, arrays)
     sigma = arrays["sigma"]
-    phi = scipy_norm.pdf(mu / sigma)
+    phi = scipy_norm.pdf(mu_capped / sigma)
 
     # η penalty: only applies where party > party_obs (actual new spending)
     above_obs = (party > arrays["party_obs"]).astype(float)
@@ -146,8 +175,9 @@ def _msg_vec(party: np.ndarray, arrays: dict) -> np.ndarray:
 
     d_log_ratio_d_d = 1.0 / d - dt_dd / t          # corrected gradient
     d_log_total_pv_d_d = dt_dd / t                  # ∂log(t/cvap)/∂D = (∂t/∂D)/t
-    d_mu_d_d = arrays["c_spend"] * d_log_ratio_d_d + arrays["alpha4"] * d_log_total_pv_d_d
-    return (phi / sigma) * d_mu_d_d
+    d_mu_raw_d_d = arrays["c_spend"] * d_log_ratio_d_d + arrays["alpha4"] * d_log_total_pv_d_d
+    # Chain rule: d(mu_capped)/dD = d(mu_capped)/d(mu_raw) * d(mu_raw)/dD
+    return (phi / sigma) * d_mu_raw_d_d * grad_factor
 
 
 def nonlinear_expected_seats_at_party_dollars(
@@ -273,7 +303,14 @@ def optimize_nonlinear(
         jac=neg_e_seats_grad,
         bounds=bounds,
         constraints=constraints,
-        options={"maxiter": 1000 if eta > 0 else 500, "ftol": 1e-10},
+        # maxiter raised 500/1000 -> 3000 and ftol tightened 1e-10 -> 1e-12
+        # (persuasion ceiling follow-up, FINDINGS.md): the ceiling's exp(.)
+        # saturation adds curvature SLSQP needs more iterations to resolve
+        # near-cap; verified against the standalone calibration experiment
+        # that the extra iterations converge rather than just running longer
+        # without improving (result.success flips True, objective stops
+        # changing well before the new limit is hit).
+        options={"maxiter": 3000, "ftol": 1e-12},
     )
 
     party_opt = np.maximum(result.x * SCALE, 0.0)
@@ -310,6 +347,7 @@ def optimize(
     cap_fraction: float,
     floor_allocations: np.ndarray | None = None,
     party_budget: float | None = None,
+    d_total_obs: np.ndarray | None = None,
 ) -> OptimizerResult:
     """
     LP/QP optimizer using linearized MSG objective (kept for γ>0 QP).
@@ -327,6 +365,12 @@ def optimize(
     cap_fraction      : max fraction of party_budget per race
     floor_allocations : (n_races,) candidate spending floor
     party_budget      : DCCC party budget. Defaults to budget.
+    d_total_obs       : (n_races,) total D spend ($) at which race_outputs'
+                        p_win/msg were evaluated — the point the MSG
+                        linearization runs from. If omitted, falls back to
+                        floor_allocations (correct only when race_outputs
+                        were computed at party=0, e.g. the dynamic-simulation
+                        callers that pass floor_allocations=d_t itself).
     """
     n = len(race_outputs)
     msg = np.array([o.msg_i for o in race_outputs])
@@ -350,8 +394,19 @@ def optimize(
     _var_scale = float(np.abs(cov_matrix).max()) if cov_matrix.size > 0 else 0.0
     _use_lp = (gamma == 0.0) or (gamma * _var_scale * pb ** 2 < 1e-6 * _msg_scale * pb)
 
+    # LP objective coefficients: normalize msg to O(1) before handing to the
+    # solver. msg_i is seats/dollar (~1e-7 to 1e-8) while s is dollars
+    # (~1e6-1e7) -- at raw scale, SCIPY's linprog was found to return a
+    # numerically degenerate vertex independent of the actual msg ranking
+    # (verified directly: same msg-ranking flip, same LP inputs, only the
+    # objective's scale changed, and SCIPY silently returned the wrong
+    # corner while reporting status="optimal"). A constant positive rescale
+    # of a linear objective can't change its argmax, so this only fixes
+    # solver conditioning -- mirrors optimize_nonlinear()'s SLSQP SCALE trick.
+    msg_lp = msg / _msg_scale
+
     if _use_lp:
-        objective = cp.Maximize(msg @ s)
+        objective = cp.Maximize(msg_lp @ s)
         prob = cp.Problem(objective, constraints)
         for solver in [cp.SCIPY, cp.CLARABEL, cp.SCS]:
             try:
@@ -375,7 +430,7 @@ def optimize(
         if not solved:
             # QP degenerate (near-zero γ or ill-conditioned cov) — fall back to LP
             logger.warning("QP solver infeasible/failed — falling back to LP (γ≈0 degeneracy)")
-            objective = cp.Maximize(msg @ s)
+            objective = cp.Maximize(msg_lp @ s)
             prob = cp.Problem(objective, constraints)
             for solver in [cp.SCIPY, cp.CLARABEL, cp.SCS]:
                 try:
@@ -391,9 +446,9 @@ def optimize(
     allocs = np.maximum(s.value if s.value is not None else floors.copy(), floors)
     shares = allocs / budget
 
-    observed = np.array([p + f for p, f in zip(p_win0 * budget / max(budget, 1), floors)])
+    baseline = d_total_obs if d_total_obs is not None else floors
     expected_seats = float(np.sum(np.clip(
-        p_win0 + msg * (allocs - np.array([0.0] * n)), 0.0, 1.0)))
+        p_win0 + msg * (allocs - baseline), 0.0, 1.0)))
     var_seats = float(allocs @ cov_matrix @ allocs)
 
     tol = 1e-3 * pb
@@ -446,9 +501,11 @@ def run_sensitivity_grid(
                     races, coef, sigma_model, budget, cov_matrix, gamma, cap,
                     party_budget=party_budget, eta=eta)
             else:
+                d_total_obs = np.array([r.d_total for r in races]) if races is not None else None
                 results[(gamma, cap)] = optimize(
                     race_outputs, budget, cov_matrix, gamma, cap,
-                    floor_allocations=floor_allocations, party_budget=party_budget)
+                    floor_allocations=floor_allocations, party_budget=party_budget,
+                    d_total_obs=d_total_obs)
     return results
 
 

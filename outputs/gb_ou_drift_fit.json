@@ -12,9 +12,9 @@
     "r_squared": 0.0003049891028353846
   },
   "today_gb": 5.02,
-  "days_remaining": 109,
+  "days_remaining": 103,
   "gap_today_vs_gbar": 0.9719084397087654,
-  "implied_drift_points": -0.02358851075791703,
+  "implied_drift_points": -0.022290060624453708,
   "historical_sanity_check": [
     {
       "cycle": 2018,

@@ -12,7 +12,7 @@ TIER 1 — Bulk downloads (no API key, no rate limit):
 TIER 2 — FEC API (requires registered key for multi-cycle runs):
   DCCC/NRCC independent expenditures:
     /schedules/schedule_e/?committee_id=C00000935   (DCCC)
-    /schedules/schedule_e/?committee_id=C00075960   (NRCC)
+    /schedules/schedule_e/?committee_id=C00075820   (NRCC)
     ~1,000–3,000 rows per committee per cycle (~10–30 pages each).
   DCCC/NRCC coordinated party expenditures:
     /schedules/schedule_f/?committee_id=...
@@ -70,7 +70,13 @@ FEC_API_BASE = "https://api.open.fec.gov/v1"
 FEC_BULK_BASE = "https://www.fec.gov/files/bulk-downloads"
 
 DCCC_COMMITTEE_ID = "C00000935"
-NRCC_COMMITTEE_ID = "C00075473"
+# Corrected 2026-07-23 (codebase audit): the previous value "C00075473" is not
+# the NRCC -- it's "CMS ENERGY CORPORATION EMPLOYEES FOR BETTER GOVERNMENT",
+# an unrelated corporate PAC (verified against fec.gov/data/committee/C00075473/).
+# The NRCC's actual FEC ID, per fec.gov/data/committee/C00075820/, is below.
+# Any independent_expenditures_*.csv / coordinated_expenditures_*.csv fetched
+# under the old ID must be re-fetched -- see FINDINGS.md for the affected cycles.
+NRCC_COMMITTEE_ID = "C00075820"
 
 
 FIPS_TO_STATE = {
@@ -197,14 +203,13 @@ def fetch_candidate_totals_local(cycle: int, force: bool = False) -> bool:
 
     yy = _cycle_to_yy(cycle)
     local_paths = [
-        config.raw_path("bulk_all") if hasattr(config, "raw_path") else None,
         Path(__file__).parent.parent / "data" / "raw" / "bulk_all" / f"weball{yy}.txt",
         Path(__file__).parent.parent / "data" / "raw" / "house_senate_current_campaigns" / f"webl{yy}.txt",
     ]
     # Resolve: use the first existing local file
     local_file = None
-    for p in local_paths[1:]:
-        if p and p.exists():
+    for p in local_paths:
+        if p.exists():
             local_file = p
             break
 

@@ -84,8 +84,3 @@ def load_ratings(cycle: int) -> pd.DataFrame:
         lambda row: pvi_module.derive_rating(row["pvi"], row["incumb_status"]), axis=1
     )
     return merged[["district_id", "cook_rating"]]
-
-
-def load_ratings_2024() -> pd.DataFrame:
-    """Backwards-compatible alias for load_ratings(2024)."""
-    return load_ratings(2024)

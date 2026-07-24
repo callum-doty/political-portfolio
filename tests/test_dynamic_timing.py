@@ -52,7 +52,12 @@ def cov_matrix_fn(races: list[RaceRecord]) -> np.ndarray:
 
 
 class TestBuildTimingTable:
-    def test_returns_one_row_per_race_per_period(self):
+    def test_returns_one_row_per_race_per_period_after_the_first(self):
+        """The first period a district appears seeds prev_cumulative but
+        emits no row -- diffing its real cumulative spend against an assumed
+        zero baseline would fabricate an "incremental" spend consisting
+        mostly of RealizedSpendCommitmentSource's cycle-static coordinated-
+        expenditure component (see build_timing_table's docstring)."""
         races = make_races(3)
         periods = make_periods(2)
         results = run_receding_horizon(
@@ -63,7 +68,8 @@ class TestBuildTimingTable:
             generic_ballot_national=-1.2,
         )
         timing = build_timing_table(results)
-        assert len(timing) == 3 * 2
+        assert len(timing) == 3 * (2 - 1)
+        assert all(tc.period > 0 for tc in timing)
 
     def test_positive_gap_when_model_deploys_and_actual_is_static(self):
         """Races are held fixed across periods (no period_races_fn override),

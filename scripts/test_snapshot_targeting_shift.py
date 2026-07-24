@@ -47,7 +47,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from backtest.data.universe import build_universe
 from backtest.optimizer.allocator import optimize_nonlinear
-from backtest.dynamic.simulate import _static_floor_totals, _reconstruct_races_at
+from backtest.dynamic.simulate import (
+    _static_floor_totals, _reconstruct_races_at, _has_dated_candidate_panel,
+    _candidate_fallback_totals,
+)
 
 from validate_state_simulator import load_coef_and_sigma, CYCLE_CONFIG
 
@@ -63,9 +66,13 @@ def run_snapshot(cycle: int, label: str, offset_days: int,
                   coef, sigma_model, final_races, static_totals, budget, party_budget, cov_matrix):
     election_day = CYCLE_CONFIG[cycle]["election_day"]
     snap_date = election_day - timedelta(days=offset_days)
+    use_dated_candidate_spend = _has_dated_candidate_panel(cycle)
+    candidate_fallback_totals = None if use_dated_candidate_spend else _candidate_fallback_totals(cycle)
     races = _reconstruct_races_at(
         period_index=0, period_date=snap_date, cycle=cycle,
         base_races=final_races, static_totals=static_totals,
+        use_dated_candidate_spend=use_dated_candidate_spend,
+        candidate_fallback_totals=candidate_fallback_totals,
     )
     result = optimize_nonlinear(
         races, coef, sigma_model, budget, cov_matrix, GAMMA, CAP_FRACTION,

@@ -18,6 +18,7 @@ identical single-period logic.
 """
 
 from __future__ import annotations
+import dataclasses
 import logging
 from dataclasses import dataclass
 from datetime import date
@@ -73,10 +74,19 @@ def _solve_one_period(
     `budget` is the *total* D spend (candidate-committee floor + party
     budget) rather than the party budget alone, we report shares against
     the candidate/committed floor plus B_t, not B_t in isolation.
+
+    `deployable_floor_for(races)` already returns `cand_d_total_i + L_i,t`
+    per race (ledger.py), so summing it and adding `ledger.total_budget`
+    (= L_t + F_t) would double-count L_t. Subtract `ledger.committed_total`
+    once to cancel that: total = cand_total + L_t + B_t - L_t = cand_total + B_t.
     """
     races_with_floor = ledger.apply_to_races(races)
     outputs = compute_outputs_batch(races_with_floor, coef, sigma_model)
-    total_d_spend = ledger.total_budget + float(ledger.deployable_floor_for(races).sum())
+    total_d_spend = (
+        ledger.total_budget
+        + float(ledger.deployable_floor_for(races).sum())
+        - ledger.committed_total
+    )
     result = optimize_nonlinear(
         races_with_floor,
         coef,
@@ -144,6 +154,13 @@ def run_receding_horizon(
         ledger_t = CapitalLedger.build(
             rp.index, total_budget_t, commitment_source, rp.period_date, races_t,
         )
+        # committed_t is a diagnostic mirror of ledger_t.committed_by_race (state.py's
+        # RaceState docstring) -- populated here, the first point in the loop where
+        # both state_t and ledger_t exist, rather than left at its 0.0 default.
+        state_t.races.update({
+            did: dataclasses.replace(rs, committed_t=ledger_t.committed_by_race.get(did, 0.0))
+            for did, rs in state_t.races.items()
+        })
 
         cov_matrix = cov_matrix_fn(races_t)
         optimizer_result, allocation = _solve_one_period(

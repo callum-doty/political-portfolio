@@ -188,14 +188,17 @@ class TestGate5OptimizerConvergence:
         with pytest.raises(ValidationError, match="Optimizer convergence"):
             _run_gates(races, [_make_output()], optimizer_status="solver_error")
 
-    def test_slsqp_success_string_passes(self):
-        """The SLSQP success message string must be recognised as convergence."""
+    def test_slsqp_prefixed_status_fails(self):
+        """allocator.py only ever formats status as f"slsqp:{message}" when
+        result.success is False (status = "optimal" if result.success else
+        f"slsqp:{result.message}") — so any "slsqp:"-prefixed status, whatever
+        its message text, is a genuine failure and must not pass this gate."""
         races = [_make_race()]
-        results = _run_gates(
-            races, [_make_output()],
-            optimizer_status="slsqp:Optimization terminated successfully.",
-        )
-        assert results[4].passed
+        with pytest.raises(ValidationError, match="Optimizer convergence"):
+            _run_gates(
+                races, [_make_output()],
+                optimizer_status="slsqp:Optimization terminated successfully.",
+            )
 
 
 # ─── Gate 6: Brier score ──────────────────────────────────────────────────────

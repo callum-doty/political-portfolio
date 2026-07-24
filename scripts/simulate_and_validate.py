@@ -55,6 +55,22 @@ from estimate_gb_volatility import realized_vol_by_horizon
 ROOT = Path(__file__).parent.parent
 RNG = np.random.default_rng(20260716)
 
+
+class SimulatorValidationError(Exception):
+    """Raised when a self-consistency check falls outside its pass band."""
+
+
+# Thresholds calibrated against observed values at N_PATHS=5000 (2026-07-23):
+# Check A ratios were 0.990-1.002, Check B relative error ~7-9%, Check C mean/max
+# relative error ~0.013-0.015/0.037-0.042, Check D ratios 0.979-1.018. Bands below
+# are set with headroom above those observed values, not just wide enough to
+# always pass -- a real implementation regression should still trip them.
+CHECK_A_RATIO_BAND = (0.90, 1.10)
+CHECK_B_MAX_REL_ERROR = 0.35
+CHECK_C_MAX_MEAN_REL_ERROR = 0.05
+CHECK_C_MAX_MAX_REL_ERROR = 0.10
+CHECK_D_RATIO_BAND = (0.85, 1.15)
+
 # Single source of truth: data/processed/gb_dynamics.json, written by
 # scripts/estimate_gb_volatility.py -- see that script's main() for how these
 # are fit. Previously independent hardcoded literals here and in
@@ -188,12 +204,15 @@ def check_a_gb_volatility(sim: dict) -> dict:
         deltas = g_paths[:, h_periods:] - g_paths[:, :-h_periods]
         sim_std = float(np.std(deltas))
         predicted_std = SIGMA_G_PER_SQRT_DAY * np.sqrt(h_days)
+        ratio = sim_std / predicted_std
+        lo, hi = CHECK_A_RATIO_BAND
         results.append({
             "horizon_days": h_days, "simulated_std": sim_std,
             "predicted_std": predicted_std,
-            "ratio": sim_std / predicted_std,
+            "ratio": ratio,
+            "passed": lo <= ratio <= hi,
         })
-    return {"per_horizon": results}
+    return {"per_horizon": results, "passed": all(r["passed"] for r in results)}
 
 
 # ─── Check B: refit eta on simulated (D,R) paths ───────────────────────────────
@@ -218,14 +237,19 @@ def check_b_eta_recovery(sim: dict) -> dict:
             })
     df = pd.DataFrame(records)
     if df.empty:
-        return {"recovered_eta_pooled": None, "n_obs": 0}
+        return {"recovered_eta_pooled": None, "n_obs": 0, "passed": False}
     df["d_lag_dm"] = df["d_lag"] - df.groupby("district_id")["d_lag"].transform("mean")
     df["r_delta_dm"] = df["r_delta"] - df.groupby("district_id")["r_delta"].transform("mean")
     fit = sm.OLS(df["r_delta_dm"], df[["d_lag_dm"]]).fit()
+    recovered = float(fit.params.iloc[0])
+    input_avg = float(np.mean(list(sim["eta_by_tier"].values())))
+    rel_error = abs(recovered - input_avg) / max(abs(input_avg), 0.05)
     return {
-        "recovered_eta_pooled": float(fit.params.iloc[0]),
-        "input_eta_pooled_avg": float(np.mean(list(sim["eta_by_tier"].values()))),
+        "recovered_eta_pooled": recovered,
+        "input_eta_pooled_avg": input_avg,
         "n_obs": len(df),
+        "rel_error": rel_error,
+        "passed": rel_error <= CHECK_B_MAX_REL_ERROR,
     }
 
 
@@ -235,10 +259,14 @@ def check_c_epsilon_variance(sim: dict) -> dict:
     diffs = []
     for did, chk in sim["eps_cumvar_check"].items():
         diffs.append(abs(chk["simulated_var"] - chk["target_total_var"]) / max(chk["target_total_var"], 1e-9))
+    mean_rel_error = float(np.mean(diffs))
+    max_rel_error = float(np.max(diffs))
     return {
         "n_districts": len(diffs),
-        "mean_relative_error": float(np.mean(diffs)),
-        "max_relative_error": float(np.max(diffs)),
+        "mean_relative_error": mean_rel_error,
+        "max_relative_error": max_rel_error,
+        "passed": (mean_rel_error <= CHECK_C_MAX_MEAN_REL_ERROR
+                   and max_rel_error <= CHECK_C_MAX_MAX_REL_ERROR),
     }
 
 
@@ -257,16 +285,19 @@ def check_d_margin_seat_spread(sim: dict) -> dict:
         })
     df = pd.DataFrame(rows)
     df["ratio"] = df["simulated_sd"] / df["target_remaining_sd"]
+    lo, hi = CHECK_D_RATIO_BAND
     return {
         "n_districts": len(df),
         "mean_ratio": float(df["ratio"].mean()),
         "min_ratio": float(df["ratio"].min()),
         "max_ratio": float(df["ratio"].max()),
+        "passed": bool(((df["ratio"] >= lo) & (df["ratio"] <= hi)).all()),
     }
 
 
 def main():
     all_results = {}
+    failures = []
     for cycle in (2022, 2024):
         print(f"\n=== Simulating {cycle}: {N_PATHS} paths ===")
         sim = simulate_paths(cycle, N_PATHS)
@@ -274,22 +305,40 @@ def main():
         print(f"  input eta(tier): {sim['eta_by_tier']}")
 
         a = check_a_gb_volatility(sim)
-        print("  Check A (GB volatility):")
+        tag = "PASS" if a["passed"] else "FAIL"
+        print(f"  [{tag}] Check A (GB volatility, band={CHECK_A_RATIO_BAND}):")
         for r in a["per_horizon"]:
             print(f"    {r['horizon_days']}d: simulated={r['simulated_std']:.3f} "
                   f"predicted={r['predicted_std']:.3f} ratio={r['ratio']:.3f}")
+        if not a["passed"]:
+            failures.append(f"{cycle} Check A: a horizon's ratio fell outside {CHECK_A_RATIO_BAND}")
 
         b = check_b_eta_recovery(sim)
-        print(f"  Check B (eta recovery): recovered={b['recovered_eta_pooled']:.3f} "
-              f"vs input avg={b['input_eta_pooled_avg']:.3f} (n={b['n_obs']})")
+        tag = "PASS" if b["passed"] else "FAIL"
+        print(f"  [{tag}] Check B (eta recovery, max_rel_error={CHECK_B_MAX_REL_ERROR}): "
+              f"recovered={b['recovered_eta_pooled']:.3f} "
+              f"vs input avg={b['input_eta_pooled_avg']:.3f} (n={b['n_obs']}, "
+              f"rel_error={b.get('rel_error', float('nan')):.3f})")
+        if not b["passed"]:
+            failures.append(f"{cycle} Check B: eta recovery relative error {b.get('rel_error')} "
+                             f"exceeds {CHECK_B_MAX_REL_ERROR}")
 
         c = check_c_epsilon_variance(sim)
-        print(f"  Check C (epsilon cumulative variance): mean rel. error={c['mean_relative_error']:.4f}, "
-              f"max={c['max_relative_error']:.4f}")
+        tag = "PASS" if c["passed"] else "FAIL"
+        print(f"  [{tag}] Check C (epsilon cumulative variance, "
+              f"mean<={CHECK_C_MAX_MEAN_REL_ERROR}, max<={CHECK_C_MAX_MAX_REL_ERROR}): "
+              f"mean rel. error={c['mean_relative_error']:.4f}, max={c['max_relative_error']:.4f}")
+        if not c["passed"]:
+            failures.append(f"{cycle} Check C: mean/max relative error "
+                             f"{c['mean_relative_error']:.4f}/{c['max_relative_error']:.4f} "
+                             f"exceeds {CHECK_C_MAX_MEAN_REL_ERROR}/{CHECK_C_MAX_MAX_REL_ERROR}")
 
         d = check_d_margin_seat_spread(sim)
-        print(f"  Check D (margin spread vs target): mean ratio={d['mean_ratio']:.3f} "
-              f"(min={d['min_ratio']:.3f}, max={d['max_ratio']:.3f})")
+        tag = "PASS" if d["passed"] else "FAIL"
+        print(f"  [{tag}] Check D (margin spread vs target, band={CHECK_D_RATIO_BAND}): "
+              f"mean ratio={d['mean_ratio']:.3f} (min={d['min_ratio']:.3f}, max={d['max_ratio']:.3f})")
+        if not d["passed"]:
+            failures.append(f"{cycle} Check D: a district's ratio fell outside {CHECK_D_RATIO_BAND}")
 
         all_results[cycle] = {"check_a": a, "check_b": b, "check_c": c, "check_d": d}
 
@@ -298,6 +347,16 @@ def main():
         json.dump(all_results, f, indent=2, default=str)
     print(f"\nSaved -> {out_path}")
 
+    if failures:
+        raise SimulatorValidationError(
+            "Simulator self-consistency check(s) failed:\n  " + "\n  ".join(failures)
+        )
+    print("\nAll simulator self-consistency checks passed.")
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SimulatorValidationError as e:
+        print(f"\n[FAIL] {e}")
+        sys.exit(1)

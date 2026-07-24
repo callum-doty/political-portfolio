@@ -68,7 +68,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from backtest.data import elections, fec
 from backtest.data.universe import build_universe
 from backtest.model.win_prob import compute_outputs_batch
-from backtest.dynamic.simulate import _static_floor_totals, _reconstruct_races_at
+from backtest.dynamic.simulate import (
+    _static_floor_totals, _reconstruct_races_at,
+    _has_dated_candidate_panel, _candidate_fallback_totals,
+)
 
 from validate_state_simulator import load_coef_and_sigma, CYCLE_CONFIG, COMPETITIVE
 
@@ -92,6 +95,8 @@ def test1_correlation_by_snapshot(cycle: int) -> list[dict]:
     static_totals = _static_floor_totals(cycle)
     results = elections.load_results(cycle)
     realized = dict(zip(results["district_id"], results["margin_pp"]))
+    use_dated_candidate_spend = _has_dated_candidate_panel(cycle)
+    candidate_fallback_totals = None if use_dated_candidate_spend else _candidate_fallback_totals(cycle)
 
     out = []
     election_day = cfg["election_day"]
@@ -99,6 +104,8 @@ def test1_correlation_by_snapshot(cycle: int) -> list[dict]:
         races = _reconstruct_races_at(
             period_index=i, period_date=snap_date, cycle=cycle,
             base_races=base_races, static_totals=static_totals,
+            use_dated_candidate_spend=use_dated_candidate_spend,
+            candidate_fallback_totals=candidate_fallback_totals,
         )
         outputs = compute_outputs_batch(races, coef, sigma_model)
         tier_by_district = {r.district_id: r.cook_rating for r in races}

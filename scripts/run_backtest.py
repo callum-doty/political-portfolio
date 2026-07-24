@@ -326,17 +326,33 @@ def main() -> None:
             sd = math.sqrt(res.shares @ cov_matrix @ res.shares)
             model_points.append((res.expected_seats, sd, f"γ={g:.3f}"))
 
-    null_sd  = math.sqrt(null_shares @ cov_matrix @ null_shares)
-    cook_sd  = math.sqrt(cook_shares @ cov_matrix @ cook_shares)
+    # null_shares/cook_shares (null_equal_weight_shares/cook_proportional_shares) are
+    # fractions of party_budget (see compare_allocators()'s null_party/cook_party);
+    # dccc_sd/model_points' shares are fractions of the TOTAL budget (floor+party).
+    # Convert to total-D-spend/budget so all four points share the basis cov_matrix
+    # (built over total-budget shares) expects -- previously null_sd/cook_sd mixed a
+    # party-budget-basis share directly into that quadratic form.
+    null_total_shares = (null_shares * party_budget + cand_floors) / budget
+    cook_total_shares = (cook_shares * party_budget + cand_floors) / budget
+    null_sd  = math.sqrt(null_total_shares @ cov_matrix @ null_total_shares)
+    cook_sd  = math.sqrt(cook_total_shares @ cov_matrix @ cook_total_shares)
+
+    # Use compare_allocators()'s true nonlinear expected_seats (already computed
+    # above) rather than DCCC's own p_win sum -- that was never the null/Cook
+    # allocators' actual expected-seats value, just a placeholder that happened to
+    # be in scope.
+    null_seats_true = allocator_table.loc[
+        allocator_table["allocator"] == "Null (equal-weight)", "expected_seats"].iloc[0]
+    cook_seats_true = allocator_table.loc[
+        allocator_table["allocator"] == "Cook-implied", "expected_seats"].iloc[0]
 
     efficiency_frontier(
         dccc_point=(sum(o.p_win for o in outputs), dccc_sd),
         model_points=model_points,
-        null_point=(
-            sum(o.p_win for o in outputs),  # approximate
-            null_sd
-        ),
+        cook_point=(cook_seats_true, cook_sd),
+        null_point=(null_seats_true, null_sd),
         save_path=out_dir / f"efficiency_frontier{suffix}.png",
+        cycle=cycle,
     )
 
     allocation_difference_scatter(

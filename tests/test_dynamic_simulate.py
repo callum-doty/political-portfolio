@@ -143,6 +143,56 @@ class TestOneStepAheadIndependence:
             assert ra.d_total == pytest.approx(rb.d_total)
             assert ra.r_total == pytest.approx(rb.r_total)
 
+    def test_committed_t_mirrors_ledger_committed_by_race(self, monkeypatch, tmp_path):
+        """RaceState.committed_t (state.py) is a diagnostic mirror of
+        ledger.committed_by_race, populated after each period's ledger is
+        built. Regression for a bug where it was always left at its 0.0
+        default regardless of the commitment source actually used
+        (mirrors test_dynamic_horizon.py's equivalent test for the
+        receding-horizon loop)."""
+        class GrowingCommitmentSource:
+            def __init__(self, per_period_per_race: float):
+                self.per_period_per_race = per_period_per_race
+
+            def committed_capital(self, period, period_date, races) -> dict[str, float]:
+                amount = self.per_period_per_race * (period + 1)
+                return {r.district_id: amount for r in races}
+
+        cycle = 2024
+        races = [
+            RaceRecord(
+                district_id="TX-01", state="TX", district=1,
+                cook_rating="Toss-Up", incumb_status="Challenger",
+                pvi=0.0, d_total=0.0, r_total=0.0,
+                cvap=400_000, generic_ballot=-1.2, cand_d_total=200_000.0,
+            ),
+        ]
+        raw_csv = tmp_path / f"independent_expenditure_{cycle}.csv"
+        raw_csv.write_text(
+            "can_office,ele_type,can_office_state,can_office_dis,cand_pty_aff,sup_opp,exp_amo,exp_date,file_num,prev_file_num\n"
+            "H,G,TX,01,DEMOCRATIC,S,1000000,05-JAN-24,1001,\n"
+            "H,G,TX,01,REPUBLICAN,S,1000000,05-JAN-24,1002,\n"
+        )
+        monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
+        (tmp_path / f"candidate_disbursements_{cycle}.csv").write_text(
+            "district_id,party,candidate_disbursements\n")
+        (tmp_path / f"coordinated_expenditures_{cycle}.csv").write_text(
+            "district_id,party,coordinated_expenditures\n")
+
+        periods = [ReportingPeriod(index=0, period_date=date(2024, 1, 10), label="P0")]
+        results = one_step_ahead(
+            periods, cycle, races, make_coef(), make_sigma(),
+            GrowingCommitmentSource(per_period_per_race=50_000.0), EMAStateUpdater(lam=0.7),
+            cov_matrix_fn, gamma=0.0, cap_fraction=0.9,
+            total_budget_fn=lambda t: 9_000_000.0,
+            generic_ballot_national=-1.2,
+        )
+        state = results[0].state
+        ledger = results[0].ledger
+        for did, race_state in state.races.items():
+            assert race_state.committed_t == pytest.approx(ledger.committed_by_race[did])
+            assert race_state.committed_t > 0.0
+
 
 class TestDatedCandidateSpendReconstruction:
     """Paper III (dated candidate periodic reports, data_catalog.md §2.7):

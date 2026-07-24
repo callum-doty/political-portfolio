@@ -57,18 +57,25 @@ def estimate_sigma(residuals: pd.DataFrame) -> SigmaModel:
     y = df["log_abs_resid"]
     fit = sm.OLS(y, X).fit()
 
+    # Duan (1983) smearing estimator: exp(fitted) recovers the median of the
+    # log-normal |residual|, not its mean — undercorrected retransformation
+    # would systematically understate σᵢ. Rescale by the mean of exp(residual)
+    # from this fit (no normality assumption required).
+    smearing_factor = float(np.mean(np.exp(fit.resid)))
+
     coef = {
-        "intercept":     float(fit.params["const"]),
-        "abs_pvi":       float(fit.params["abs_pvi"]),
-        "is_open":       float(fit.params["is_open"]),
-        "is_challenger": float(fit.params["is_challenger"]),
-        "abs_gb":        float(fit.params.get("abs_gb", 0.0)),
+        "intercept":       float(fit.params["const"]),
+        "abs_pvi":         float(fit.params["abs_pvi"]),
+        "is_open":         float(fit.params["is_open"]),
+        "is_challenger":   float(fit.params["is_challenger"]),
+        "abs_gb":          float(fit.params.get("abs_gb", 0.0)),
+        "smearing_factor": smearing_factor,
     }
 
     logger.info(
         f"σ model: intercept={coef['intercept']:.3f}, abs_pvi={coef['abs_pvi']:.3f}, "
         f"is_open={coef['is_open']:.3f}, is_challenger={coef['is_challenger']:.3f}, "
-        f"abs_gb={coef['abs_gb']:.4f}"
+        f"abs_gb={coef['abs_gb']:.4f}, smearing_factor={coef['smearing_factor']:.4f}"
     )
 
     _check_sigma_ordering(SigmaModel(_coef=coef))
@@ -117,7 +124,11 @@ def compute_residuals_from_panel(
     panel_incumb  : [district_id, cycle, incumb_status]
     panel_pvi     : [district_id, cycle, pvi]
     alpha_coef    : {"intercept", "pvi", "incumb", "gb"} — control surface coefficients
-    beta_coef     : {"b1", "b2", "b3"} — spending response coefficients
+    beta_coef     : {"b1", "b2", "b3", "b1_open"} — spending response coefficients.
+                    "b1_open" (optional) is substituted for "b1" on Open-seat rows,
+                    matching model.margin.predict()'s beta1/beta1_open switch —
+                    otherwise Open-seat residuals are computed against the wrong
+                    μ̂ and bias the σᵢ "is_open" coefficient.
     generic_ballot_by_cycle : {cycle: GB_value}
 
     Returns
@@ -150,13 +161,15 @@ def compute_residuals_from_panel(
     # Fitted margin from the full model
     a = alpha_coef
     b = beta_coef
+    b1_open = b.get("b1_open")
+    b1_eff = np.where(df["is_open"] == 1, b1_open, b["b1"]) if b1_open is not None else b["b1"]
     df["mu_hat"] = (
         a["intercept"]
         + a["pvi"] * df["pvi"]
         + a["incumb"] * df["is_incumb"]
         + a["gb"] * df["gb"]
         + a.get("alpha4", 0.0) * df["log_total_per_voter"]
-        + b["b1"] * df["log_ratio"]
+        + b1_eff * df["log_ratio"]
         + b["b2"] * df["log_ratio"] * df["abs_pvi"]
         + b["b3"] * df["log_ratio"] * df["is_incumb"]
     )

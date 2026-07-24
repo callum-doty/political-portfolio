@@ -178,7 +178,8 @@ def _solve_committed_floor(coef, races, n, sigma_arr, pvi_arr, incumb_arr, d_t,
                               p_win=p_win0[i], msg_i=msg[i])
             for i in range(n)]
     res = lsm.optimize(outs, budget=budget, cov_matrix=np.eye(n) * 1e-6, gamma=0.0,
-                        cap_fraction=0.15, floor_allocations=d_t, party_budget=budget)
+                        cap_fraction=0.15, floor_allocations=d_t, party_budget=budget,
+                        d_total_obs=d_t)
     return res.allocations
 
 

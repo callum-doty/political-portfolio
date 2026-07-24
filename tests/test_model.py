@@ -30,7 +30,7 @@ def tossup_race():
         district_id="PA-08", state="PA", district=8,
         cook_rating="Toss-Up", incumb_status="Challenger",
         pvi=-1.0, d_total=3_000_000.0, r_total=3_500_000.0,
-        cvap=400_000, generic_ballot=-1.2,
+        cvap=400_000, generic_ballot=-1.2, cand_d_total=500_000.0,
     )
 
 
@@ -112,13 +112,13 @@ class TestWinProbability:
             district_id="PA-01", state="PA", district=1,
             cook_rating="Toss-Up", incumb_status="Challenger",
             pvi=-1.0, d_total=2_000_000.0, r_total=2_000_000.0,
-            cvap=400_000, generic_ballot=-1.2,
+            cvap=400_000, generic_ballot=-1.2, cand_d_total=500_000.0,
         )
         scaled = RaceRecord(
             district_id="PA-01", state="PA", district=1,
             cook_rating="Toss-Up", incumb_status="Challenger",
             pvi=-1.0, d_total=4_000_000.0, r_total=4_000_000.0,
-            cvap=400_000, generic_ballot=-1.2,
+            cvap=400_000, generic_ballot=-1.2, cand_d_total=1_000_000.0,
         )
         out_base = compute_outputs(base, coef, sigma_model)
         out_scaled = compute_outputs(scaled, coef, sigma_model)
@@ -130,7 +130,7 @@ class TestWinProbability:
             district_id="OH-01", state="OH", district=1,
             cook_rating="Lean R", incumb_status="Incumbent",
             pvi=-3.0, d_total=2_000_000.0, r_total=5_000_000.0,
-            cvap=350_000, generic_ballot=-1.2,
+            cvap=350_000, generic_ballot=-1.2, cand_d_total=500_000.0,
         )
         out = compute_outputs(race, coef, sigma_model)
         assert out.msg_i > 0
@@ -234,6 +234,94 @@ class TestBeta1Open:
         m_default = predict(0.0, "Incumbent", 0.0, 0.6, coef)
         m_open = predict(0.0, "Incumbent", 0.0, 0.6, coef_with_open)
         assert m_default == pytest.approx(m_open)
+
+    def test_predict_batch_uses_beta1_open_for_open_seats(self, coef):
+        """predict_batch() must agree with predict()'s beta1/beta1_open switch
+        row-by-row, including on a mixed Open/non-Open DataFrame -- it must
+        not fall back to coef.beta1 for every row regardless of is_open."""
+        coef_with_open = MarginModelCoefficients(
+            alpha0=coef.alpha0, alpha1=coef.alpha1, alpha2=coef.alpha2,
+            alpha3=coef.alpha3, beta1=coef.beta1, beta2=coef.beta2,
+            beta3=coef.beta3, beta1_open=0.5,
+        )
+        rows = [
+            {"pvi": 2.0, "is_incumb": 0.0, "is_open": 1.0, "gb": -1.2, "log_ratio": np.log(0.55)},
+            {"pvi": -3.0, "is_incumb": 1.0, "is_open": 0.0, "gb": -1.2, "log_ratio": np.log(0.45)},
+        ]
+        df = pd.DataFrame(rows)
+        batch = predict_batch(df, coef_with_open).values
+
+        expected_open = predict(2.0, "Open", -1.2, 0.55, coef_with_open)
+        expected_incumb = predict(-3.0, "Incumbent", -1.2, 0.45, coef_with_open)
+        assert batch[0] == pytest.approx(expected_open, rel=1e-6)
+        assert batch[1] == pytest.approx(expected_incumb, rel=1e-6)
+        # The regression this guards against: beta1_open silently ignored.
+        assert batch[0] != pytest.approx(
+            predict(2.0, "Open", -1.2, 0.55,
+                    MarginModelCoefficients(alpha0=coef.alpha0, alpha1=coef.alpha1,
+                                             alpha2=coef.alpha2, alpha3=coef.alpha3,
+                                             beta1=coef.beta1, beta2=coef.beta2,
+                                             beta3=coef.beta3, beta1_open=None))
+        )
+
+    def test_predict_batch_without_is_open_column_falls_back_to_beta1(self, coef):
+        """No is_open column (e.g. older callers) must still work, using
+        coef.beta1 for every row -- same as predict() would for a non-Open
+        race, and matching predict_batch()'s pre-existing documented
+        contract for callers that don't pass is_open."""
+        coef_with_open = MarginModelCoefficients(
+            alpha0=coef.alpha0, alpha1=coef.alpha1, alpha2=coef.alpha2,
+            alpha3=coef.alpha3, beta1=coef.beta1, beta2=coef.beta2,
+            beta3=coef.beta3, beta1_open=0.5,
+        )
+        df = pd.DataFrame([{"pvi": 0.0, "is_incumb": 0.0, "gb": 0.0, "log_ratio": np.log(0.5)}])
+        result = predict_batch(df, coef_with_open)
+        assert np.isfinite(result.iloc[0])
+        assert result.iloc[0] == pytest.approx(predict(0.0, "Challenger", 0.0, 0.5, coef))
+
+    def test_beta1_open_not_clobbered_by_beta1_override(self, coef, sigma_model):
+        """Regression: beta1_override (beta_RC bootstrap-draw uncertainty,
+        comparison/uncertainty.py) must not override beta1_open for Open
+        races -- they're different, separately-calibrated quantities. Before
+        the fix, every one of the 1000 uncertainty draws silently recentered
+        Open-race elasticity on beta_RC (~5.46) instead of beta1_open
+        (~6.98) regardless of the drawn value."""
+        coef_with_open = MarginModelCoefficients(
+            alpha0=coef.alpha0, alpha1=coef.alpha1, alpha2=coef.alpha2,
+            alpha3=coef.alpha3, beta1=coef.beta1, beta2=coef.beta2,
+            beta3=coef.beta3, beta1_open=6.977,
+        )
+        m_no_override = predict(0.0, "Open", 0.0, 0.6, coef_with_open)
+        m_with_override = predict(0.0, "Open", 0.0, 0.6, coef_with_open, beta1_override=5.2)
+        assert m_with_override == pytest.approx(m_no_override), \
+            "beta1_override must not affect Open-seat races when beta1_open is set"
+
+        # Non-Open races must still respond to the override -- that's the
+        # actual point of beta1_override for uncertainty propagation.
+        m_incumb_no_override = predict(0.0, "Incumbent", 0.0, 0.6, coef_with_open)
+        m_incumb_with_override = predict(0.0, "Incumbent", 0.0, 0.6, coef_with_open, beta1_override=99.0)
+        assert m_incumb_with_override != pytest.approx(m_incumb_no_override)
+
+    def test_marginal_seat_gain_beta1_open_not_clobbered_by_override(self, coef, sigma_model):
+        """Same regression as above, at the MSG/gradient level (win_prob.py)
+        -- level (mu, via predict()) and gradient (MSG) must stay
+        consistent, or the optimizer would rank Open races using a
+        different effective beta1 than the win-probability it's ranking
+        against."""
+        coef_with_open = MarginModelCoefficients(
+            alpha0=coef.alpha0, alpha1=coef.alpha1, alpha2=coef.alpha2,
+            alpha3=coef.alpha3, beta1=coef.beta1, beta2=coef.beta2,
+            beta3=coef.beta3, beta1_open=6.977,
+        )
+        race = RaceRecord(
+            district_id="MI-07", state="MI", district=7,
+            cook_rating="Toss-Up", incumb_status="Open",
+            pvi=0.0, d_total=3e6, r_total=3.2e6, cvap=400_000, generic_ballot=-1.2,
+        )
+        out_no_override = compute_outputs(race, coef_with_open, sigma_model)
+        out_with_override = compute_outputs(race, coef_with_open, sigma_model, beta1_override=5.2)
+        assert out_with_override.msg_i == pytest.approx(out_no_override.msg_i)
+        assert out_with_override.p_win == pytest.approx(out_no_override.p_win)
 
 
 class TestSigmaModelExtended:

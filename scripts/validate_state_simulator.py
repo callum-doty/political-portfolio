@@ -50,13 +50,33 @@ from backtest.data.universe import build_universe
 from backtest.model.margin import MarginModelCoefficients
 from backtest.model.win_prob import compute_outputs_batch
 from backtest.types import SigmaModel
-from backtest.dynamic.simulate import _static_floor_totals, _reconstruct_races_at
+from backtest.dynamic.simulate import (
+    _static_floor_totals, _reconstruct_races_at, _has_dated_candidate_panel,
+    _candidate_fallback_totals,
+)
 
 from estimate_eta_reaction import build_period_panel, build_delta_panel, fit_tiered_eta, TIERS
 from estimate_gb_volatility import fit_lambda_from_term_structure
 
 ROOT = Path(__file__).parent.parent
 COMPETITIVE = {"Toss-Up", "Lean D", "Lean R"}
+
+
+class SimulatorValidationError(Exception):
+    """Raised when a validation check falls outside its pass criterion."""
+
+
+# Pass criteria, calibrated against observed values (2026-07-23):
+# A: rho was 0.407/0.556 (both p<0.01) -- positive AND significant is the
+#    docstring's own stated test ("does the model's Sept view rank-order
+#    eventual outcomes correctly"), not just a nonzero correlation.
+# B: z was -1.44/-1.31 -- within 2 SD is the standard tolerance; both fields
+#    already existed, just never enforced.
+# C: per-tier eta across the two leave-one-cycle-out fits should be a stable
+#    (same-signed) pattern, not independent noise -- checked via Spearman rho
+#    between the two cycles' per-tier eta values across all 7 tiers.
+VALIDATION_A_MIN_RHO = 0.0
+VALIDATION_A_MAX_P = 0.05
 
 CYCLE_CONFIG = {
     2022: {"processed_dir": ROOT / "data/processed_oos_2020", "election_day": date(2022, 11, 8)},
@@ -86,9 +106,13 @@ def validate_september_forecast(cycle: int) -> dict:
 
     base_races = build_universe(cycle=cycle)
     static_totals = _static_floor_totals(cycle)
+    use_dated_candidate_spend = _has_dated_candidate_panel(cycle)
+    candidate_fallback_totals = None if use_dated_candidate_spend else _candidate_fallback_totals(cycle)
     sept_races = _reconstruct_races_at(
         period_index=0, period_date=SEPTEMBER_1[cycle], cycle=cycle,
         base_races=base_races, static_totals=static_totals,
+        use_dated_candidate_spend=use_dated_candidate_spend,
+        candidate_fallback_totals=candidate_fallback_totals,
     )
     outputs = compute_outputs_batch(sept_races, coef, sigma_model)
 
@@ -177,10 +201,17 @@ def check_lambda_consistency() -> dict:
 
 
 def main():
+    failures = []
+
     print("=== Validation A: Spearman(mu_Sept, realized_margin), competitive set ===")
     a_results = [validate_september_forecast(c) for c in (2022, 2024)]
     for r in a_results:
-        print(f"  {r['cycle']}: n={r['n_competitive']}, rho={r['spearman_rho']:.3f} (p={r['p_value']:.4f})")
+        r["passed"] = r["spearman_rho"] > VALIDATION_A_MIN_RHO and r["p_value"] < VALIDATION_A_MAX_P
+        tag = "PASS" if r["passed"] else "FAIL"
+        print(f"  [{tag}] {r['cycle']}: n={r['n_competitive']}, rho={r['spearman_rho']:.3f} (p={r['p_value']:.4f})")
+        if not r["passed"]:
+            failures.append(f"{r['cycle']} Validation A: rho={r['spearman_rho']:.3f}, p={r['p_value']:.4f} "
+                             f"does not meet rho>{VALIDATION_A_MIN_RHO} and p<{VALIDATION_A_MAX_P}")
 
     print("\n=== Validation B: sigma_G(Delta t) vs. realized |Delta G|, Sept->Election Day ===")
     with open(ROOT / "data/processed/gb_dynamics.json") as f:
@@ -188,24 +219,40 @@ def main():
     sigma_per_sqrt_day = gb_dynamics["sigma_g_per_sqrt_day"]   # single source of truth (Section 5.3)
     b_results = [validate_sigma_g(c, sigma_per_sqrt_day) for c in (2022, 2024)]
     for r in b_results:
-        print(f"  {r['cycle']}: Delta_t={r['delta_t_days']}d, realized_dG={r['realized_delta_g']:+.2f}, "
+        tag = "PASS" if r["within_2_sd"] else "FAIL"
+        print(f"  [{tag}] {r['cycle']}: Delta_t={r['delta_t_days']}d, realized_dG={r['realized_delta_g']:+.2f}, "
               f"predicted_sd={r['predicted_sd']:.2f}, z={r['z_score']:+.2f}, "
               f"within 1sd={r['within_1_sd']}, within 2sd={r['within_2_sd']}")
+        if not r["within_2_sd"]:
+            failures.append(f"{r['cycle']} Validation B: z={r['z_score']:+.2f} exceeds 2 SD")
 
     print("\n=== Validation C: eta(tier) leave-one-cycle-out ===")
     c_results = validate_eta_stability()
-    print(c_results.pivot(index="tier", columns="fit_on_cycle", values="eta").to_string())
+    pivot = c_results.pivot(index="tier", columns="fit_on_cycle", values="eta")
+    print(pivot.to_string())
+    stability_rho, stability_p = stats.spearmanr(pivot[2022], pivot[2024])
+    c_passed = bool(stability_rho > 0)
+    tag = "PASS" if c_passed else "FAIL"
+    print(f"  [{tag}] cross-cycle per-tier eta stability: Spearman rho={stability_rho:.3f} (p={stability_p:.4f})")
+    if not c_passed:
+        failures.append(f"Validation C: cross-cycle per-tier eta Spearman rho={stability_rho:.3f} is not positive "
+                         "-- the tiered eta pattern does not replicate across held-out cycles")
 
     print("\n=== lambda consistency check: re-fit vs. data/processed/gb_dynamics.json ===")
     lam_check = check_lambda_consistency()
-    print(f"  refit lambda = {lam_check['lambda_refit']:.5f} (tau = {lam_check['tau_refit_days']:.1f}d)  "
+    tag = "PASS" if lam_check["consistent"] else "FAIL"
+    print(f"  [{tag}] refit lambda = {lam_check['lambda_refit']:.5f} (tau = {lam_check['tau_refit_days']:.1f}d)  "
           f"vs. stored = {lam_check['lambda_stored']:.5f} (tau = {lam_check['tau_stored_days']:.1f}d)  "
           f"-- consistent: {lam_check['consistent']} (rel. diff {lam_check['relative_diff']:.2e})")
+    if not lam_check["consistent"]:
+        failures.append(f"lambda consistency check: relative diff {lam_check['relative_diff']:.2e} exceeds 1e-6")
 
     summary = {
         "validation_a_september_forecast": a_results,
         "validation_b_sigma_g_check": b_results,
         "validation_c_eta_stability": c_results.to_dict(orient="records"),
+        "validation_c_stability_rho": stability_rho,
+        "validation_c_stability_p": stability_p,
         "lambda_consistency_check": lam_check,
     }
     out_path = ROOT / "outputs/simulator_validation_summary.json"
@@ -213,6 +260,16 @@ def main():
         json.dump(summary, f, indent=2, default=str)
     print(f"\nSaved -> {out_path}")
 
+    if failures:
+        raise SimulatorValidationError(
+            "Simulator validation check(s) failed:\n  " + "\n  ".join(failures)
+        )
+    print("\nAll simulator validation checks passed.")
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SimulatorValidationError as e:
+        print(f"\n[FAIL] {e}")
+        sys.exit(1)

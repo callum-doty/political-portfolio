@@ -67,6 +67,19 @@ comp["spend_rank"] = comp["d_total"].rank(method="average")
 comp["msg_rank"]   = comp["msg_i_per_1m"].rank(method="average")
 n_comp = len(comp)
 
+# Brier scores (computed from data, not hardcoded — same COOK_PROB mapping as make_charts.py)
+COOK_PROB = {
+    "Safe D": 0.97, "Likely D": 0.85, "Lean D": 0.70,
+    "Toss-Up": 0.50,
+    "Lean R": 0.30, "Likely R": 0.15, "Safe R": 0.03,
+}
+_scored = df[df["outcome"].notna()].copy()
+_scored["outcome_bin"] = (_scored["outcome"] == "D").astype(int)
+_scored["cook_prob"] = _scored["cook_rating"].map(COOK_PROB)
+model_brier = float(((_scored["p_win"] - _scored["outcome_bin"]) ** 2).mean())
+cook_brier = float(((_scored["cook_prob"] - _scored["outcome_bin"]) ** 2).mean())
+brier_pct_better = (cook_brier - model_brier) / cook_brier * 100
+
 rho, pval = scipy_stats.spearmanr(comp["d_total"], comp["msg_i_per_1m"])
 
 # 2024 allocator data
@@ -291,7 +304,8 @@ ax_cycle.text(
 # Brier score callout as text in the panel
 ax_cycle.text(
     0.03, 0.05,
-    "Model Brier: 0.0283   Cook Brier: 0.0380\n(model +26% better calibrated, 2024)",
+    f"Model Brier: {model_brier:.4f}   Cook Brier: {cook_brier:.4f}\n"
+    f"(model +{brier_pct_better:.0f}% better calibrated, 2024)",
     transform=ax_cycle.transAxes,
     fontsize=8.5, va="bottom", ha="left", color="#444444",
     bbox=dict(boxstyle="round,pad=0.35", fc="#f5f5f5", ec="#cccccc", lw=0.7),

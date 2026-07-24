@@ -170,7 +170,18 @@ def main() -> None:
         }, f, indent=2)
     logger.info(f"β_RC bootstrap distribution saved to {boot_path}")
 
-    boot_draws_path = config.outputs_path() / "beta_rc_bootstrap_distribution.csv"
+    # scripts/plot_beta_rc_bootstrap.py always reads the unsuffixed filename and
+    # always compares it against the *primary* config.processed_path() estimate
+    # -- it has no OOS mode. An OOS run (--panel-end-cycle) must not overwrite
+    # that shared file with 2012-2020-panel draws, or the primary chart would
+    # silently start plotting OOS data under a primary-implied title. Give OOS
+    # runs their own suffixed file instead (verified 2026-07-23: this file had
+    # in fact been silently overwritten with 2022-OOS draws by a prior run).
+    boot_draws_filename = (
+        "beta_rc_bootstrap_distribution.csv" if args.panel_end_cycle is None
+        else f"beta_rc_bootstrap_distribution_oos_{args.panel_end_cycle}.csv"
+    )
+    boot_draws_path = config.outputs_path() / boot_draws_filename
     boot_draws_path.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({"beta_rc_draw": boot_draws}).to_csv(boot_draws_path, index=False)
     logger.info(f"β_RC raw bootstrap draws saved to {boot_draws_path} (for plot_beta_rc_bootstrap.py)")
@@ -236,7 +247,8 @@ def main() -> None:
     logger.info("Computing margin residuals for σᵢ estimation…")
     alpha_coef = {"intercept": coef.alpha0, "pvi": coef.alpha1,
                   "incumb": coef.alpha2, "gb": coef.alpha3, "alpha4": coef.alpha4}
-    beta_coef = {"b1": coef.beta1, "b2": coef.beta2, "b3": coef.beta3}
+    beta_coef = {"b1": coef.beta1, "b2": coef.beta2, "b3": coef.beta3,
+                 "b1_open": coef.beta1_open}
 
     residuals = sigma_module.compute_residuals_from_panel(
         panel_results=panel_results,

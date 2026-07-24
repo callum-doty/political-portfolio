@@ -54,6 +54,12 @@ def _ballot_last_names(cycle: int) -> set[tuple[str, str, str]]:
     """
     mit_path = config.raw_path("mit") / "1976-2024-house.tab"
     if not mit_path.exists():
+        logger.warning(
+            f"_ballot_last_names({cycle}): {mit_path} not found — the Senate/"
+            "President-runner exclusion filter in load_candidate_disbursements() "
+            "will be SKIPPED for this cycle, so committees of House members who "
+            "ran for a different office will NOT be excluded."
+        )
         return set()
     raw = pd.read_csv(mit_path, sep=",", dtype={"district": str}, low_memory=False)
     gen = raw[
@@ -61,6 +67,16 @@ def _ballot_last_names(cycle: int) -> set[tuple[str, str, str]]:
         & (raw["stage"].str.upper() == "GEN")
         & (~raw["candidate"].isna())
     ]
+    if gen.empty:
+        logger.warning(
+            f"_ballot_last_names({cycle}): {mit_path} has no GEN-stage rows for "
+            f"{cycle} (MIT MEDSL data lags the live cycle — its latest covered "
+            "year is typically the prior completed election). The Senate/"
+            "President-runner exclusion filter in load_candidate_disbursements() "
+            "will be SKIPPED for this cycle: any House member's committee that "
+            "disbursed >$10M while running for a different office will NOT be "
+            "excluded from district totals until MIT's data catches up."
+        )
     result: set[tuple[str, str, str]] = set()
     for _, row in gen.iterrows():
         dist = str(row["state_po"]) + "-" + str(row["district"]).zfill(2)
@@ -109,12 +125,33 @@ def load_candidate_disbursements(cycle: int) -> pd.DataFrame:
     # exclusions and drop legitimate R candidates from safe-D districts.
     _LARGE_SPEND_THRESHOLD = 10_000_000
     ballot = _ballot_last_names(cycle)
-    if ballot:
+    # Manual, dated, individually-verified substitute for cycles MIT can't
+    # cover yet (config.yaml's `live_cycle_ballot_exclusions`) -- applied even
+    # when `ballot` is empty, since that's exactly the situation it exists for.
+    manual_exclusions = {
+        (e["district_id"], e["party"], e["last_name"])
+        for e in config.live_cycle_ballot_exclusions(cycle)
+    }
+
+    if ballot or manual_exclusions:
         def _on_ballot(row: pd.Series) -> bool:
             if row["candidate_disbursements"] < _LARGE_SPEND_THRESHOLD:
                 return True
-            last = str(row["candidate_name"]).split(",")[0].strip().upper()
-            return (row["district_id"], row["party"], last) in ballot
+            # Last WORD only, matching _ballot_last_names()'s MIT-side extraction
+            # (name_parts[-1]) -- taking the full pre-comma segment instead breaks
+            # on compound surnames: FEC's "GLUESENKAMP PEREZ, MARIE" gives
+            # "GLUESENKAMP PEREZ" here vs MIT's "PEREZ", so the real WA-03 2024
+            # incumbent (an $11.9M-spending candidate, over _LARGE_SPEND_THRESHOLD)
+            # was silently excluded as "not on ballot" and the next-highest D
+            # candidate ($7.6k) was used for cand_d_total instead -- caught via
+            # the persuasion-ceiling MSG-sign validation gate (FINDINGS.md).
+            last = str(row["candidate_name"]).split(",")[0].strip().upper().split()[-1]
+            key = (row["district_id"], row["party"], last)
+            if key in manual_exclusions:
+                return False
+            if ballot:
+                return key in ballot
+            return True  # no MIT data and not manually excluded: honest pass-through
 
         before = len(df)
         df = df[df.apply(_on_ballot, axis=1)]
@@ -122,7 +159,8 @@ def load_candidate_disbursements(cycle: int) -> pd.DataFrame:
         if excluded:
             logger.info(
                 f"Candidate disbursements {cycle}: excluded {excluded} large-spending "
-                "candidates not on the House ballot (likely ran for Senate/President)"
+                "candidates not on the House ballot (likely ran for Senate/President, "
+                "or lost a primary) via MIT data and/or live_cycle_ballot_exclusions"
             )
 
     df["indiv_share"] = pd.to_numeric(df["indiv_share"], errors="coerce").fillna(0.0)
@@ -170,12 +208,9 @@ def load_independent_expenditures(cycle: int) -> pd.DataFrame:
     df["cycle"] = cycle
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
 
-    if "support_oppose" in df.columns:
-        # Legacy format: DCCC/NRCC only, both support and oppose are positive
-        df["signed_amount"] = df["amount"].abs()
-    else:
-        # Comprehensive format: party alignment is already pre-computed
-        df["signed_amount"] = df["amount"].abs()
+    # Both the legacy (DCCC/NRCC-only) and comprehensive formats store `amount`
+    # unsigned with party alignment already reflected in the `party` column.
+    df["signed_amount"] = df["amount"].abs()
 
     ie = (
         df.groupby(["district_id", "party", "cycle"])["signed_amount"]
@@ -414,7 +449,8 @@ def load_candidate_periodic_reports(cycle: int) -> pd.DataFrame:
             "--fec-api-key YOUR_KEY` first (requires a registered FEC API key)."
         )
     df = pd.read_csv(path, dtype={"district_id": str, "party": str,
-                                   "fec_candidate_id": str, "committee_id": str})
+                                   "fec_candidate_id": str, "committee_id": str,
+                                   "beginning_image_number": str})
     df["coverage_start_date"] = pd.to_datetime(df["coverage_start_date"], errors="coerce")
     df["coverage_end_date"] = pd.to_datetime(df["coverage_end_date"], errors="coerce")
     for col in ["receipts_period", "disbursements_period", "cash_on_hand_end_period"]:
@@ -429,7 +465,12 @@ def load_candidate_periodic_reports(cycle: int) -> pd.DataFrame:
             "rows with an unparseable coverage_end_date."
         )
 
-    df["_img_sort_key"] = df["beginning_image_number"].astype(str)
+    # beginning_image_number must stay a string end-to-end: read with dtype=str
+    # above (not inferred) because NaNs elsewhere in the column otherwise force
+    # float64 on the whole column, silently truncating these 18-digit FEC image
+    # numbers to ~17 significant digits and rendering them in scientific
+    # notation -- which corrupts the "most recent amendment" sort below.
+    df["_img_sort_key"] = df["beginning_image_number"].fillna("")
     df = (
         df.sort_values("_img_sort_key")
         .drop_duplicates(

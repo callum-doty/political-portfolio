@@ -67,6 +67,7 @@ coef = MarginModelCoefficients(
     alpha0=cd["alpha0"], alpha1=cd["alpha1"],
     alpha2=cd["alpha2"], alpha3=cd["alpha3"],
     beta1=cd["beta1"],   beta2=cd["beta2"],  beta3=cd["beta3"],
+    beta1_open=cd.get("beta1_open"),
 )
 with open(PROC / "sigma_model.json") as f:
     sigma_model = SigmaModel(_coef=json.load(f))
@@ -162,7 +163,9 @@ mu_22      = np.array([o.mu_hat for o in outputs_22])
 # ── Optimizer: allocate 2024 budget per 2022-informed MSG ─────────────────────
 n_races    = len(races_22)
 cov_matrix = np.eye(n_races)   # independence; gamma=0 LP → cov doesn't enter
-result_22  = optimize(outputs_22, BUDGET, cov_matrix, gamma=0.0, cap_fraction=0.15)
+d_total_obs_22 = np.array([r.d_total for r in races_22])
+result_22  = optimize(outputs_22, BUDGET, cov_matrix, gamma=0.0, cap_fraction=0.15,
+                       d_total_obs=d_total_obs_22)
 
 rec_shares_22  = result_22.shares
 obs_shares_24  = rt["observed_share"].values
@@ -209,7 +212,6 @@ obs_allocs = obs_shares_24 * BUDGET
 
 e_model = float(np.sum(p_win_22 + msg_22 * (rec_allocs - d_22_arr)))
 e_dccc  = float(np.sum(p_win_22 + msg_22 * (obs_allocs - d_22_arr)))
-sd_model = float(np.sqrt(np.sum(np.clip(e_model / n_races, 0, 1) * (1 - np.clip(e_model / n_races, 0, 1)))))
 
 # Simple binomial SD
 def _binom_sd(p_arr):
@@ -431,7 +433,7 @@ ax3 = axes[2]
 ld = rt[rt["cook_rating"] == "Likely D"].copy()
 r_ld, p_ld = spearmanr(ld["msg_22"], ld["obs_share_24"])
 
-open_mask  = ld["incumb_status"] == "Open seat"
+open_mask  = ld["incumb_status"] == "Open"
 incmb_mask = ld["incumb_status"] == "Incumbent"
 chall_mask = ld["incumb_status"] == "Challenger"
 

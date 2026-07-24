@@ -114,14 +114,17 @@ for lo, hi, mid in zip(bins[:-1], bins[1:], bin_mids):
             ns.append(len(grp))
             xs.append(mid)
 
+model_brier = float(((rows["p_win"] - rows["outcome_bin"]) ** 2).mean())
+cook_brier = float(((rows["cook_prob"] - rows["outcome_bin"]) ** 2).mean())
+
 fig, ax = plt.subplots(figsize=(7, 5.5))
 ax.plot([0, 1], [0, 1], "--", color="#aaaaaa", lw=1.2, label="Perfect calibration")
 ax.plot(cook_xs, cook_rates, "s--", color="#c0392b", lw=1.5,
-        ms=8, alpha=0.8, label="Cook Rating  (Brier = 0.0380)")
+        ms=8, alpha=0.8, label=f"Cook Rating  (Brier = {cook_brier:.4f})")
 ax.scatter(model_xs, model_rates,
            s=[max(30, n * 3) for n in model_ns],
            c="#2e6da4", zorder=4, edgecolors="white", linewidths=0.5,
-           label="Model P_win  (Brier = 0.0299)")
+           label=f"Model P_win  (Brier = {model_brier:.4f})")
 ax.plot(model_xs, model_rates, "-", color="#2e6da4", lw=1.5, alpha=0.7)
 
 ax.set_xlabel("Predicted Win Probability", fontsize=12)

@@ -55,9 +55,12 @@ class SigmaModel:
         a2 = self._coef.get("is_open", 0.0)
         a3 = self._coef.get("is_challenger", 0.0)
         a4 = self._coef.get("abs_gb", 0.0)
+        # Duan (1983) smearing factor: exp(fitted) alone recovers the median,
+        # not the mean, of the log-normal |residual| — see estimation/sigma.py.
+        smear = self._coef.get("smearing_factor", 1.0)
         is_open = 1.0 if incumb_status == "Open" else 0.0
         is_chall = 1.0 if incumb_status == "Challenger" else 0.0
-        return float(np.exp(
+        return float(smear * np.exp(
             a0 + a1 * abs_pvi + a2 * is_open + a3 * is_chall + a4 * abs(generic_ballot)
         ))
 

@@ -29,6 +29,12 @@ class RaceState:
     `cand_d_total_t` so the two floor components (candidate spend vs.
     committed party spend) stay distinguishable for diagnostics, even
     though both enter the optimizer's floor identically (see dynamic/ledger.py).
+    Populated in `dynamic/horizon.py::run_receding_horizon` and
+    `dynamic/simulate.py::one_step_ahead` (mirrored from `ledger_t.committed_by_race`
+    once the period's ledger is built — not available yet at
+    `compute_raw_snapshot()`'s call site, so it defaults to 0.0 there and is
+    patched onto `state_t` right after; corrected 2026-07-23, codebase audit —
+    previously always 0.0, never actually wired despite this docstring).
 
     cook_rating_t / generic_ballot_t remain explicit stub fields (paper
     §3.1's state vector includes these, but no historical or live data

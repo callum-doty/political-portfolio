@@ -251,6 +251,13 @@ def one_step_ahead(
         ledger_t = CapitalLedger.build(
             rp.index, total_budget_t, commitment_source, rp.period_date, races_t,
         )
+        # committed_t is a diagnostic mirror of ledger_t.committed_by_race (state.py's
+        # RaceState docstring) -- populated here, the first point in the loop where
+        # both state_t and ledger_t exist, rather than left at its 0.0 default.
+        state_t.races.update({
+            did: dataclasses.replace(rs, committed_t=ledger_t.committed_by_race.get(did, 0.0))
+            for did, rs in state_t.races.items()
+        })
 
         cov_matrix = cov_matrix_fn(races_t)
         optimizer_result, allocation = _solve_one_period(

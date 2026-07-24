@@ -355,13 +355,16 @@ class TestPermutationAllocationEfficiency:
                 district_id=f"XX-{i:02d}", state="TX", district=i + 1,
                 cook_rating="Toss-Up", incumb_status="Challenger",
                 pvi=float(i * 5), d_total=float(i + 1) * 1e6, r_total=float(i + 1) * 1e6,
-                cvap=400_000, generic_ballot=-1.2, cand_d_total=0.0,
+                cvap=400_000, generic_ballot=-1.2, cand_d_total=float(i + 1) * 1e5,
             )
             for i in range(n)
         ]
         coef, sigma = self._coef(), self._sigma()
-        amounts = np.array([r.d_total for r in races])  # floors are 0.0, so amounts == party dollars
-        total_budget = amounts.sum()
+        # amounts are PARTY dollars (floors are nonzero but held fixed below);
+        # a zero floor would make every race's persuasion ceiling (model/ceiling.py)
+        # collapse to ~0, since Phi0 at a zero floor is ~0 -- degenerate for this test.
+        amounts = np.array([r.d_total - r.cand_d_total for r in races])
+        total_budget = np.array([r.d_total for r in races]).sum()
 
         best_val, best_perm = -1.0, None
         worst_val, worst_perm = float("inf"), None
@@ -375,9 +378,12 @@ class TestPermutationAllocationEfficiency:
         # DCCC "observed" IS the exhaustively-verified worst permutation of
         # this multiset (set directly on the race records); model_shares IS
         # the exhaustively-verified best.
+        floors = np.array([r.cand_d_total for r in races])
         for r, amt in zip(races, worst_perm):
-            r.d_total = float(amt)
-        model_shares = np.array(best_perm) / total_budget
+            r.d_total = float(amt) + r.cand_d_total
+        # model_shares is a TOTAL-budget share (allocs = floor + party), the
+        # OptimizerResult.shares convention -- add floors back before dividing.
+        model_shares = (np.array(best_perm) + floors) / total_budget
 
         return races, coef, sigma, model_shares
 
@@ -404,8 +410,13 @@ class TestPermutationAllocationEfficiency:
         result = permutation_test_allocation_efficiency(
             races, coef, sigma, model_shares, n_permutations=2000, rng=np.random.default_rng(1))
         # model_shares is the exhaustively-verified global-best permutation,
-        # so no random reshuffle can exceed it: p == 0.0 exactly.
-        assert result["p_value_model_exceeds_null"] == 0.0
+        # so no random reshuffle can beat it -- but with only 720 distinct
+        # orderings of n=6 items and 2000 draws (with replacement), the RNG
+        # is expected to redraw the exact best ordering ~2.8 times by pure
+        # pigeonhole, each a legitimate exact tie (not a bug): p_value's
+        # >= comparison counts those, so p==0.0 exactly isn't guaranteed.
+        # The real invariant is that nothing STRICTLY exceeds the best.
+        assert result["null_seats"].max() <= result["model_expected_seats"] + 1e-9
         assert result["model_expected_seats"] > result["dccc_expected_seats"]
 
     def test_no_competitive_races_raises(self):

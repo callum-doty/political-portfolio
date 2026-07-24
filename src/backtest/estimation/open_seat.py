@@ -10,7 +10,13 @@ Procedure (following spec §8.3):
   2. τ           — prior uncertainty; set by covariate overlap between the RC subsample
                    (incumbents vs. challengers) and the open-seat population. Larger
                    distance → larger τ → more shrinkage toward β_RC.
-  3. κ           — shrinkage weight: κ = 1 / (1 + τ² / SE_panel_OS²)
+  3. κ           — shrinkage weight (precision-weighted posterior on β_panel^OS):
+                   κ = precision_data / (precision_prior + precision_data)
+                     = (1/SE_panel_OS²) / (1/τ² + 1/SE_panel_OS²) = τ² / (τ² + SE_panel_OS²)
+                   (Corrected 2026-07-23: an earlier version of this docstring stated
+                   κ = 1/(1+τ²/SE²), the algebraic complement of what's actually
+                   computed below — that would be the weight on β_RC, not on
+                   β_panel^OS. docs/full_derivation.md §I.4 already matches the code.)
   4. β_OS^calib  — posterior: κ × β_panel^OS + (1 − κ) × β_RC
   5. β_OS^lb     — conservative lower bound: β_OS^calib − 1.64 × posterior_SE
 

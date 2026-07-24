@@ -102,6 +102,31 @@ optimizer:
   cap_regimes:  [0.05, 0.10, 0.15]        # fraction of total budget
   min_allocation: 0.0                      # no negative spending
 
+# ─── Persuasion ceiling (added 2026-07-24, codebase-audit follow-up) ──────────
+# Regularizes the log-ratio spending response against unbounded extrapolation
+# at near-zero candidate floors. Without this, the corrected sigma model
+# (2026-07-23b) no longer suppresses the raw model's 1/D gradient blowup, and
+# the optimizer recommends implausible sums into Safe-tier races with no
+# historical support for such an effect (see FINDINGS.md's persuasion-ceiling
+# section for the full diagnosis and the C_max robustness sweep).
+#
+# C_i = c_max * 4*Phi0*(1-Phi0), where Phi0 = Phi(mu_floor/sigma_i) is a
+# race's win probability at its own candidate-only floor (no party money).
+# This caps the achievable margin shift from party spending at C_i points,
+# peaking at c_max for a true toss-up (Phi0=0.5) and shrinking to ~0 at
+# either extreme -- the model is not permitted to infer a spending effect
+# larger than a multiple of the race's own uncertainty, scaled by how
+# persuadable its current state suggests it is.
+#
+# c_max=10.0 chosen from the sweep {3,5,7,10,15,20,30}: all values in this
+# range behave smoothly (no fragile threshold), but 5-10 gives the best
+# ratio of competitive-tier to non-competitive-tier seat gain before
+# non-competitive (mostly Likely-tier) reallocation starts dominating the
+# additional gain at larger c_max. Safe-only budget share is ~9% at c_max=10
+# vs. 45% uncapped.
+persuasion_ceiling:
+  c_max: 10.0
+
 # ─── Validation gate thresholds ───────────────────────────────────────────────
 validation:
   spending_completeness_min: 0.80          # ~36 safe D seats have no R spend → one-sided OK
@@ -161,3 +186,42 @@ dynamic:
   election_day_2026: "2026-11-03"  # official 2026 House general election date -- single source
                                     # of truth; previously re-typed independently in
                                     # scripts/solve_bellman_lsm.py and scripts/estimate_gb_ou_drift.py
+
+# ─── Live-cycle ballot exclusions ─────────────────────────────────────────────
+# fec.py's `_ballot_last_names()` filters out >$10M candidate-committee
+# disbursements from anyone not on the general-election ballot (e.g. a House
+# member who ran for Senate/President instead) using MIT MEDSL's
+# 1976-2024-house.tab -- which by construction cannot cover a cycle still in
+# progress; MIT only publishes GEN-stage results after a cycle's election. For
+# a live cycle this leaves that automated filter with nothing to check
+# against (see the logger.warning() this triggers), so large disbursements
+# from candidates who moved to a different race or lost their House primary
+# pass through unfiltered until MIT's data catches up post-election.
+#
+# This block is a manually verified, dated, interim substitute for the live
+# cycle only -- each entry checked individually against Ballotpedia/FEC.gov,
+# not derived from any automated ballot-membership check. Re-verify (and
+# extend) before each live re-run; entries do not expire automatically.
+live_cycle_ballot_exclusions:
+  2026:
+    - district_id: "FL-06"
+      party: "D"
+      last_name: "WEIL"
+      reason: >-
+        Lost the 2025 FL-06 special election to Randy Fine (2025-04-01); announced
+        a US Senate run (2025-06-18) then withdrew (2025-08-01, medical). Not a
+        2026 FL-06 candidate. Verified 2026-07-23 via Ballotpedia/WLRN.
+    - district_id: "IL-08"
+      party: "D"
+      last_name: "KRISHNAMOORTHI"
+      reason: >-
+        Ran for US Senate (IL), not House, in 2026; lost the March 17, 2026
+        Senate Democratic primary to Juliana Stratton. Not an IL-08 candidate
+        this cycle. Verified 2026-07-23 via Ballotpedia.
+    - district_id: "MD-06"
+      party: "D"
+      last_name: "TRONE"
+      reason: >-
+        Challenged incumbent Rep. April McClain Delaney for his old MD-06 seat
+        but lost the June 23, 2026 Democratic primary -- not the 2026
+        general-election nominee. Verified 2026-07-23 via The Banner/Ballotpedia.
