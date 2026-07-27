@@ -18,7 +18,7 @@ import cvxpy as cp
 from scipy.optimize import minimize
 from scipy.stats import norm as scipy_norm
 from ..types import ModelOutputs, AllocationResult, RaceRecord
-from ..model.margin import MarginModelCoefficients
+from ..model.margin import MarginModelCoefficients, predict_floor_margin
 from ..types import SigmaModel
 from ..model import ceiling
 from .. import config
@@ -62,11 +62,13 @@ def _precompute_race_arrays(
     abs_pvi = np.abs(pvi)
     incumb = np.array([1.0 if r.incumb_status == "Incumbent" else 0.0 for r in races])
     gb = np.array([r.generic_ballot for r in races])
+    indiv_share = np.array([r.indiv_share for r in races])
 
     mu_const = (coef.alpha0
                 + coef.alpha1 * pvi
                 + coef.alpha2 * incumb
-                + coef.alpha3 * gb)
+                + coef.alpha3 * gb
+                + coef.alpha5 * indiv_share)
     c_spend = coef.beta1 + coef.beta2 * abs_pvi + coef.beta3 * incumb
     # §8.3: open-seat Bayesian-shrunk elasticity overrides beta1 for open seats.
     if coef.beta1_open is not None:
@@ -91,11 +93,26 @@ def _precompute_race_arrays(
     # party=0 (candidate-only spend); C is the per-race cap on achievable
     # shift above mu_floor. Both depend only on static per-race quantities,
     # so they're computed once here rather than every SLSQP iteration.
-    d0 = np.maximum(floors, 1.0)
-    r0 = np.maximum(r_total, 1.0)
-    t0 = d0 + r0
-    ratio0 = np.clip(d0 / t0, 1e-15, 1 - 1e-15)
-    mu_floor = mu_const + c_spend * np.log(ratio0) + alpha4 * np.log(t0 / cvap)
+    #
+    # Computed race-by-race via model.margin.predict_floor_margin() — the
+    # single shared implementation win_prob.py also calls — rather than
+    # re-deriving the floor-ratio formula as arrays here. This runs once per
+    # optimizer call (not inside the SLSQP hot loop), so the Python-level
+    # loop costs nothing that matters, and it guarantees this path can never
+    # silently diverge from win_prob.py's floor computation again.
+    mu_floor = np.array([
+        predict_floor_margin(
+            pvi=pvi[i],
+            incumb_status=races[i].incumb_status,
+            generic_ballot=gb[i],
+            cand_d_total=floors[i],
+            r_total=r_total[i],
+            coef=coef,
+            cvap=cvap[i],
+            indiv_share=indiv_share[i],
+        )
+        for i in range(n)
+    ])
     c_max = config.persuasion_ceiling_c_max()
     C = ceiling.ceiling(mu_floor, sigma, c_max)
 

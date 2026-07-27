@@ -208,6 +208,60 @@ def predict(
     )
 
 
+def predict_floor_margin(
+    pvi: float,
+    incumb_status: str,
+    generic_ballot: float,
+    cand_d_total: float,
+    r_total: float,
+    coef: MarginModelCoefficients,
+    beta1_override: float | None = None,
+    cvap: int = 0,
+    indiv_share: float = 0.0,
+    floor_dollars: float = 1.0,
+) -> float:
+    """
+    Expected margin at a race's own candidate-only spending floor: D =
+    cand_d_total (no party money added), R = r_total.
+
+    Canonical floor-ratio regularization (see FINDINGS.md's persuasion-
+    ceiling section): D and R are each floored at `floor_dollars` before
+    forming the ratio, rather than clipping the resulting ratio itself.
+    log(D/(D+R)) is meant to encode *relative* spending strength — ratio
+    clipping collapses every sufficiently lopsided race to the same value
+    regardless of the opponent's actual spend (a $0-vs-$800K race and a
+    $0-vs-$8M race both hit the same clipped ratio), destroying exactly the
+    information the term exists to carry. Flooring the dollar amounts first
+    preserves it: the floor only matters when D or R is near zero, and has
+    no detectable effect once both are well above floor_dollars, same as any
+    additive smoothing constant. floor_dollars represents the smallest
+    economically meaningful positive expenditure in the model's spending
+    units — rescale it if those units ever change.
+
+    This is the single source of truth for the floor-margin computation;
+    model/win_prob.py and optimizer/allocator.py both call this rather than
+    each re-deriving their own floor-ratio convention (see FINDINGS.md —
+    two independently-written versions previously disagreed on lopsided
+    near-zero-floor races, though the disagreement happened to be inert in
+    the ranges the ceiling was actually saturating at).
+    """
+    d0 = max(cand_d_total, floor_dollars)
+    r0 = max(r_total, floor_dollars)
+    t0 = d0 + r0
+    ratio0 = np.clip(d0 / t0, 1e-15, 1 - 1e-15)
+    return predict(
+        pvi=pvi,
+        incumb_status=incumb_status,
+        generic_ballot=generic_ballot,
+        ratio=ratio0,
+        coef=coef,
+        beta1_override=beta1_override,
+        total_spend=t0,
+        cvap=cvap,
+        indiv_share=indiv_share,
+    )
+
+
 def predict_batch(df: pd.DataFrame, coef: MarginModelCoefficients) -> pd.Series:
     """Vectorised version of predict() for a DataFrame with precomputed columns.
 

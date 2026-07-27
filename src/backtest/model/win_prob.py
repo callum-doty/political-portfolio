@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.stats import norm
 from ..types import RaceRecord, ModelOutputs, SigmaModel
-from ..model.margin import MarginModelCoefficients, predict
+from ..model.margin import MarginModelCoefficients, predict, predict_floor_margin
 from ..model import ceiling
 from .. import config
 
@@ -59,18 +59,14 @@ def compute_outputs(
     # C_i = c_max * persuadability(mu_floor, sigma) — prevents the log-ratio
     # gradient's 1/D blowup at near-zero floors from being read as a real,
     # unbounded spending effect.
-    floor_d = race.cand_d_total
-    floor_total = floor_d + r_total
-    floor_ratio = (floor_d / floor_total) if floor_total > 0 else 0.5
-    floor_ratio = np.clip(floor_ratio, 1e-6, 1 - 1e-6)
-    mu_floor = predict(
+    mu_floor = predict_floor_margin(
         pvi=race.pvi,
         incumb_status=race.incumb_status,
         generic_ballot=race.generic_ballot,
-        ratio=floor_ratio,
+        cand_d_total=race.cand_d_total,
+        r_total=r_total,
         coef=coef,
         beta1_override=beta1_override,
-        total_spend=floor_total,
         cvap=race.cvap,
         indiv_share=race.indiv_share,
     )

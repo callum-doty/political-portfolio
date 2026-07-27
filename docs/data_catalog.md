@@ -1,6 +1,6 @@
 # Data Catalog — Political Portfolio Backtest Pipeline
 
-> **Last updated:** 2026-06-26  
+> **Last updated:** 2026-07-27 (§§3.1–3.4's coefficient tables refreshed — they had not been carried forward through the 2026-07-23a/b correction passes since this banner's original date; later sections, e.g. §3.6–3.8 and the Cook-PVI note, were already current)  
 > **Cycles covered:** 2012, 2014, 2016, 2018, 2020, 2022, 2024 (panel); 2026 (live)
 
 ---
@@ -123,6 +123,8 @@ These are downloaded from FEC bulk but are not directly loaded by model code. Th
 - R-aligned: (candidate is Republican AND `sup_opp='S'`) OR (candidate is Democrat AND `sup_opp='O'`)
 
 **Pipeline role:** Preferred source for outside spending. Captures all IE groups (super PACs, 527s, party committees) — not just DCCC/NRCC. Converted to `data/raw/fec/independent_expenditures_{cycle}.csv` by `build_comprehensive_ie()`.
+
+**Orphaned file, found 2026-07-27 audit:** `data/raw/schedule_b-2026-07-07T15_54_35.csv` (20MB, git-tracked, an FEC Schedule B disbursements export) is not referenced by any script or column name anywhere in `src/` or `scripts/`, and is not documented elsewhere in this catalog — likely a one-off manual pull that was never wired into the pipeline. Not removed here since deleting tracked data is a call for you to make; either delete it, or if it was meant to feed something (e.g. FINDINGS.md §10.7 Gap 3's noted future work on state-party coordinated expenditures via 24K "Other Transactions" filings), wire it in and document it properly here.
 
 ---
 
@@ -261,6 +263,8 @@ These are downloaded from FEC bulk but are not directly loaded by model code. Th
 **Caveat:** this is 538's own aggregation methodology (weighted/pollster-adjusted trendline), not a from-scratch reconstruction from raw polls — methodologically distinct from the 21-day trailing average of raw polls used for the live 2026 series (`data/live/generic_ballot_polls.csv`). Pooling volatility estimates across the two is a reasonable approximation, not an exact apples-to-apples comparison (Paper III §5.4).
 
 **Pipeline role:** Input to `scripts/estimate_gb_volatility.py` (Paper III §5.3/5.4). Not used anywhere in Paper I or II's estimation.
+
+**Orphaned duplicate, found 2026-07-27 audit:** `data/raw/generic_ballot_averages.csv` (one directory level up from this file, 326KB, git-tracked) is a byte-identical copy of this same file, sitting undocumented and unreferenced by any script. Likely a leftover from before the file was moved into `data/raw/generic_ballot/`. Safe to delete once confirmed no external tooling points at the old path — not removed here since deleting tracked data is a call for you to make, not a documentation fix.
 
 ---
 
@@ -470,27 +474,28 @@ Estimated from panel data using the functions in `src/backtest/estimation/`. Sto
 | **Format** | JSON, flat key-value |
 | **Generator** | `src/backtest/model/margin.py — estimate_from_panel()` |
 
-**Fields:**
+**Fields (refreshed 2026-07-27 against the live JSON — the values below predated the 2026-07-23a/b and 2026-07-24 correction passes and were off by more than rounding, including a sign flip on `alpha0`):**
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `alpha0` | −2.200 | Intercept |
-| `alpha1` | 1.090 | PVI coefficient |
-| `alpha2` | 33.009 | Incumbency coefficient (pp margin) |
-| `alpha3` | 0.393 | Generic ballot coefficient |
-| `alpha4` | 0.000 | log(total/CVAP) coefficient (set to zero; scale effects not significant) |
-| `beta1` | 5.457 | log-ratio coefficient (main spending effect) |
-| `beta2` | 0.024 | log-ratio × \|PVI\| interaction |
-| `beta3` | 28.462 | log-ratio × incumbency interaction |
-| `beta1_open` | 6.842 | log-ratio coefficient for open-seat races (Bayesian calibrated) |
-| `r2_competitive` | 0.512 | In-sample R² on competitive races only |
+| `alpha0` | 2.475 | Intercept |
+| `alpha1` | 1.057 | PVI coefficient |
+| `alpha2` | 31.134 | Incumbency coefficient (pp margin) |
+| `alpha3` | 0.424 | Generic ballot coefficient |
+| `alpha4` | 0.000 | log(total/CVAP) coefficient (constrained to zero — endogeneity, FINDINGS.md §10.7 Gap 1) |
+| `alpha5` | 0.000 | indiv_share (D candidate individual-contribution fraction) coefficient (constrained to zero — FINDINGS.md §5.4) |
+| `beta1` | 5.475 | log-ratio coefficient (main spending effect, = β_RC) |
+| `beta2` | 0.054 | log-ratio × \|PVI\| interaction |
+| `beta3` | 28.054 | log-ratio × incumbency interaction |
+| `beta1_open` | 6.995 | log-ratio coefficient for open-seat races (Bayesian calibrated, §3.4) |
+| `r2_competitive` | 0.561 | In-sample R² on competitive races only |
 
 **Margin model equation:**
 ```
-Margin_i = α₀ + α₁·PVI + α₂·incumb + α₃·GB + α₄·log(total/cvap)
-         + β₁·log(ratio) + β₂·log(ratio)·|PVI| + β₃·log(ratio)·incumb
+Margin_i = α₀ + α₁·PVI + α₂·is_incumb + α₃·GB + α₄·log(total/cvap) + α₅·indiv_share
+         + β₁·log(ratio) + β₂·log(ratio)·|PVI| + β₃·log(ratio)·is_incumb
 ```
-where `ratio = D_total / (D_total + R_total)` and `incumb = 1` if D is the incumbent, `−1` if D is the challenger, `0` if open.
+where `ratio = D_total / (D_total + R_total)` and `is_incumb = 1` if D is the incumbent, `0` otherwise (challenger **or** open) — a plain 0/1 dummy, not a signed `{1,−1,0}` encoding as an earlier version of this table stated. Open seats are handled separately: `β₁` is replaced by `beta1_open` (§3.4) for any race with `incumb_status == "Open"`, in both `model/margin.py::predict()` and the optimizer's vectorized path — there is no `α₂`-side open-seat term at all, only the spending-elasticity substitution.
 
 ---
 
@@ -506,8 +511,8 @@ where `ratio = D_total / (D_total + R_total)` and `incumb = 1` if D is the incum
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `estimate` | 5.457 | HC3-OLS first-difference estimate of the spending coefficient (β̂_RC) |
-| `se` | 1.586 | Heteroskedasticity-robust standard error |
+| `estimate` | 5.475 | HC3-OLS first-difference estimate of the spending coefficient (β̂_RC) (refreshed 2026-07-27; was 5.457, pre-2026-07-23 elections.py fix) |
+| `se` | 1.587 | Heteroskedasticity-robust standard error |
 | `n_pairs` | 118 | Number of repeat-challenger pairs used in estimation |
 
 **Estimation:** First-differencing within same-challenger same-district pairs across consecutive cycles eliminates district fixed effects and candidate quality. Name normalization strips Jr/Sr/II/III/IV/Esq suffixes before matching.
@@ -526,7 +531,7 @@ where `ratio = D_total / (D_total + R_total)` and `incumb = 1` if D is the incum
 
 **Why this exists:** §3.2's uncertainty propagation elsewhere in the pipeline (`comparison/uncertainty.py`, K=1000 draws) samples β_RC from the parametric N(β̂, SE²) posterior implied by OLS asymptotics — an assumption never tested against the actual 118-pair sample, which is known to skew toward Safe R pairs (FINDINGS.md §10.1). `bootstrap_beta_rc()` instead resamples the 118 pairs with replacement and re-estimates β_RC on each resample, characterizing the empirical finite-sample distribution directly rather than assuming its shape.
 
-**Result, run against this repo's real 118-pair sample (2026-07-22):** bootstrap mean 5.523 (vs. point estimate 5.457), std 1.513 (close to the parametric SE of 1.586), skew +0.197 — mild right skew, not the dramatic asymmetry a Safe-R-heavy sample might have produced. Bootstrap 95% CI [2.811, 8.616] vs. parametric [2.349, 8.565] — comparable width, but the bootstrap's lower bound sits noticeably higher (2.81 vs. 2.35). This means the "low-end collapse" scenario used elsewhere in this project's sensitivity discussion (β_RC ≈ 2.35) is *less* likely under the empirical resampling distribution than the parametric CI implies — a reassuring result for the causal identification concern in FINDINGS.md §10.1, not a confirmation of it. Stable across five random seeds at n_boot=10,000 (skew 0.24–0.27 throughout).
+**Result, run against this repo's real 118-pair sample (refreshed 2026-07-27 against the live JSON — the point estimate moved from 5.457 to 5.475 under the 2026-07-23a elections.py fix, and the bootstrap/parametric figures below were not previously updated to match):** bootstrap mean 5.543 (vs. point estimate 5.475), std 1.514 (close to the parametric SE of 1.587), skew +0.198 — mild right skew, not the dramatic asymmetry a Safe-R-heavy sample might have produced. Bootstrap 95% CI [2.834, 8.640] vs. parametric [2.364, 8.585] — comparable width, but the bootstrap's lower bound sits noticeably higher (2.83 vs. 2.36). This means the "low-end collapse" scenario used elsewhere in this project's sensitivity discussion (β_RC ≈ 2.36) is *less* likely under the empirical resampling distribution than the parametric CI implies — a reassuring result for the causal identification concern in FINDINGS.md §10.1, not a confirmation of it. Stable across five random seeds at n_boot=10,000 (skew 0.24–0.27 throughout).
 
 ---
 
@@ -538,19 +543,20 @@ where `ratio = D_total / (D_total + R_total)` and `incumb = 1` if D is the incum
 | **Format** | JSON, flat key-value (log-linear coefficients) |
 | **Generator** | `src/backtest/estimation/sigma.py — estimate_sigma()` |
 
-**Fields:**
+**Fields (refreshed 2026-07-27 — the values below predated the 2026-07-23b fix, which corrected two real bugs: Open-seat residuals had been computed against the wrong β̂ (β₁ instead of β₁,open), and the retransformation from log-space had no Duan (1983) smearing correction. Both the coefficients and the qualitative sign of `is_open` changed as a result):**
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `intercept` | 2.337 | Log-scale intercept (σ = exp(2.337) ≈ 10.3 pp for open seat at PVI=0) |
-| `abs_pvi` | 0.010 | Effect of district partisanship on residual variance |
-| `is_open` | −0.075 | Open-seat races slightly less variable (after incumbency absorbed) |
-| `is_challenger` | −0.505 | Challenger races substantially less variable than open-seat |
-| `abs_gb` | −0.010 | Wave elections slightly compress residuals |
+| `intercept` | 2.378 | Log-scale intercept |
+| `abs_pvi` | 0.0081 | Effect of district partisanship on residual variance |
+| `is_open` | −0.342 | Open-seat races *less* variable than the Incumbent baseline (sign flipped from the pre-fix −0.075 after the residual-computation fix; see below) |
+| `is_challenger` | −0.593 | Challenger races less variable still |
+| `abs_gb` | 0.0017 | Wave elections slightly amplify residuals (sign flipped from the pre-fix −0.010) |
+| `smearing_factor` | 1.680 | Duan (1983) retransformation correction — `exp(fitted)` alone recovers the median, not mean, of the log-normal \|residual\|; this field did not exist in the pre-2026-07-23b version of this table |
 
-**Model:** `log(|residual|) = intercept + abs_pvi·|PVI| + is_open·1[open] + is_challenger·1[challenger] + abs_gb·|GB|`
+**Model:** `σ_i = smearing_factor × exp(intercept + abs_pvi·|PVI| + is_open·1[open] + is_challenger·1[challenger] + abs_gb·|GB|)`
 
-**Ordering enforced:** `σ_open > σ_challenger > σ_incumbent` for any given PVI (validated in Gate 3).
+**Ordering — currently failing, an open question, not enforced.** The model was originally expected to satisfy `σ_open > σ_challenger > σ_incumbent` at matched |PVI| (this row previously stated that ordering as validated fact). Since the 2026-07-23b fix, it fails in all 5 PVI bins on both the 2024 and 2022-OOS panels — Incumbent now reads as the *highest*-variance category (e.g. at |PVI|=0: incumbent σ≈18.1, open σ≈12.9, challenger σ≈10.0), the reverse of the stated expectation. `validation/gates.py`'s Gate 3 threshold (`sigma_ordering_frac_min`) was set to 0% specifically so this no longer blocks the pipeline, rather than being silently made to pass. Two explanations are both plausible and neither has been chased further (FINDINGS.md §10.6, full_derivation.md §II.14a): the pre-fix ordering may have been an artifact of computing Open-seat residuals against the wrong μ̂, or the corrected residuals may reveal a genuine specification gap. Treat this as the model's one unresolved predictive-validity caveat, not a bug with a known fix.
 
 ---
 
@@ -562,18 +568,18 @@ where `ratio = D_total / (D_total + R_total)` and `incumb = 1` if D is the incum
 | **Format** | JSON, flat key-value |
 | **Generator** | `src/backtest/estimation/open_seat.py — calibrate_open_seat()` |
 
-**Fields:**
+**Fields (refreshed 2026-07-27 — every value below predated the 2026-07-23a/b correction passes by a few percent, propagated from the same `beta_rc`/`sigma_model` staleness fixed above):**
 
 | Key | Value | Description |
 |-----|-------|-------------|
-| `beta_rc` | 5.457 | Repeat-challenger β̂ (prior mean for Bayesian shrinkage) |
-| `beta_panel_os` | 6.903 | Raw panel OLS estimate for open-seat spending response |
-| `beta4_se` | 0.668 | Standard error of raw panel open-seat estimate |
-| `tau` | 3.171 | Prior width: τ = 2 × SE_RC × sqrt(max(50, n_open) / n_open) |
+| `beta_rc` | 5.475 | Repeat-challenger β̂ (prior mean for Bayesian shrinkage) |
+| `beta_panel_os` | 7.063 | Raw panel OLS estimate for open-seat spending response |
+| `beta4_se` | 0.670 | Standard error of raw panel open-seat estimate |
+| `tau` | 3.174 | Prior width: τ = 2 × SE_RC × sqrt(max(50, n_open) / n_open) |
 | `kappa` | 0.957 | Posterior weight on data: κ = precision_data / (precision_prior + precision_data) |
-| `beta_os_calib` | 6.842 | **Calibrated open-seat β** = κ·β_panel_os + (1−κ)·β_RC |
-| `posterior_se` | 0.654 | Posterior standard error |
-| `beta_os_lb` | 5.769 | Lower bound: calibrated estimate − 1 posterior SE |
+| `beta_os_calib` | 6.995 | **Calibrated open-seat β** = κ·β_panel_os + (1−κ)·β_RC |
+| `posterior_se` | 0.656 | Posterior standard error |
+| `beta_os_lb` | 5.919 | Lower bound: calibrated estimate − 1.64 posterior SE (not 1 SE as an earlier version of this row stated — see `estimation/open_seat.py::calibrate_open_seat()`) |
 
 **Note:** κ ≈ 0.957 means the posterior is almost entirely data-driven (the repeat-challenger prior has little pull), as expected for a well-identified open-seat sample.
 
