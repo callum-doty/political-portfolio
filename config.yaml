@@ -65,18 +65,23 @@ generic_ballot_by_cycle:
   2022: -1.0
   2024: -1.2
   # 2026 is NOT a final pre-election value like the cycles above — the
-  # election hasn't happened yet. This is a LIVE point-estimate (21-day
-  # trailing average of raw polls from scripts/fetch_polling.py / VoteHub),
-  # captured 2026-07-07, meant to be refreshed at each periodic re-run of
-  # the dynamic/ live pipeline, not varied within a single run. Per the
-  # Paper II implementation plan's Phase 4A finding, this is a legitimate
-  # single-scenario input (same role as the other per-cycle constants
-  # above) — it is NOT the same as feeding a continuously time-varying GB
-  # series into coef.alpha3 within one optimization, which remains
-  # unsupported by the estimation. Update this value (and the comment
-  # date) whenever scripts/fetch_polling.py is re-run for a fresh live
-  # snapshot.
-  2026: 5.02
+  # election hasn't happened yet. This is a LIVE point-estimate from
+  # scripts/fetch_polling.py / VoteHub, meant to be refreshed at each
+  # periodic re-run of the dynamic/ live pipeline, not varied within a
+  # single run. Per the Paper II implementation plan's Phase 4A finding,
+  # this is a legitimate single-scenario input (same role as the other
+  # per-cycle constants above) — it is NOT the same as feeding a
+  # continuously time-varying GB series into coef.alpha3 within one
+  # optimization, which remains unsupported by the estimation.
+  # Refreshed 2026-07-28: the standard 21-day trailing window returned
+  # ZERO qualifying polls (generic-ballot polling has gone quiet for this
+  # cycle) -- widened to a 30-day window to get a usable estimate (2
+  # polls). Barely moved from the prior 5.02 (2026-07-07 snapshot), so
+  # this reads as a stable environment, not fresh information. Update
+  # this value (and the comment date) whenever scripts/fetch_polling.py
+  # is re-run for a fresh live snapshot; re-check whether the 21-day
+  # window has polls again before reverting to it.
+  2026: 5.00
 
 # ─── Spending response surface ────────────────────────────────────────────────
 # β_RC is estimated from the historical panel and carried forward.

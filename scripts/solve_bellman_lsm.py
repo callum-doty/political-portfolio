@@ -244,14 +244,37 @@ def margin_gradient(coef, pvi, incumb_status, d_total, r_total, eta: float = 0.0
 
 
 def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, label: str,
-            eta_summary: dict | None = None) -> dict:
+            eta_summary: dict | None = None, enable_trickle: bool = True,
+            enable_stochastic: bool = True, enable_opponent_reaction: bool = True,
+            held_out_frac: float = 0.0) -> dict:
     """eta_arr_by_path / resid_std_arr_by_path: shape (K_PATHS, n) -- either
     a single cycle's fit tiled identically across every path (tile_single_cycle,
     the original eta_fit_2022/eta_fit_2024 brackets) or a genuine per-path
     bootstrap draw (bootstrap_eta_resid_paths). run_lsm() itself is agnostic
     to which; unifying the two here (rather than a separate code path per
     scenario) is what makes the bootstrap scenario a small addition instead
-    of a duplicated ~150-line function."""
+    of a duplicated ~150-line function.
+
+    Mechanism-decomposition toggles (reviewer-requested isolation of Theta's
+    drivers -- Paper III revision, 2026-07-28): enable_trickle controls
+    candidate-committee organic spending growth (D_i,t fixed at the floor
+    when False); enable_stochastic controls ALL random sources at once
+    (idiosyncratic epsilon, the G_t national-environment walk, and R_i,t's
+    residual reaction noise -- forced to exactly zero when False, giving a
+    fully deterministic path); enable_opponent_reaction zeroes eta so R never
+    reacts to D's growth (moot when enable_trickle is also False, since
+    reaction = eta * delta_d = 0 regardless of eta once delta_d = 0). All
+    default True, matching the full reported model (scenario E).
+
+    held_out_frac (statistical-rigor addition, 2026-07-28): if > 0, a random
+    held_out_frac share of the K_PATHS paths is excluded from every period's
+    continuation-value regression fit (still receives a predicted wait_val
+    from that fit, and still participates in the backward recursion), so the
+    reported theta/frac_deploy_now can be computed on paths whose own
+    realized future payoff never informed the regression that decided their
+    stopping choice -- the standard fix for Longstaff-Schwartz's in-sample
+    look-ahead bias. When 0 (default), behavior is unchanged: every path is
+    used both to fit and to evaluate, exactly as before this addition."""
     coef, sigma_model = load_coef_and_sigma()
     races = build_universe(cycle=2026)
     n = len(races)
@@ -277,8 +300,8 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         beta1_eff_arr = np.where(is_open_arr > 0, coef.beta1_open, coef.beta1)
     else:
         beta1_eff_arr = np.full(n, coef.beta1)
-    resid_std_arr = resid_std_arr_by_path
-    eta_arr = eta_arr_by_path
+    resid_std_arr = resid_std_arr_by_path if enable_stochastic else np.zeros_like(resid_std_arr_by_path)
+    eta_arr = eta_arr_by_path if enable_opponent_reaction else np.zeros_like(eta_arr_by_path)
 
     # --- Simulate the "wait" branch forward (Section 0.1.1's fix, unblocked this
     # session by data_catalog.md Section 2.7's dated candidate-periodic-reports
@@ -306,7 +329,7 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
     # would require a separate regression (opponent IE reaction to candidate-
     # committee spend specifically) not yet run. Reported here rather than
     # silently assumed validated.
-    trickle_per_day = load_trickle_rate_per_day(tiers)          # (n,) $/day
+    trickle_per_day = load_trickle_rate_per_day(tiers) if enable_trickle else np.zeros(n)   # (n,) $/day
     trickle_per_period = trickle_per_day * PERIOD_DAYS           # (n,) $/period
 
     d_paths = np.zeros((K_PATHS, N_PERIODS + 1, n))
@@ -335,13 +358,13 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
     # to Election Day (implied E[delta_G] = -0.02 points, vs sigma_G~2 points at
     # that horizon) -- consistent with Section 5.3's finding that RW is a good
     # approximation at this horizon, so a zero-drift walk is used here.
-    g_step_std = SIGMA_G_PER_SQRT_DAY * np.sqrt(PERIOD_DAYS)
+    g_step_std = (SIGMA_G_PER_SQRT_DAY * np.sqrt(PERIOD_DAYS)) if enable_stochastic else 0.0
     g_paths = np.cumsum(RNG.normal(0, g_step_std, size=(K_PATHS, N_PERIODS)), axis=1)
     g_paths = np.concatenate([np.zeros((K_PATHS, 1)), g_paths], axis=1)   # G_0 = 0 (relative to today)
 
     eps_cum = np.zeros((K_PATHS, N_PERIODS + 1, n))
     for i in range(n):
-        v = incremental_variances(sigma_arr[i], N_PERIODS)
+        v = incremental_variances(sigma_arr[i], N_PERIODS) if enable_stochastic else np.zeros(N_PERIODS)
         incr = RNG.normal(0, np.sqrt(v), size=(K_PATHS, N_PERIODS))
         eps_cum[:, 1:, i] = np.cumsum(incr, axis=1)
 
@@ -437,17 +460,52 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
     # --- Backward induction ---
     remaining_days = np.array([(N_PERIODS - t) * PERIOD_DAYS for t in range(N_PERIODS + 1)])
 
+    # Mechanism-decomposition consistency fix (found via the A/B sanity check,
+    # 2026-07-28): the terminal boundary must respect enable_stochastic the
+    # same way the backward-induction loop's widened_sigma now does. Left
+    # hardcoded to sigma_arr regardless of the toggle, scenario A (everything
+    # off -- nothing evolves, so Theta should be ~0) instead gave Theta(0)
+    # comparable to the full model, because intermediate steps correctly
+    # collapsed to a ~0 floor while this anchor still applied the full,
+    # unrelated sigma_i -- a discontinuity exactly at the boundary that has
+    # nothing to do with genuine option value. When enable_stochastic=True
+    # (the default, matching every headline Theta(0) figure reported so far),
+    # this is unchanged: sigma_arr, matching Appendix C.1's stated boundary.
+    terminal_sigma = sigma_arr if enable_stochastic else np.sqrt(np.full_like(sigma_arr, 1e-6))
     print(f"  [{label}] computing terminal condition (forced deploy, {K_PATHS} paths)...")
     V_star = np.array([
-        _deploy_value(mu_paths[k, -1, :], r_paths[k, -1, :], sigma_arr, eta_arr[k],
+        _deploy_value(mu_paths[k, -1, :], r_paths[k, -1, :], terminal_sigma, eta_arr[k],
                        d_paths[k, -1, :], d_paths[k, -1, :])   # at T, d_t IS d_terminal: drift=0
         for k in range(K_PATHS)   # V=0 at T: no widening
     ])
 
+    # Fixed, independent RNG for the train/test split -- deliberately NOT the
+    # module-level RNG driving path simulation, so requesting held_out_frac>0
+    # doesn't perturb the simulated paths themselves relative to a
+    # held_out_frac=0 run (only which rows feed each period's regression fit
+    # changes).
+    held_out_mask = np.zeros(K_PATHS, dtype=bool)
+    if held_out_frac > 0:
+        split_rng = np.random.default_rng(999)
+        held_out_mask[split_rng.choice(K_PATHS, size=int(K_PATHS * held_out_frac), replace=False)] = True
+    train_mask = ~held_out_mask
+
     theta_by_period = []
     for tstep in range(N_PERIODS - 1, -1, -1):
-        v_remaining = remaining_variance(sigma_arr, remaining_days[tstep])   # vectorized over races
-        widened_sigma = np.sqrt(sigma_arr ** 2 + v_remaining)
+        v_remaining = (remaining_variance(sigma_arr, remaining_days[tstep])
+                       if enable_stochastic else np.zeros_like(sigma_arr))   # vectorized over races
+        # Fix (2026-07-28 audit): mu_paths[:, tstep, :] already embeds eps_cum(tstep),
+        # the resolved-to-date share of the same sigma_i^2 idiosyncratic budget
+        # (incremental_variances telescopes so that Var(eps_cum(t)) + v_remaining(t)
+        # is constant in t -- see simulate_and_validate.py's incremental_variances).
+        # Widening by sqrt(sigma_i^2 + v_remaining) on top of that double-counts:
+        # once via the simulated eps_cum realization, once via the extra + sigma_i^2
+        # term. The correct remaining uncertainty, given mu_t already reflects
+        # everything resolved up to tstep, is v_remaining(t) alone. (The t=T terminal
+        # condition below is untouched: it uses sigma_arr directly, matching Appendix
+        # C.1's stated boundary Phi(mu_T/sigma_i), and Theta(T)=0 holds regardless
+        # since both branches evaluate the identical mu_T through the same transform.)
+        widened_sigma = np.sqrt(np.maximum(v_remaining, 1e-6))
 
         deploy_vals = np.array([
             _deploy_value(mu_paths[k, tstep, :], r_paths[k, tstep, :], widened_sigma,
@@ -471,7 +529,11 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         # columns to 5 rather than raising, first caught via an IndexError on cont_fit.params[5].
         X = sm.add_constant(np.column_stack([e_seats_t, var_seats_t, max_msg_t, near_thresh_t, g_t]),
                              has_constant="add")
-        cont_fit = sm.OLS(V_star, X).fit()
+        # Fit only on train_mask rows when held_out_frac>0 (statistical-rigor
+        # addition, above) -- predict() still applies to every row, so
+        # held-out paths get a genuine out-of-sample continuation-value
+        # estimate rather than one their own realized future contributed to.
+        cont_fit = sm.OLS(V_star[train_mask], X[train_mask]).fit()
         wait_vals = cont_fit.predict(X)
 
         theta_t = wait_vals - deploy_vals
@@ -487,15 +549,22 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         _r2 = float(cont_fit.rsquared)
         basis_r2 = _r2 if np.isfinite(_r2) else 0.0
 
-        theta_by_period.append({
+        entry = {
             "period": tstep, "days_remaining": int(remaining_days[tstep]),
             "mean_theta": float(np.mean(theta_t)), "frac_deploy_now": float(np.mean(deploy_now)),
             "basis_r2": basis_r2,
             "g_t_coef": float(cont_fit.params[5]), "g_t_pvalue": float(cont_fit.pvalues[5]),
-        })
+        }
+        if held_out_frac > 0:
+            entry["mean_theta_held_out"] = float(np.mean(theta_t[held_out_mask]))
+            entry["frac_deploy_now_held_out"] = float(np.mean(deploy_now[held_out_mask]))
+        theta_by_period.append(entry)
+        held_out_msg = (f", held-out Theta={entry['mean_theta_held_out']:+.4f}"
+                         if held_out_frac > 0 else "")
         print(f"  [{label}] t={tstep} ({remaining_days[tstep]}d left): "
               f"mean Theta={np.mean(theta_t):+.4f} seats, frac(deploy now)={np.mean(deploy_now):.3f}, "
-              f"basis R2={basis_r2:.3f}, g_t_coef={cont_fit.params[5]:+.5f} (p={cont_fit.pvalues[5]:.3f})")
+              f"basis R2={basis_r2:.3f}, g_t_coef={cont_fit.params[5]:+.5f} (p={cont_fit.pvalues[5]:.3f})"
+              f"{held_out_msg}")
 
     theta_by_period = list(reversed(theta_by_period))
     return {"label": label, "eta_summary": eta_summary, "n_periods": N_PERIODS, "k_paths": K_PATHS,

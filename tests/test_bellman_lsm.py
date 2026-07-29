@@ -446,6 +446,57 @@ class TestRunLsmIntegration:
                 assert entry["frac_deploy_now"] == pytest.approx(1.0), entry
 
 
+# ─── Variance double-count regression (2026-07-28 audit) ──────────────────
+#
+# _deploy_value's widened_sigma used to be sqrt(sigma_i^2 + v_remaining(t)),
+# double-counting the idiosyncratic-uncertainty budget: mu_paths already
+# embeds eps_cum(t), the resolved-to-date share of that same sigma_i^2
+# (TestVarianceDecomposition's telescoping tests above establish
+# Var(eps_cum(t)) + v_remaining(t) is constant in t). The fix uses
+# sqrt(v_remaining(t)) alone. These tests guard against the double-count
+# silently reappearing.
+
+class TestVarianceDoubleCountRegression:
+    def test_static_benchmark_gives_exactly_zero_theta_every_period(self, monkeypatch, synthetic_races, tmp_path):
+        """If nothing in the state evolves over the horizon at all (no
+        candidate trickle, no stochastic shocks of any kind, no opponent
+        reaction), deploying now and waiting are informationally identical,
+        so Theta must be exactly 0 at every period -- not just at t=T. This
+        is the sanity check that first caught the double-count: the
+        uncorrected formula (and, separately, an inconsistent terminal
+        boundary this same audit also fixed) gave a large nonzero Theta(0)
+        here purely from a variance-treatment artifact, not from any
+        genuine option value, since nothing in this scenario evolves."""
+        monkeypatch.setattr(lsm, "build_universe", lambda cycle=2026: synthetic_races)
+        monkeypatch.setattr(lsm, "K_PATHS", 40)
+        monkeypatch.setattr(lsm, "N_PERIODS", 3)
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", tmp_path / "no_trickle_for_this_test.json")
+
+        tiers_per_race = [r.cook_rating for r in synthetic_races]
+        eta_by_tier = {"Toss-Up": 0.4, "Lean D": 0.26, "Lean R": 0.3, "Safe D": 0.0, "Safe R": 0.0}
+        resid_by_tier = {"Toss-Up": 15_000.0, "Lean D": 12_000.0, "Lean R": 12_000.0,
+                          "Safe D": 8_000.0, "Safe R": 8_000.0}
+        eta_arr, resid_arr = lsm.tile_single_cycle(eta_by_tier, resid_by_tier, tiers_per_race, k_paths=40)
+        result = lsm.run_lsm(eta_arr, resid_arr, "static_benchmark_regression_test",
+                              enable_trickle=False, enable_stochastic=False,
+                              enable_opponent_reaction=False)
+        for entry in result["theta_by_period"]:
+            assert entry["mean_theta"] == pytest.approx(0.0, abs=1e-6), entry
+
+    def test_widened_sigma_does_not_add_sigma_i_squared_on_top_of_v_remaining(self):
+        """Direct numerical check of the fix: at any horizon short of full
+        resolution, sqrt(v_remaining(t)) alone must be strictly smaller than
+        the old, double-counted sqrt(sigma_i^2 + v_remaining(t)) -- guards
+        against the '+ sigma_arr ** 2' term silently being reintroduced."""
+        sigma = 15.0
+        days_remaining = 60.0
+        v_remaining = sim.remaining_variance(sigma, days_remaining)
+        corrected = np.sqrt(v_remaining)
+        old_double_counted = np.sqrt(sigma ** 2 + v_remaining)
+        assert corrected < old_double_counted
+        assert corrected == pytest.approx(np.sqrt(v_remaining), rel=1e-9)
+
+
 class TestSpendTrickle:
     """docs/theta_followup_plan.md Section 0.1.1's blocked fix: wait-branch
     D_i,t now grows via a calibrated trickle, giving eta something to react

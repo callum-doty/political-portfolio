@@ -246,6 +246,7 @@ def optimize_nonlinear(
     cap_fraction: float,
     party_budget: float | None = None,
     eta: float = 0.0,
+    fixed_zero_mask: np.ndarray | None = None,
 ) -> OptimizerResult:
     """
     Non-linear portfolio optimizer using direct Φ(μ(D)/σ) evaluation.
@@ -264,6 +265,18 @@ def optimize_nonlinear(
                     NRCC/CLF match fraction of each new DCCC dollar above
                     observed spending. Set to 0 for retrospective analysis
                     or late-cycle deployment where γ ≈ 0 (ad inventory sold).
+    fixed_zero_mask : (n_races,) boolean, optional. Races where True are
+                    held at exactly zero party allocation (upper bound
+                    forced to 0.0 alongside the usual lower bound of 0.0),
+                    rather than allowed the normal [0, cap] range. Used to
+                    decompose the model's total gain over an observed
+                    allocation into a "selection" component (funding races
+                    that received zero observed party money) versus an
+                    "intensity" component (rebalancing among races already
+                    funded): re-solving with fixed_zero_mask set to the
+                    observed zero-funded races isolates the latter, since
+                    the optimizer is then only permitted to reallocate
+                    the same party budget across the already-funded set.
     """
     n = len(races)
     arrays = _precompute_race_arrays(races, coef, sigma_model, eta=eta)
@@ -276,6 +289,8 @@ def optimize_nonlinear(
     # Initial point: observed party allocation scaled to fit constraints
     d_total_obs = np.array([r.d_total for r in races])
     party_obs = np.maximum(d_total_obs - floors, 0.0)
+    if fixed_zero_mask is not None:
+        party_obs = np.where(fixed_zero_mask, 0.0, party_obs)
     # Clip to cap first, then rescale to meet the budget constraint
     party0 = np.minimum(party_obs, cap)
     total0 = party0.sum()
@@ -311,7 +326,10 @@ def optimize_nonlinear(
         return neg_ones.copy()
 
     constraints = [{"type": "ineq", "fun": budget_slack, "jac": budget_slack_jac}]
-    bounds = [(0.0, cap_s)] * n
+    if fixed_zero_mask is not None:
+        bounds = [(0.0, 0.0) if fixed_zero_mask[i] else (0.0, cap_s) for i in range(n)]
+    else:
+        bounds = [(0.0, cap_s)] * n
 
     result = minimize(
         neg_e_seats,

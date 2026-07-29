@@ -8,8 +8,8 @@
   },
   "allocation_efficiency": {
     "dccc_expected_seats": 213.36650713341362,
-    "model_expected_seats": 216.589011418852,
-    "null_mean_expected_seats": 213.26623937698065,
+    "model_expected_seats": 216.58901141885434,
+    "null_mean_expected_seats": 213.26623937698068,
     "null_ci_95": [
       213.03398958304237,
       213.4985219279348

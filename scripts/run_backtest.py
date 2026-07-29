@@ -43,7 +43,10 @@ from backtest.comparison.efficiency import (
     spearman_efficiency_test, characterize_misallocation,
     spearman_by_cook_category, matched_group_efficiency_test,
     permutation_test_spearman_efficiency,
+    floor_baseline_efficiency_test, kkt_dispersion_test,
+    boundary_kkt_test, pairwise_transfer_gain,
 )
+from backtest.optimizer import allocator as allocator_module
 from backtest.comparison.benchmark import (
     compute_brier_comparison, null_equal_weight_shares,
     cook_proportional_shares, compare_allocators,
@@ -252,6 +255,69 @@ def main() -> None:
     perm_spearman = permutation_test_spearman_efficiency(
         races, outputs, n_permutations=n_permutations, rng=np.random.default_rng(42))
 
+    # ── 8b. Redesigned efficiency tests (methodology review response) ───────
+    # spearman_efficiency_test() above correlates observed spending against
+    # MSG evaluated *at that same observed spending level*, which is
+    # mechanically confounded by diminishing returns (more spending always
+    # depresses a race's own current-MSG reading, efficient or not) and does
+    # not test the paper's own KKT stationarity condition (App. C.1: at a
+    # risk-neutral optimum, MSG_i is *equalized*, not positively correlated
+    # with spending). Two replacement tests that don't share this flaw:
+    logger.info("Running redesigned efficiency tests (floor-baseline + KKT dispersion)…")
+    floor_baseline = floor_baseline_efficiency_test(races, coef, sigma_model)
+    logger.info(
+        f"Floor-baseline test: ρ={floor_baseline['rho']:.3f} "
+        f"(p={floor_baseline['p_value']:.4f}, n={floor_baseline['n']})"
+    )
+
+    _arrays_for_kkt = allocator_module._precompute_race_arrays(races, coef, sigma_model, eta=eta)
+    _optimal_party = primary_result.allocations - _arrays_for_kkt["floors"]
+    _optimal_msg = allocator_module._msg_vec(_optimal_party, _arrays_for_kkt)
+    kkt_dispersion = kkt_dispersion_test(
+        races, outputs, _optimal_party, _optimal_msg,
+        party_budget=party_budget, cap_fraction=cap_baseline,
+    )
+    boundary_kkt = boundary_kkt_test(
+        races, outputs, party_budget=party_budget, cap_fraction=cap_baseline,
+        lambda_implied=kkt_dispersion["dccc_observed"]["lambda_implied"],
+    )
+    transfer_gain = pairwise_transfer_gain(
+        races, coef, sigma_model, outputs,
+        party_budget=party_budget, cap_fraction=cap_baseline, eta=eta,
+    )
+
+    # ── 8c. Selection-vs-intensity decomposition of the model's total gain ──
+    # primary_result reallocates freely across the entire eligible universe.
+    # Re-solving with zero-funded races held at exactly zero isolates how
+    # much of the total model-vs-DCCC gain is attributable to *funding
+    # previously-unfunded races* ("selection") versus *rebalancing among
+    # races DCCC already funded* ("intensity") -- see review response.
+    logger.info("Running constrained (already-funded-only) reallocation for selection/intensity decomposition…")
+    _party_obs_for_mask = np.array([r.d_total - r.cand_d_total for r in races])
+    _zero_funded_mask = _party_obs_for_mask <= (1e-3 * party_budget)
+    already_funded_result = optimize_nonlinear(
+        races, coef, sigma_model, budget, cov_matrix, 0.0, cap_baseline,
+        party_budget=party_budget, eta=eta, fixed_zero_mask=_zero_funded_mask,
+    )
+    dccc_expected_seats = float(sum(o.p_win for o in outputs))
+    intensity_gain = already_funded_result.expected_seats - dccc_expected_seats
+    selection_gain = primary_result.expected_seats - already_funded_result.expected_seats
+    total_gain = primary_result.expected_seats - dccc_expected_seats
+    gain_decomposition = {
+        "dccc_observed_expected_seats": dccc_expected_seats,
+        "already_funded_only_expected_seats": already_funded_result.expected_seats,
+        "full_model_optimal_expected_seats": primary_result.expected_seats,
+        "n_zero_funded_races_held_fixed": int(_zero_funded_mask.sum()),
+        "intensity_gain": intensity_gain,
+        "selection_gain": selection_gain,
+        "total_gain": total_gain,
+    }
+    logger.info(
+        f"Gain decomposition: total={total_gain:+.3f} seats = "
+        f"intensity(rebalance already-funded)={intensity_gain:+.3f} + "
+        f"selection(fund new races)={selection_gain:+.3f}"
+    )
+
     # ── 9. β_RC uncertainty propagation ──────────────────────────────────────
     uncertainty = None
     if not args.skip_uncertainty:
@@ -310,6 +376,17 @@ def main() -> None:
             "allocation_efficiency": perm_allocation,
         }, f, indent=2)
     logger.info(f"Permutation test results → {perm_path}")
+
+    redesigned_path = out_dir / f"efficiency_tests_redesigned{suffix}.json"
+    with open(redesigned_path, "w") as f:
+        json.dump({
+            "floor_baseline": floor_baseline,
+            "kkt_dispersion": kkt_dispersion,
+            "boundary_kkt": boundary_kkt,
+            "pairwise_transfer": transfer_gain,
+            "gain_decomposition": gain_decomposition,
+        }, f, indent=2)
+    logger.info(f"Redesigned efficiency test results → {redesigned_path}")
 
     # ── 11. Outputs ───────────────────────────────────────────────────────────
     logger.info("Building output tables…")
@@ -370,7 +447,22 @@ def main() -> None:
     logger.info(f"All outputs written to {out_dir}/")
     logger.info(
         f"\nSummary:\n"
-        f"  Spearman ρ: {efficiency['rho']:.3f} (p={efficiency['p_value']:.4f})\n"
+        f"  Spearman ρ (observed-D2 test, superseded — see review response): "
+        f"{efficiency['rho']:.3f} (p={efficiency['p_value']:.4f})\n"
+        f"  Floor-baseline ρ (replacement test #2): {floor_baseline['rho']:.3f} "
+        f"(p={floor_baseline['p_value']:.4f}, n={floor_baseline['n']})\n"
+        f"  KKT dispersion, DCCC observed (replacement test #1): "
+        f"n={kkt_dispersion['dccc_observed']['n']}, CV={kkt_dispersion['dccc_observed']['cv']:.3f}\n"
+        f"  KKT dispersion, model-optimal: "
+        f"n={kkt_dispersion['model_optimal']['n']}, CV={kkt_dispersion['model_optimal']['cv']:.3f}\n"
+        f"  Boundary KKT: {boundary_kkt['n_zero_violations']}/{boundary_kkt['n_at_zero']} zero-funded "
+        f"races exceed λ; {boundary_kkt['n_cap_violations']}/{boundary_kkt['n_at_cap']} cap-level races below λ\n"
+        f"  Pairwise transfer (${transfer_gain['transfer_amount']:,.0f}): "
+        f"{transfer_gain['donor_district']} → {transfer_gain['recipient_district']}, "
+        f"ΔE[Seats]={transfer_gain['delta_expected_seats']:+.5f}\n"
+        f"  Gain decomposition: total={gain_decomposition['total_gain']:+.3f} = "
+        f"intensity={gain_decomposition['intensity_gain']:+.3f} + "
+        f"selection={gain_decomposition['selection_gain']:+.3f}\n"
         f"  Competitive races: {efficiency['n_competitive']}\n"
         f"  Material divergence races: {aggregate['n_material_divergence']}\n"
         f"  Allocator comparison:\n{allocator_table.to_string(index=False)}"

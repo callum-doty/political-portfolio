@@ -151,6 +151,60 @@ def _marginal_seat_gain(
     return phi * (1.0 / sigma) * d_mu_d_s
 
 
+def compute_floor_msg(
+    race: RaceRecord,
+    coef: MarginModelCoefficients,
+    sigma_model: SigmaModel,
+    beta1_override: float | None = None,
+) -> float:
+    """
+    Marginal seat gain evaluated at the race's own candidate-only spending
+    floor (D_i = cand_d_total, no party money added), rather than at the
+    observed/current total spending level compute_outputs() uses.
+
+    Rationale (efficiency-test redesign, see FINDINGS.md's discussion of the
+    Spearman test's diminishing-returns confound): correlating observed
+    party spending against MSG evaluated *at that same observed spending
+    level* is mechanically biased toward a negative reading, because
+    diminishing returns alone guarantees that races which already received
+    more money show lower current-MSG, independent of whether the money was
+    well targeted. MSG evaluated at the floor is fixed before any party
+    dollar is committed and therefore cannot be contaminated by the spending
+    decision under test.
+
+    The persuasion ceiling's grad_factor is exactly 1.0 at the floor itself
+    (delta = max(mu_raw - mu_floor, 0) = 0 when mu_raw = mu_floor), so no
+    ceiling correction is needed here -- this is the ceiling's own anchor
+    point.
+    """
+    mu_floor = predict_floor_margin(
+        pvi=race.pvi,
+        incumb_status=race.incumb_status,
+        generic_ballot=race.generic_ballot,
+        cand_d_total=race.cand_d_total,
+        r_total=race.r_total,
+        coef=coef,
+        beta1_override=beta1_override,
+        cvap=race.cvap,
+        indiv_share=race.indiv_share,
+    )
+    sigma = sigma_model.predict(abs(race.pvi), race.incumb_status, race.generic_ballot)
+
+    floor_dollars = max(race.cand_d_total, 1.0)
+    r_dollars = max(race.r_total, 1.0)
+
+    return _marginal_seat_gain(
+        mu=mu_floor,
+        sigma=sigma,
+        pvi=race.pvi,
+        incumb_status=race.incumb_status,
+        d_total=floor_dollars,
+        r_total=r_dollars,
+        coef=coef,
+        beta1_override=beta1_override,
+    )
+
+
 def compute_outputs_batch(
     races: list[RaceRecord],
     coef: MarginModelCoefficients,

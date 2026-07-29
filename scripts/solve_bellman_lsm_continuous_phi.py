@@ -293,7 +293,11 @@ def run_continuous_phi_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: n
     schedule = []
     for tstep in range(n_periods - 1, -1, -1):
         v_remaining = lsm.remaining_variance(sigma_arr, remaining_days[tstep])
-        widened_sigma = np.sqrt(sigma_arr ** 2 + v_remaining)
+        # Same fix as solve_bellman_lsm.py's backward induction (2026-07-28 audit):
+        # mu_committed already embeds eps_cum(tstep), the resolved-to-date share of
+        # sigma_i^2, so widening by sigma_i^2 + v_remaining on top double-counts.
+        # v_remaining(t) alone is the correct remaining uncertainty.
+        widened_sigma = np.sqrt(np.maximum(v_remaining, 1e-6))
         absorbing_val = norm.cdf(mu_committed[-1][:, tstep, :] / widened_sigma).sum(axis=1)
 
         # Grid-stratified regression (one fit per grid state g', no functional form

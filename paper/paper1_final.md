@@ -32,7 +32,7 @@ header-includes:
 
 \begin{abstract}
 \noindent
-Congressional campaign committees allocate hundreds of millions of dollars each election cycle largely through polling judgment, strategist intuition, and historical precedent rather than formal optimization. This paper reframes campaign finance as a constrained capital allocation problem and develops a complete pipeline for solving it: a spending response surface identified via a repeat-challenger causal design, a nonlinear margin-to-win-probability conversion, a portfolio risk model built on a common national-environment factor, and a nonlinear optimizer that maximizes expected seats subject to a fixed party budget. The central mathematical contribution addresses a defect intrinsic to any log-ratio spending specification: the marginal seat gain gradient is proportional to $1/D_i$ as a race's own spending floor $D_i \to 0$, so an uncapped model extrapolates an unbounded persuasion effect into safe districts with no historical support for the implied magnitude. We derive this singularity analytically, state the formal requirements a correction must satisfy, and introduce an endogenous, bounded, differentiable \emph{persuasion ceiling} $C(\Phi_0) = C_{\max}\cdot 4\Phi_0(1-\Phi_0)$, where $\Phi_0$ is a race's win probability at its own candidate-only spending floor. The ceiling is calibrated by an eight-point robustness sweep rather than fixed by hand. Using exclusively public data (FEC filings, MIT Election Lab results, Cook PVI, 2012--2024) and a Levitt (1994) repeat-challenger identification strategy extended to open seats via Bayesian shrinkage, we estimate the framework on 433 competitive-and-safe U.S. House races and find that observed 2024 DCCC spending is \emph{negatively} rank-correlated with model-estimated marginal seat gain ($\rho = -0.809$, $p<0.001$, $n=53$ competitive races) -- the opposite sign implied by efficient allocation. A model-optimal reallocation of the identical party budget yields an estimated $+2.83$ expected seats; both findings replicate out-of-sample on the 2022 cycle ($\rho=-0.847$, $+3.22$ seats) using a model estimated exclusively on 2012--2020 data, and both survive permutation tests against 2,000 random reallocations of DCCC's own dollars. The paper's contribution is simultaneously a mathematical one -- a general, endogenous regularization mechanism for any diminishing-returns spending model with a floor singularity -- and an empirical one, providing campaign committees and researchers a reproducible, publicly replicable framework for evaluating whether political capital is deployed where the marginal dollar matters most.
+Congressional campaign committees allocate hundreds of millions of dollars each election cycle largely through polling judgment, strategist intuition, and historical precedent rather than formal optimization. This paper reframes campaign finance as a constrained capital allocation problem and develops a complete pipeline for solving it: a spending response surface identified via a repeat-challenger causal design, a nonlinear margin-to-win-probability conversion, a portfolio risk model built on a common national-environment factor, and a nonlinear optimizer that maximizes expected seats subject to a fixed party budget. We show analytically that the resulting marginal-seat-gain function is finite everywhere -- including as a race's own spending floor $D_i\to0$, where a naive reading of the log-ratio specification's diverging gradient term might suggest otherwise, but where the conversion from margin to win probability decays fast enough to force the limit to zero rather than infinity. The function is instead non-monotonic, with a finite interior peak that can land at an implausible value if a race's real spending floor happens to sit nearby, a finite-sample extrapolation risk rather than a mathematical singularity. We derive this behavior, state the design requirements a correction must satisfy, and introduce an endogenous, bounded, differentiable \emph{persuasion ceiling} $C(\Phi_0) = C_{\max}\cdot 4\Phi_0(1-\Phi_0)$, where $\Phi_0$ is a race's win probability at its own candidate-only spending floor, calibrated by a seven-point robustness sweep. Using exclusively public data (FEC filings, MIT Election Lab results, Cook PVI, 2012--2024) and a Levitt (1994) repeat-challenger identification strategy extended to open seats via Bayesian shrinkage, we estimate the framework on 433 competitive-and-safe U.S. House races and develop a direct test of the framework's own KKT stationarity condition -- that risk-neutral efficient allocation equalizes marginal seat gain among funded races -- rather than relying on a spending-versus-marginal-return correlation that diminishing returns confounds mechanically. Applied to observed 2024 DCCC spending, marginal seat gain among interior-funded races shows a 90th-to-10th-percentile ratio of 25.9-to-1 (coefficient of variation 1.32), against near-exact equalization in the model-optimal allocation, replicating out-of-sample in 2022 (19.9-to-1; CV 1.25). A separate test finds no significant relationship between observed spending and each race's pre-allocation marginal potential in either cycle ($\rho=-0.122$, $p=0.38$, 2024; $\rho=-0.001$, $p=0.995$, 2022) -- the analysis finds no evidence DCCC systematically chose the wrong races at the outset. A model-optimal reallocation of the identical party budget yields an estimated $+2.83$ expected seats in 2024 and $+3.22$ in 2022; decomposing this gain shows 83--91\% is attributable to funding races that received zero party money at all, not to resizing amounts among races already funded. The paper's contribution is therefore threefold: a corrected derivation of marginal-seat-gain's limiting behavior together with an endogenous regularizer suited to the resulting finite-sample extrapolation risk; a KKT-based efficiency diagnostic and a selection-versus-intensity decomposition that together avoid the confound in a simpler correlation test; and a reproducible, publicly replicable empirical finding that DCCC's spending levels are inconsistent with equalized marginal returns, concentrated specifically in unengaged rather than mis-sized opportunities.
 \end{abstract}
 
 \vspace{0.5em}
@@ -72,16 +72,17 @@ The complete pipeline -- causal identification, margin and uncertainty estimatio
 
 ## Contributions
 
-This paper makes four explicit contributions.
+This paper makes five explicit contributions.
 
 1. **Formulates campaign budgeting as a constrained, portfolio-theoretic capital allocation problem**, with an explicit objective (expected seats, optionally risk-adjusted), decision variables (per-race spending), and constraints (a fixed party budget and per-race caps), rather than treating campaign finance as a forecasting or average-treatment-effect estimation exercise.
-2. **Derives and proves the existence of an unbounded-gradient singularity** in the standard log-ratio spending specification as a race's own spending floor approaches zero, and introduces an endogenous, bounded, differentiable persuasion-ceiling function, $C(\Phi_0) = C_{\max}\cdot 4\Phi_0(1-\Phi_0)$, that corrects it without requiring an exogenously imposed spending cap.
-3. **Develops a fully reproducible calibration pipeline** using exclusively public data -- FEC bulk filings, MIT Election Data and Science Lab results, and Cook PVI -- with a Levitt (1994) repeat-challenger causal identification strategy, Bayesian shrinkage extrapolation to open seats, non-parametric bootstrap and permutation-based inference, and an eight-point sensitivity sweep for the ceiling's single free parameter.
-4. **Demonstrates, empirically and out-of-sample, that observed committee spending is inefficiently allocated relative to the model's estimated marginal seat gain**: a strongly negative rank correlation between spending and marginal seat gain in both the 2024 primary sample and the 2022 out-of-sample replication, and a model-optimal reallocation of the identical budget that recovers 2.8--3.2 additional expected seats, robust to permutation tests, winsorization, and Cook-category stratification.
+2. **Derives the true limiting behavior of marginal seat gain** under the standard log-ratio spending specification as a race's own spending floor approaches zero: the function is finite (not divergent) in this limit, but non-monotonic, with a finite interior peak that can land at an implausible value if a race's real floor sits nearby -- a finite-sample extrapolation risk, not a mathematical singularity -- and introduces an endogenous, bounded, differentiable persuasion-ceiling function, $C(\Phi_0) = C_{\max}\cdot 4\Phi_0(1-\Phi_0)$, that corrects for it without requiring an exogenously imposed spending cap.
+3. **Develops a fully reproducible calibration pipeline** using exclusively public data -- FEC bulk filings, MIT Election Data and Science Lab results, and Cook PVI -- with a Levitt (1994) repeat-challenger causal identification strategy, Bayesian shrinkage extrapolation to open seats, non-parametric bootstrap and permutation-based inference, and a seven-point sensitivity sweep for the ceiling's single free parameter.
+4. **Introduces a direct test of the framework's own KKT stationarity condition** as an allocation-efficiency diagnostic -- testing whether marginal seat gain is equalized among interior-funded races, as risk-neutral optimality requires -- together with a decomposition that separates the model-implied gain from any reallocation into a "selection" component (funding currently-unfunded races) and an "intensity" component (resizing amounts among already-funded races), avoiding the mechanical diminishing-returns confound in a naive spending-versus-marginal-return correlation.
+5. **Demonstrates, empirically and out-of-sample, that observed committee spending is inconsistent with equalized marginal returns among funded races** (a 90th-to-10th-percentile MSG ratio of 19.9--25.9-to-1 across two cycles, against near-exact equalization in the model-optimal allocation), while finding no evidence that initial targeting favored high- or low-potential races (a null pre-allocation correlation in both cycles); the resulting model-implied gain of 2.8--3.2 additional expected seats is shown to be dominated (83--91%) by funding previously unengaged races rather than by resizing existing commitments.
 
 ## Paper Roadmap
 
-Section 2 situates the framework relative to the campaign finance, election forecasting, and operations research literatures and states precisely what no existing work combines. Section 3 formalizes the allocation problem: notation, decision variables, constraints, and objective. Section 4 develops the theoretical core -- the baseline probability model, the spending response function, the marginal-value-of-capital derivation, the singularity this derivation implies, and the persuasion ceiling that corrects it. Section 5 describes the public data sources and the final analysis dataset. Section 6 details parameter estimation and calibration, including the ceiling's sensitivity sweep and bootstrap inference. Section 7 specifies the optimization algorithm and computational environment. Section 8 reports empirical results: internal validation, the main efficiency test, baseline comparisons, sensitivity analysis, and robustness checks. Section 9 discusses the political and strategic interpretation of the findings and the framework's generalizability beyond campaign finance. Section 10 states the framework's data, modeling, computational, and deployment limitations. Section 11 concludes.
+Section 2 situates the framework relative to the campaign finance, election forecasting, and operations research literatures and states precisely what no existing work combines. Section 3 formalizes the allocation problem: notation, decision variables, constraints, and objective. Section 4 develops the theoretical core -- the baseline probability model, the spending response function, the marginal-value-of-capital derivation, its limiting behavior, and the persuasion ceiling that regularizes the resulting extrapolation risk. Section 5 describes the public data sources and the final analysis dataset. Section 6 details parameter estimation and calibration, including the ceiling's sensitivity sweep and bootstrap inference. Section 7 specifies the optimization algorithm and computational environment. Section 8 reports empirical results: internal validation, a KKT-based primary efficiency test, a pre-allocation targeting test, a gain decomposition, out-of-sample replication, and, for transparency, the originally-proposed correlation test and why it was superseded. Section 9 discusses the political and strategic interpretation of the findings and the framework's generalizability beyond campaign finance. Section 10 states the framework's data, modeling, computational, and deployment limitations. Section 11 concludes.
 
 \newpage
 
@@ -89,21 +90,25 @@ Section 2 situates the framework relative to the campaign finance, election fore
 
 ## Campaign Finance
 
-The campaign finance literature has principally sought to identify the causal effect of spending on vote share, treating spending as a single scalar treatment and outcome as a population-average response. Jacobson (1978, 1990) established that challenger spending exerts a substantially larger effect on vote share than incumbent spending, a finding that shaped both the academic and practitioner consensus that incumbents are comparatively insensitive to marginal spending. Levitt (1994) addressed the central endogeneity concern in this literature -- campaigns spend more where races are competitive, so cross-sectional spending-outcome correlations confound resource allocation with underlying competitiveness -- using a repeat-challenger design that compares the same challenger against the same incumbent across consecutive cycles, differencing out time-invariant matchup characteristics. Gerber (1998) pursued a complementary identification strategy in Senate races using instrumental variables exploiting exogenous variation in seat competitiveness. Green and Gerber (2008) moved to randomized field experiments, estimating the effect of specific voter-contact activities (canvassing, direct mail) rather than aggregate spending, and providing a causal microfoundation for the sign and plausible magnitude of spending effects at the activity level. Erikson and Palfrey (2000) modeled campaign spending as a simultaneous strategic game between two candidates, establishing that the *ratio* of spending, not its absolute level, is the theoretically appropriate unit of analysis because the marginal value of a dollar to one side depends on the other side's spending.
+The campaign finance literature has principally sought to identify the causal effect of spending on vote share, treating spending as a single scalar treatment and outcome as a population-average response. Jacobson (1978, 1990) established that challenger spending exerts a substantially larger effect on vote share than incumbent spending, a finding that shaped both the academic and practitioner consensus that incumbents are comparatively insensitive to marginal spending -- a consensus Ansolabehere and Snyder (2002) probe directly, finding the raw incumbency advantage itself has grown over the postwar period in ways not fully explained by spending alone. Levitt (1994) addressed the central endogeneity concern in this literature -- campaigns spend more where races are competitive, so cross-sectional spending-outcome correlations confound resource allocation with underlying competitiveness -- using a repeat-challenger design that compares the same challenger against the same incumbent across consecutive cycles, differencing out time-invariant matchup characteristics. Gerber (1998) pursued a complementary identification strategy in Senate races using instrumental variables exploiting exogenous variation in seat competitiveness. Green and Gerber (2008) moved to randomized field experiments, estimating the effect of specific voter-contact activities (canvassing, direct mail) rather than aggregate spending, and providing a causal microfoundation for the sign and plausible magnitude of spending effects at the activity level. Erikson and Palfrey (2000) modeled campaign spending as a simultaneous strategic game between two candidates, establishing that the *ratio* of spending, not its absolute level, is the theoretically appropriate unit of analysis because the marginal value of a dollar to one side depends on the other side's spending. Ansolabehere, de Figueiredo, and Snyder (2003) step back from any single race to ask why aggregate political spending is, by the standards of the economic stakes involved, so small in the first place -- a question this paper's framework is silent on but which bears on why formal optimization of the spending that does occur has been comparatively neglected. Stratmann (2005) surveys this broader empirical literature and its identification challenges in detail.
 
 These studies share a common estimand: $\mathbb E[Y(s+\Delta)] - \mathbb E[Y(s)]$ for a representative race, i.e., the *average* causal effect of a spending increment. None estimates the *conditional marginal* effect $\partial \mathbb E[Y]/\partial s_i$ at race $i$'s specific, current spending level -- the object a capital-allocation decision requires, and one that a fixed average-effect estimate cannot supply because it does not vary with a race's existing spending intensity or structural characteristics.
 
 ## Election Forecasting
 
-A separate literature forecasts election outcomes conditional on the current information state. Cook Political Report and similar outlets translate district characteristics and qualitative judgment into ordinal race ratings (Safe, Likely, Lean, Toss-Up). Poll-aggregation forecasters, following the general approach popularized by FiveThirtyEight, combine polling averages with historical fundamentals into probabilistic win estimates, typically via ensemble or Bayesian dynamic linear models. Sides, Vavreck, and Warshaw (2022) demonstrate the viability of dynamic Bayesian forecasting for congressional and presidential races, producing calibrated, continuously updated win-probability estimates.
+A separate literature forecasts election outcomes conditional on the current information state. Cook Political Report and similar outlets translate district characteristics and qualitative judgment into ordinal race ratings (Safe, Likely, Lean, Toss-Up). Poll-aggregation forecasters, following the general approach popularized by FiveThirtyEight, combine polling averages with historical fundamentals into probabilistic win estimates, typically via ensemble or Bayesian dynamic linear models -- Montgomery, Hollenbach, and Ward (2012) formalize the ensemble-forecasting logic underlying this practice directly. Gelman and King (1993) established the methodological foundation this literature builds on, showing that presidential campaign polls are far more variable than final vote outcomes, and developing the fundamentals-plus-polls decomposition that motivates treating a race's expected margin as a structural quantity separate from its moment-to-moment polling noise -- the same distinction this paper's $\mu_i$/$\sigma_i$ separation (Section 4.1) formalizes for a spending-allocation rather than a forecasting purpose. Sides, Vavreck, and Warshaw (2022) demonstrate the viability of dynamic Bayesian forecasting for congressional and presidential races, producing calibrated, continuously updated win-probability estimates.
 
 Forecasting models of this kind estimate $P(\text{win}_i \mid \text{information to date})$, a state-conditional probability. They are not built to answer a counterfactual spending question: how would $P(\text{win}_i)$ change under a specified change in future spending? Because forecasting models generally do not include a structural spending term with an estimated causal coefficient, they cannot be differentiated with respect to a spending decision, and therefore cannot directly supply a marginal seat gain estimate even though they estimate a closely related quantity (the level of $P_i$) with considerable sophistication.
 
 ## Operations Research
 
-The mathematical structure of the allocation problem this paper poses is well studied outside political science, under three related headings. Mean-variance portfolio theory (Markowitz 1952) formalizes the allocation of a fixed budget across assets with uncertain, correlated returns, trading expected return against variance -- a template this paper adapts directly, with expected seats in place of expected return and a covariance matrix induced by a national-environment factor in place of asset covariance. Dynamic programming and the Bellman equation (Bellman 1957) formalize sequential decision problems in which a state evolves and decisions must account for future consequences; while the present paper's allocation problem is solved as a single-period static optimization (Section 3), the multi-period extension in which a committee re-allocates continuously as new information arrives over a cycle is a direct application of this framework, developed in a companion paper. Classical resource-allocation and capital-budgeting problems -- the knapsack problem, the general resource-allocation problem of Ibaraki and Katoh (1988), and net-present-value capital budgeting -- formalize the discrete or continuous allocation of a scarce budget across competing projects with heterogeneous, often diminishing, returns, precisely the structure of the spending-response function developed in Section 4.
+The mathematical structure of the allocation problem this paper poses is well studied outside political science, under three related headings. Mean-variance portfolio theory (Markowitz 1952) formalizes the allocation of a fixed budget across assets with uncertain, correlated returns, trading expected return against variance -- a template this paper adapts directly, with expected seats in place of expected return and a covariance matrix induced by a national-environment factor in place of asset covariance; Sharpe (1964) extends this template to an equilibrium asset-pricing model in which a single systematic factor prices every asset's required return, the same one-factor logic Section 4's national-environment covariance structure borrows. Dynamic programming and the Bellman equation (Bellman 1957) formalize sequential decision problems in which a state evolves and decisions must account for future consequences; while the present paper's allocation problem is solved as a single-period static optimization (Section 3), the multi-period extension in which a committee re-allocates continuously as new information arrives over a cycle is a direct application of this framework, developed in a companion paper. Classical resource-allocation and capital-budgeting problems -- the knapsack problem, the general resource-allocation problem of Ibaraki and Katoh (1988), and net-present-value capital budgeting -- formalize the discrete or continuous allocation of a scarce budget across competing projects with heterogeneous, often diminishing, returns, precisely the structure of the spending-response function developed in Section 4. The constrained optimization problem itself (Section 3.5) is a direct descendant of the linear- and nonlinear-programming machinery formalized by Dantzig (1963) and, for the convex risk-averse case, by Boyd and Vandenberghe (2004), whose interior-point and KKT-based methods underlie both the SLSQP solver of Section 7.1 and the proofs of Appendix C.
 
-None of these operations-research frameworks, on its own, specifies where its inputs -- the expected-return function, the transition law, the project-level return curve -- come from in a political context. They supply the mathematical machinery; they do not supply the causally identified, empirically calibrated inputs a real application requires.
+None of these operations-research frameworks, on its own, specifies where its inputs -- the expected-return function, the transition law, the project-level return curve -- come from in a political context. They supply the mathematical machinery; they do not supply the empirically calibrated inputs a real application requires, and none is built to confront the finite-sample extrapolation risk (Section 4.4) that arises specifically when such machinery is combined with a causally-anchored-but-partial (Section 6.3) political response surface.
+
+## Research Gap
+
+No existing work combines all three components required to solve the campaign-allocation problem: (i) a partially causally anchored, conditional-on-district spending response function, of the kind the campaign finance literature can supply piecewise but has not embedded in an allocation model; (ii) a nonlinear, uncertainty-aware conversion from expected margin to win probability, of the kind forecasting models estimate in isolation but do not differentiate with respect to spending; and (iii) a constrained, portfolio-level optimization layer that accounts for cross-race covariance and a fixed budget, of the kind operations research formalizes abstractly but does not calibrate to political data. This paper's contribution is to build and calibrate the object that sits at the intersection of these three literatures, and, in doing so, to expose and regularize against a finite-sample extrapolation risk -- a marginal-return function with a diverging component ($\partial\mu_i/\partial D_i$) that turns out, once composed with the margin-to-probability conversion, to be finite but non-monotonic, with a spuriously large finite peak -- that arises specifically from combining a partially causal log-ratio spending specification with an unconstrained optimizer, a problem invisible to any of the three literatures taken separately.
 
 \newpage
 
@@ -166,11 +171,13 @@ The primary objective is expected seats won across the portfolio of races:
 
 $$\mathbb E[\text{Seats}] = \sum_{i=1}^N P_i(x_i) = \sum_{i=1}^N \Phi\!\left(\frac{\mu_i(x_i)}{\sigma_i}\right)$$
 
-Because electoral outcomes are not independent -- common national and regional conditions induce covariance across races -- the risk-adjusted objective incorporates portfolio variance:
+Because electoral outcomes are not independent -- common national and regional conditions induce covariance across races -- the risk-adjusted objective incorporates portfolio variance. With $Y_i\in\{0,1\}$ the binary outcome of race $i$ and $\text{Seats}=\sum_iY_i$,
 
-$$\text{Var}[\text{Seats}] = \sum_i\sum_j \text{Cov}(Y_i, Y_j) = \mathbf d(\mathbf x)'\, \Sigma \,\mathbf d(\mathbf x)$$
+$$\text{Var}[\text{Seats}] = \text{Var}\Big(\sum_i Y_i\Big) = \sum_i\sum_j \text{Cov}(Y_i, Y_j) = \mathbf 1'\, \Sigma(\mathbf x) \,\mathbf 1$$
 
-where $Y_i$ is the binary outcome of race $i$, $\mathbf d(\mathbf x)$ is the vector of total spending levels $D_i(x_i)$, and $\Sigma$ is the factor-implied covariance matrix developed in Section 4. A campaign committee genuinely concerned with securing a chamber majority faces an objective closer to $P(\text{Seats}\ge T)$ for majority threshold $T=218$, which is approximately $\Phi\!\big((\mathbb E[\text{Seats}]-T)/\text{SD}[\text{Seats}]\big)$ under a normal approximation to the seat-count distribution. This majority-probability objective has different comparative statics than the expected-seats objective -- it rewards *increased* variance when $\mathbb E[\text{Seats}] < T$ and *reduced* variance when $\mathbb E[\text{Seats}] > T$ -- and a committee rationally pursuing it might overweight high-covariance races in a way that would appear as misallocation under the expected-seats objective alone. We adopt the expected-seats objective as the primary criterion, noting that the approximation is most accurate when $\mathbb E[\text{Seats}]$ is near $T$, and return to this distinction when interpreting the efficiency test in Section 8.
+where $\Sigma(\mathbf x)_{ij}=\text{Cov}(Y_i,Y_j)$ is the $N\times N$ *outcome*-covariance matrix (not a spending-covariance matrix), and $\mathbf 1$ is the all-ones vector -- $\text{Var}[\text{Seats}]$ sums every entry of $\Sigma(\mathbf x)$, it does not weight them by dollar amounts. $\Sigma(\mathbf x)$ depends on the allocation $\mathbf x$ only through each race's outcome, via the structural factor loading derived in Appendix B.6, $\beta_i(x_i)=\varphi(\mu_i(x_i)/\sigma_i)\cdot\alpha_3/\sigma_i$: off-diagonal entries are $\Sigma_{ij}(\mathbf x)=\beta_i(x_i)\beta_j(x_j)\sigma_G^2$ for $i\ne j$, with idiosyncratic race-level variance on the diagonal. A campaign committee genuinely concerned with securing a chamber majority faces an objective closer to $P(\text{Seats}\ge T)$ for majority threshold $T=218$, which is approximately $\Phi\!\big((\mathbb E[\text{Seats}]-T)/\text{SD}[\text{Seats}]\big)$ under a normal approximation to the seat-count distribution. This majority-probability objective has different comparative statics than the expected-seats objective -- it rewards *increased* variance when $\mathbb E[\text{Seats}] < T$ and *reduced* variance when $\mathbb E[\text{Seats}] > T$ -- and a committee rationally pursuing it might overweight high-covariance races in a way that would appear as misallocation under the expected-seats objective alone. We adopt the expected-seats objective as the primary criterion, noting that the approximation is most accurate when $\mathbb E[\text{Seats}]$ is near $T$, and return to this distinction when interpreting the efficiency test in Section 8.
+
+**Implementation note.** Every headline result in Section 8 uses the risk-neutral case $\gamma=0$, for which the discussion below is inert. For the risk-averse case ($\gamma>0$), computing $\mathbf 1'\Sigma(\mathbf x)\mathbf 1$ exactly inside a convex solve would require re-deriving $\Sigma$ at every candidate $\mathbf x$, which the current implementation does not do: it instead (i) uses the single-factor placeholder of Section 10.2 rather than the structural loading above, and (ii) evaluates that placeholder once at a fixed baseline allocation and holds it constant during the solve, penalizing $\mathbf d(\mathbf x)'\bar\Sigma\,\mathbf d(\mathbf x)$ -- a dollar-spending-weighted quadratic form in a frozen covariance matrix $\bar\Sigma$ -- as a computational proxy for $\text{Var}[\text{Seats}]$, not as an implementation of the formula above. This is a real gap between the stated objective and the risk-averse solver's implementation, distinct from the single-factor-placeholder gap already noted; because it affects only the $\gamma>0$ sensitivity grid and none of Section 8's reported results, it is flagged here and in Section 10.2 rather than resolved in this paper.
 
 ## Optimization Problem
 
@@ -178,13 +185,13 @@ The complete constrained optimization problem is:
 
 $$
 \begin{aligned}
-\max_{\mathbf x} \quad & \sum_{i=1}^N \Phi\!\left(\frac{\mu_i(x_i)}{\sigma_i}\right) - \gamma\, \mathbf d(\mathbf x)'\Sigma\,\mathbf d(\mathbf x) \\
+\max_{\mathbf x} \quad & \sum_{i=1}^N \Phi\!\left(\frac{\mu_i(x_i)}{\sigma_i}\right) - \gamma\, \mathbf 1'\Sigma(\mathbf x)\,\mathbf 1 \\
 \text{s.t.} \quad & \sum_{i=1}^N x_i \le B \\
 & 0 \le x_i \le \kappa B \quad \forall i
 \end{aligned}
 $$
 
-Section 4 derives $\mu_i(x_i)$ and $\sigma_i$ from the estimated spending response surface, Section 7 specifies the nonlinear solution algorithm, and Appendix C derives the Karush--Kuhn--Tucker (KKT) stationarity conditions characterizing an interior optimum.
+Section 4 derives $\mu_i(x_i)$ and $\sigma_i$ from the estimated spending response surface, Section 7 specifies the nonlinear solution algorithm (risk-neutral, $\gamma=0$, throughout Section 8), and Appendix C derives the Karush--Kuhn--Tucker (KKT) stationarity conditions characterizing an interior optimum.
 
 \newpage
 
@@ -208,7 +215,7 @@ $$
 \mu_i = \alpha_0 + \alpha_1\,\text{PVI}_i + \alpha_2\,\text{Incumb}_i + \alpha_3\, G + \underbrace{\big[\beta_1 + \beta_2|\text{PVI}_i| + \beta_3\,\text{Incumb}_i\big]}_{\displaystyle \equiv\, c_i}\,\log(\text{ratio}_i)
 $$
 
-The log transformation of the spending ratio is the source of the model's diminishing-returns property: because $\text{ratio}_i \in (0,1)$ is bounded, $\log(\text{ratio}_i) \to -\infty$ only as $\text{ratio}_i \to 0$, and each additional percentage point of spending share produces a smaller change in $\log(\text{ratio}_i)$ as the race's spending approaches parity. The elasticity coefficient $c_i = \beta_1 + \beta_2|\text{PVI}_i| + \beta_3\,\text{Incumb}_i$ lets responsiveness vary with district partisan lean and incumbency status. $\beta_1$ is the base elasticity, identified causally via the repeat-challenger design (Section 6.1); $\beta_2$ and $\beta_3$ are estimated on the full descriptive panel.
+The log transformation of the spending ratio is the source of the model's diminishing-returns property: because $\text{ratio}_i \in (0,1)$ is bounded, $\log(\text{ratio}_i) \to -\infty$ only as $\text{ratio}_i \to 0$, and each additional percentage point of spending share produces a smaller change in $\log(\text{ratio}_i)$ as the race's spending approaches parity. The elasticity coefficient $c_i = \beta_1 + \beta_2|\text{PVI}_i| + \beta_3\,\text{Incumb}_i$ lets responsiveness vary with district partisan lean and incumbency status. $\beta_1$ is the base elasticity, identified causally via the repeat-challenger design (Section 6.3); $\beta_2$ and $\beta_3$ are estimated on the full descriptive panel.
 
 ## Marginal Value of Capital
 
@@ -220,25 +227,39 @@ so that, since $x_i$ enters only through $D_i = f_i + x_i$ (i.e. $\partial D_i/\
 
 $$\boxed{\ \text{MSG}_i \;\equiv\; \frac{\partial P_i}{\partial x_i} \;=\; \varphi\!\left(\frac{\mu_i}{\sigma_i}\right)\cdot\frac{1}{\sigma_i}\cdot c_i \cdot \frac{R_i}{D_i T_i}\ }$$
 
-This expression has an intuitive decomposition into two multiplicative factors. The first, $\varphi(\mu_i/\sigma_i)/\sigma_i$, is the density of the margin distribution evaluated at the tipping point -- the "conversion efficiency" of a margin shift into a probability shift, maximized for races near parity. The second, $c_i R_i/(D_i T_i)$, is the marginal effect of an additional dollar on the expected margin itself, and it is this second factor whose behavior as $D_i \to 0$ drives the singularity proved next.
+This expression has an intuitive decomposition into two multiplicative factors. The first, $\varphi(\mu_i/\sigma_i)/\sigma_i$, is the density of the margin distribution evaluated at the tipping point -- the "conversion efficiency" of a margin shift into a probability shift, maximized for races near parity. The second, $c_i R_i/(D_i T_i)$, is the marginal effect of an additional dollar on the expected margin itself, and it is the interaction of both factors' behavior as $D_i \to 0$ that drives the limiting behavior characterized next.
 
-## The Singularity
+## The Limiting Behavior of Marginal Seat Gain
 
-**Proposition 1.** *Holding $R_i$ fixed and positive, $\lim_{D_i \to 0^+} \partial\mu_i/\partial D_i = \lim_{D_i \to 0^+} c_i R_i/(D_iT_i) = +\infty$ whenever $c_i > 0$. Consequently $\text{MSG}_i \to \varphi(\mu_i(0)/\sigma_i)\cdot c_i R_i/(\sigma_i D_i R_i) \to \infty$ as $D_i \to 0^+$, provided $\varphi(\mu_i(0)/\sigma_i) > 0$, which holds for any finite $\mu_i(0)$.*
+Section 4.3 shows that $\partial\mu_i/\partial D_i = c_iR_i/(D_iT_i)$ diverges as $D_i\to0^+$. It is tempting to conclude that $\text{MSG}_i$, which multiplies this term by the conversion density $\varphi(\mu_i/\sigma_i)/\sigma_i$, diverges with it. It does not: the density term is evaluated at $\mu_i(D_i)$, and $\mu_i(D_i)$ is itself driven to $-\infty$ as $D_i\to0^+$ (since $\log(\text{ratio}_i)=\log(D_i/T_i)\to-\infty$), so the density is not bounded away from zero in this limit -- it vanishes, and it vanishes fast enough to matter.
 
-*Proof.* Write $\partial\mu_i/\partial D_i = c_i \cdot \partial\log(\text{ratio}_i)/\partial D_i = c_i R_i/(D_i T_i)$, from Section 4.3. With $R_i$ fixed and $T_i = D_i + R_i \to R_i$ as $D_i \to 0^+$, the expression behaves as $c_i R_i/(D_i R_i) = c_i/D_i$, which diverges to $+\infty$ as $D_i \to 0^+$ for any $c_i > 0$. Since $\varphi$ is strictly positive on all of $\mathbb R$ and $\mu_i(0) = \alpha_0 + \alpha_1\text{PVI}_i+\alpha_2\text{Incumb}_i+\alpha_3G + c_i\log(f_i/(f_i+R_i))$ is finite for any $f_i > 0$, the prefactor $\varphi(\mu_i(0)/\sigma_i)/\sigma_i$ is bounded away from zero, so $\text{MSG}_i$ inherits the divergence of $\partial\mu_i/\partial D_i$. $\blacksquare$
+**Proposition 1.** *Fix opponent spending $R_i>0$ and suppose $c_i>0$ (true of every fitted coefficient in Table 3: $c_i=\beta_1+\beta_2|\text{PVI}_i|+\beta_3\,\text{Incumb}_i\ge\beta_1=5.475>0$ for every race in the estimation universe, since $\beta_1,\beta_2,\beta_3>0$ and $|\text{PVI}_i|,\text{Incumb}_i\ge0$). In the regime $D_i\ll R_i$ relevant to a near-zero spending floor, $\mu_i(D_i)\approx B_i+c_i\log D_i$ for a constant $B_i$ collecting every term not involving $D_i$. Then:*
 
-The economic content of Proposition 1 is that the log-ratio specification -- adopted precisely because it is the theoretically correct functional form under Erikson and Palfrey's equilibrium logic, and because it is what a causally identified estimator (Section 6.1) is capable of recovering from repeat-challenger data -- implies an *unbounded* marginal incentive to fund a race with an arbitrarily small existing floor $D_i$. A constrained optimizer facing this objective will, absent a correction, drive spending toward whichever races have the smallest denominators, independent of whether the historical data used to estimate $c_i$ contains any support for the implied effect size in that region. In practice this manifests as the optimizer recommending large sums in Safe-tier districts with near-zero candidate-committee floors: 81% of a preliminary uncorrected specification's seat-gain estimate traced to races spending under \$500,000, and Safe-tier races absorbed 45% of the recommended party budget (Section 6.4) -- an artifact of extrapolation, not a genuine empirical finding about persuadability in safe seats.
+*(a) $\lim_{D_i\to0^+}\text{MSG}_i(D_i)=0$, not $+\infty$.*
 
-This is not a bug in the sense of an implementation error; it is a structural property of any spending-response model built on $\log(\text{ratio}_i)$, and by extension of any capital-allocation model whose spending-effectiveness function has a $1/D_i$-type singularity at a resource floor of zero. The framework requires an explicit, principled correction.
+*(b) $\text{MSG}_i$, viewed as a function of $x=\log D_i$, is unimodal: it vanishes in both limits $D_i\to0^+$ and $D_i\to\infty$, and attains a unique finite interior maximum at the spending level $D_i^*$ satisfying*
+
+$$\mu_i(D_i^*) \;=\; -\frac{\sigma_i^2}{c_i}$$
+
+*Proof.* Substitute $x=\log D_i$, so $\mu_i(D_i)\approx B_i+c_ix$. Using $R_i/(D_iT_i)\to1/D_i=e^{-x}$ as $D_i\ll R_i$ (Section 4.3), $\text{MSG}_i\propto\varphi\big((B_i+c_ix)/\sigma_i\big)\cdot e^{-x}$. Taking logs,
+
+$$\log\text{MSG}_i(x) \;=\; \text{const} - x - \frac{(B_i+c_ix)^2}{2\sigma_i^2}$$
+
+an exact downward-opening quadratic in $x$, since the coefficient on $x^2$ is $-c_i^2/(2\sigma_i^2)<0$. A downward parabola in $x$ tends to $-\infty$ as $x\to\pm\infty$; since $x\to-\infty$ as $D_i\to0^+$, this proves (a). Differentiating and setting the result to zero,
+
+$$\frac{d}{dx}\log\text{MSG}_i(x) = -1-\frac{c_i(B_i+c_ix)}{\sigma_i^2}=0 \;\Longrightarrow\; B_i+c_ix^*=-\frac{\sigma_i^2}{c_i}$$
+
+and since $\mu_i(D_i^*)=B_i+c_ix^*$ by definition, this is exactly $\mu_i(D_i^*)=-\sigma_i^2/c_i$; the negative second derivative $-c_i^2/\sigma_i^2<0$ confirms it is a maximum, proving (b). $\blacksquare$
+
+**Corollary (a finite-sample extrapolation risk, not an asymptotic singularity).** Proposition 1 shows the log-ratio specification does not, in fact, imply an unbounded marginal incentive to defund a race toward zero -- the earlier working characterization of this as a mathematical singularity overstates what the model does in the true $D_i\to0$ limit. What it establishes instead is a narrower and more specific concern: $\text{MSG}_i$ is *non-monotonic* in spending, with a finite interior peak at $D_i^*$, and nothing in the specification guarantees that a race's actual observed floor $f_i$ falls safely away from its own $D_i^*$. Because $D_i^*$ depends only on estimated parameters ($\sigma_i$, $c_i$, and the structural intercept), not on any data-driven bound, a race whose real floor happens to sit near $D_i^*$ will show a spuriously large -- though finite -- estimated marginal seat gain, and the model carries no internal signal distinguishing this from a genuine, historically supported effect. In practice this manifested as the optimizer recommending large sums in Safe-tier districts with near-zero candidate-committee floors under an early uncapped specification: 81% of that specification's seat-gain estimate traced to races spending under \$500,000, and Safe-tier races absorbed 45% of the recommended party budget (Section 6.4). The correction this calls for is a regularizer informed by where the historical panel's identifying variation actually lies -- not a device for enforcing boundedness against a divergence that does not occur.
 
 ## Design Requirements
 
-A satisfactory correction to Proposition 1's singularity must satisfy several properties simultaneously, motivated by what a naive fix would get wrong.
+A satisfactory correction to the extrapolation risk identified in Proposition 1's corollary must satisfy several properties simultaneously, motivated by what a naive fix would get wrong.
 
 - **Endogenous.** The correction should be a function of the model's own state (each race's estimated competitiveness), not an exogenously imposed constant, so that it adapts automatically to a race's context rather than requiring a separately tuned cap for every race or every cycle.
 - **Smooth and differentiable.** The optimizer in Section 7 is gradient-based (SLSQP); any correction that introduces a kink or discontinuity (e.g. a hard spending cap) would break the analytic gradient the optimizer relies on and could introduce spurious local optima.
-- **Bounded.** The correction must guarantee a finite ceiling on the achievable margin shift, eliminating the divergence proved in Proposition 1 by construction rather than by empirical luck.
+- **Bounded.** Even though $\text{MSG}_i$ is finite everywhere (Proposition 1), its interior peak at $D_i^*$ can still land at an implausibly large value relative to what the historical panel supports. The correction must cap the achievable margin shift at a small, principled multiple of the race's own estimated uncertainty, so that a floor $f_i$ landing near $D_i^*$ cannot translate into an extrapolated effect size unsupported by data.
 - **Symmetric in its economic interpretation.** The correction should bind most weakly for races genuinely near the competitive tipping point -- where a real persuasion effect is most plausible -- and bind most strongly for races far from it in either direction, rather than penalizing all low-spending races uniformly regardless of whether they are competitive.
 - **Calibration-friendly.** The correction should introduce as few new free parameters as possible, and those it does introduce should be identifiable from a transparent, reproducible sensitivity analysis rather than fixed by assumption (Section 6.4).
 
@@ -260,13 +281,19 @@ $$C_i \;=\; C_{\max}\cdot 4\,\Phi_0^{(i)}\big(1-\Phi_0^{(i)}\big)$$
 
 and the capped margin is obtained by an exponential-decay saturation toward that ceiling:
 
-$$\mu_i'(x_i) = \mu_i(0) + C_i\left(1 - \exp\!\left[-\frac{\max(\mu_i^{\text{raw}}(x_i)-\mu_i(0),\,0)}{C_i}\right]\right)$$
+$$\mu_i'(x_i) = \mu_i(0) + C_i\left(1 - \exp\!\left[-\frac{\mu_i^{\text{raw}}(x_i)-\mu_i(0)}{C_i}\right]\right)$$
 
 where $\mu_i^{\text{raw}}(x_i)$ is the uncapped margin from Section 4.2. As $\mu_i^{\text{raw}}(x_i) - \mu_i(0) \to \infty$ (i.e., as party spending grows without bound), $\mu_i'(x_i) \to \mu_i(0) + C_i$: the achievable shift saturates at the ceiling rather than diverging. $C_{\max}$ is the framework's single new free parameter, and its calibration is the subject of Section 6.4's sensitivity sweep.
 
+**Lemma (the transform is unclamped on the feasible domain).** *For every race with $c_i>0$ -- every race in the estimation universe, per Proposition 1 -- $\mu_i^{\text{raw}}(x_i) \ge \mu_i(0)$ for all $x_i\ge0$, so the exponent above is never positive-forced-to-zero and the transform requires no $\max(\cdot,0)$ clamp.*
+
+*Proof.* $\partial\mu_i^{\text{raw}}/\partial D_i = c_iR_i/(D_iT_i) > 0$ for every $D_i,R_i,T_i>0$ and $c_i>0$ (Section 4.3), so $\mu_i^{\text{raw}}$ is strictly increasing in $D_i$, hence in $x_i$ (since $D_i=f_i+x_i$ is strictly increasing in $x_i$). Therefore $\mu_i^{\text{raw}}(x_i)\ge\mu_i^{\text{raw}}(0)=\mu_i(0)$ for every $x_i\ge0$. $\blacksquare$
+
+This lemma is what makes $\mu_i'(x_i)$ a genuinely smooth ($C^\infty$) function of $x_i$ on the entire feasible domain $x_i\ge0$, rather than a piecewise function with a kink at $x_i=0$: the reference production implementation (`model/ceiling.py`) retains a $\max(\cdot,0)$ guard defensively, but the lemma shows it never binds under any fitted coefficient vector this framework has produced, and is not needed for the differentiability claim below.
+
 The correction to the marginal seat gain gradient follows by the chain rule applied to the saturating transform:
 
-$$\frac{\partial \mu_i'}{\partial \mu_i^{\text{raw}}} = \exp\!\left[-\frac{\max(\mu_i^{\text{raw}}-\mu_i(0),0)}{C_i}\right] \;\equiv\; \text{decay}_i \in (0,1]$$
+$$\frac{\partial \mu_i'}{\partial \mu_i^{\text{raw}}} = \exp\!\left[-\frac{\mu_i^{\text{raw}}-\mu_i(0)}{C_i}\right] \;\equiv\; \text{decay}_i \in (0,1]$$
 
 so that the corrected marginal seat gain is simply $\text{MSG}_i' = \text{MSG}_i \times \text{decay}_i$, an analytic multiplicative correction to the uncapped gradient derived in Section 4.3 -- the optimizer's gradient never needs to be re-derived from scratch, only rescaled.
 
@@ -276,11 +303,11 @@ so that the corrected marginal seat gain is simply $\text{MSG}_i' = \text{MSG}_i
 
 *Proof.* (i) $4\Phi_0(1-\Phi_0) = 1 - (2\Phi_0-1)^2 \ge 0$ on $[0,1]$ since $(2\Phi_0-1)^2 \le 1$ there, with equality iff $2\Phi_0-1=\pm1$, i.e. $\Phi_0\in\{0,1\}$. (ii) $\frac{d}{d\Phi_0}[4\Phi_0(1-\Phi_0)] = 4-8\Phi_0 = 0 \iff \Phi_0=1/2$, and the second derivative $-8<0$ confirms a maximum, with value $4(1/2)(1/2)=1$, so $C(1/2)=C_{\max}$. (iii) A quadratic polynomial in $\Phi_0$ is entire. (iv) $\Phi_0^{(i)} = \Phi(\mu_i(0)/\sigma_i)$ where $\mu_i(0)$ and $\sigma_i$ are both outputs of the estimated model (Section 6), not inputs chosen by the analyst. $\blacksquare$
 
-Boundedness of the full saturating transform follows immediately: since $C_i \le C_{\max}$ for every race (Proposition 2(i)-(ii)) and $\text{decay}_i \in (0,1]$ by construction, $\mu_i'(x_i) \le \mu_i(0) + C_{\max}$ for every $x_i \ge 0$, which is precisely the boundedness the singularity in Proposition 1 violates. Differentiability of $\mu_i'$ in $x_i$ follows from the differentiability of $\mu_i^{\text{raw}}$ (a smooth function of $x_i$) composed with the differentiable exponential saturation and Proposition 2(iii)'s differentiability of $C_i$ in the model state -- so the corrected objective retains the smooth gradient the SLSQP optimizer of Section 7 requires, satisfying every design requirement of Section 4.5 simultaneously.
+Boundedness of the full saturating transform follows immediately: since $C_i \le C_{\max}$ for every race (Proposition 2(i)-(ii)) and $\text{decay}_i \in (0,1]$ by construction, $\mu_i'(x_i) \le \mu_i(0) + C_{\max}$ for every $x_i \ge 0$ -- capping the finite-but-potentially-implausible peak characterized in Proposition 1's corollary at a value the sensitivity sweep of Section 6.4 disciplines, rather than responding to a divergence that Proposition 1 shows does not occur. Differentiability of $\mu_i'$ in $x_i$ follows from the Lemma above (no clamp is active on the feasible domain) composed with the differentiability of $\mu_i^{\text{raw}}$ and of $C_i$ in the model state (Proposition 2(iii)) -- so the corrected objective retains the smooth gradient the SLSQP optimizer of Section 7 requires, satisfying every design requirement of Section 4.5 simultaneously.
 
 ## Economic Interpretation
 
-The ceiling is best understood as a regularization prior, not a behavioral claim about voters. It does not assert that persuasion effects are literally bounded by a parabola in $\Phi_0$; it asserts that the model should not be permitted to infer a spending effect *larger than a small multiple of the race's own already-estimated outcome uncertainty*, scaled by how close to a genuine toss-up the race's current state suggests it is. A true toss-up ($\Phi_0=1/2$) is exactly the race type in which the causal literature's repeat-challenger identification (Section 6.1) has the most support, because competitive races are precisely where repeat-challenger pairs concentrate; a race the model already rates as near-certain for either party ($\Phi_0$ near 0 or 1) is exactly the race type in which the historical panel offers the least support for any specific spending-effect magnitude, and the ceiling shrinks toward zero there by construction. The persuasion ceiling therefore encodes, in a single differentiable function, the same intuition that motivates researchers to trust causal estimates most in the region of the data where identifying variation is richest -- without requiring the optimizer to consult the identification strategy directly.
+The ceiling is best understood as a regularization prior, not a behavioral claim about voters. It does not assert that persuasion effects are literally bounded by a parabola in $\Phi_0$; it asserts that the model should not be permitted to infer a spending effect *larger than a small multiple of the race's own already-estimated outcome uncertainty*, scaled by how close to a genuine toss-up the race's current state suggests it is. A true toss-up ($\Phi_0=1/2$) is the race type in which even a modest, well-estimated margin shift produces the largest change in win probability (the density argument of Section 4.1) and in which an extrapolation error is most consequential to the optimizer's objective -- a plausibility-and-stakes argument for loosening the ceiling there, not a claim about where the underlying causal identification happens to be strongest. That distinction matters concretely here: the repeat-challenger sample underlying $\beta_{RC}$ (Section 6.3) is in fact heavily skewed toward Safe R matchups (72% of the 118 pairs, Section 6.5), so competitive races are, if anything, comparatively under-represented in the causal anchor itself, even though they are exactly where the ceiling is least restrictive. A race the model already rates as near-certain for either party ($\Phi_0$ near 0 or 1) is the race type in which a large spending effect is least plausible on priors independent of the identification question, and the ceiling shrinks toward zero there by construction. The persuasion ceiling therefore encodes a plausibility-and-stakes intuition in a single differentiable function -- it is deliberately not calibrated to track where the panel's identifying variation is richest, which Section 6.5 shows is not the competitive tier at all.
 
 \newpage
 
@@ -298,7 +325,7 @@ The framework is built exclusively from publicly available data, a deliberate de
 
 ## Coverage
 
-The historical estimation panel spans the 2012, 2014, 2016, 2018, 2020, and 2022 House election cycles. The primary evaluation sample is the 2024 cycle; the 2022 cycle additionally serves as a fully out-of-sample validation target when estimation is restricted to 2012--2020 only (Section 8). After universe filters (minimum \$100,000 total two-party spending, exclusion of Alaska for ranked-choice-voting incompatibility, and the requirement of a valid Cook PVI value), the 2024 analysis universe contains 433 races; the primary efficiency test (Section 8) is restricted further to the 53 races Cook Political Report rated Lean D, Toss-Up, or Lean R in 2024, and 61 in the analogous 2022 out-of-sample universe. Causal identification of the base spending elasticity $\beta_{RC}$ (Section 6.1) uses 118 repeat-challenger pairs identified across six consecutive-cycle transitions in the 2012--2022 panel.
+The historical estimation panel spans the 2012, 2014, 2016, 2018, 2020, and 2022 House election cycles. The primary evaluation sample is the 2024 cycle; the 2022 cycle additionally serves as a fully out-of-sample validation target when estimation is restricted to 2012--2020 only (Section 8). After universe filters (minimum \$100,000 total two-party spending, exclusion of Alaska for ranked-choice-voting incompatibility, and the requirement of a valid Cook PVI value), the 2024 analysis universe contains 433 races; the primary efficiency test (Section 8) is restricted further to the 53 races Cook Political Report rated Lean D, Toss-Up, or Lean R in 2024, and 61 in the analogous 2022 out-of-sample universe. Causal identification of the base spending elasticity $\beta_{RC}$ (Section 6.3) uses 118 repeat-challenger pairs identified across six consecutive-cycle transitions in the 2012--2022 panel.
 
 ## Feature Engineering
 
@@ -340,7 +367,9 @@ $\sigma_i$ is estimated from the distribution of $\log|\text{margin residual}|$ 
 
 ## Spending Elasticity
 
-The base elasticity $\beta_1 = \beta_{RC}$ is identified via the repeat-challenger first-differenced design of Section 6.1 below; the open-seat elasticity $\beta_1^{OS}$ is calibrated via Bayesian shrinkage (Section 6.3).
+The base elasticity $\beta_1 = \beta_{RC}$ is identified via the repeat-challenger first-differenced design of Section 6.3 below; the open-seat elasticity $\beta_1^{OS}$ is calibrated via Bayesian shrinkage (Section 6.3).
+
+**Scope of the causal claim.** Only $\beta_{RC}$ carries the repeat-challenger design's identification (Section 6.3); it is the single coefficient in the entire margin specification with a defensible claim to causal identification, resting on an untestable but more-credible-than-cross-sectional assumption. The control-surface coefficients $\alpha_0$--$\alpha_3$ and the interaction terms $\beta_2,\beta_3$ (Table 3) are descriptive associations estimated on the full observational panel, not causally identified effects. The open-seat elasticity $\beta_1^{OS}$ is a *blend*: Section 6.3's posterior weight $\kappa=0.957$ means the reported open-seat estimate is driven overwhelmingly by the observational panel likelihood, with the causally-identified $\beta_{RC}$ contributing only a 4.3% prior-mean shrinkage target. Throughout this paper, "the spending response surface" should therefore be read as a *partially causally anchored* model -- one causally identified parameter disciplining an otherwise observational specification -- not as a fully causally identified conditional response surface.
 
 ### Repeat-Challenger Identification
 
@@ -352,9 +381,9 @@ Open seats lack a repeat-challenger analogue by construction (there is no incumb
 
 ## Persuasion Ceiling
 
-$C_{\max}$, the ceiling's single free parameter, is set by an eight-point sensitivity sweep over $C_{\max} \in \{3, 5, 7, 10, 15, 20, 25, 30\}$ percentage points, evaluating the resulting Safe-tier party-budget share and the ratio of competitive-tier to non-competitive-tier expected-seat gain at each value (Figure 1; full table in Appendix E). Safe-tier budget share declines smoothly across the entire range with no fragile threshold effect, and the $[5,10]$ range is selected as the region offering the best ratio of competitive-tier to non-competitive-tier gain before higher values allow Likely-tier reallocation to begin dominating the marginal gain; $C_{\max}=10.0$ percentage points is adopted as the baseline.
+$C_{\max}$, the ceiling's single free parameter, is set by a seven-point sensitivity sweep over $C_{\max} \in \{3, 5, 7, 10, 15, 20, 30\}$ percentage points, evaluating the resulting Safe-tier, Competitive-tier, and Likely-tier party-budget shares and total expected seats at each value (Figure 1; exact values in Appendix E). Every quantity moves smoothly and monotonically across the range -- Safe-tier share from 6.9% to 12.6%, Competitive-tier share from 63.3% down to 55.2%, and expected seats from 215.10 up to 220.57 -- with no discontinuity or fragile threshold anywhere tested. Because the trade-off is smooth rather than exhibiting a sharp local optimum, $C_{\max}=10.0$ is adopted as a moderate point in this range: it keeps Safe-tier party-budget share under 10% while retaining a majority (60.0%) of the party budget in Competitive-tier races, without claiming that this specific value is uniquely optimal by any criterion internal to the sweep itself.
 
-![Persuasion ceiling sensitivity sweep: Safe-tier party-budget share and competitive-tier seat gain across $C_{\max} \in \{3,\dots,30\}$.](figures/persuasion_ceiling_cmax_sweep_fig.png){width=85%}
+![Persuasion ceiling sensitivity sweep: Cook-tier party-budget shares across $C_{\max} \in \{3,\dots,30\}$ (log scale), against the pre-ceiling uncapped baseline (45% Safe-tier share, dashed line).](figures/persuasion_ceiling_cmax_sweep_fig.png){width=85%}
 
 ## Bootstrap
 
@@ -379,7 +408,7 @@ Parametric standard errors on $\beta_{RC}$ rely on a normal approximation to the
 | $\beta_1^{OS,\,lb}$ (conservative bound) | 5.919 | -- | Oster (2019), $\delta=1$ |
 | $\sigma_i$ model | see Appendix B.5 | Duan-corrected retransformation | Log-linear OLS on \|residual\| |
 | $\sigma_G$ (national environment SD) | 2.8 pp | -- | RMS forecast error, 2014--2022 |
-| $C_{\max}$ (persuasion ceiling) | 10.0 pp | 8-point sweep, $\{3,\dots,30\}$ | Sensitivity sweep, Fig. 1 |
+| $C_{\max}$ (persuasion ceiling) | 10.0 pp | 7-point sweep, $\{3,\dots,30\}$ | Sensitivity sweep, Fig. 1 |
 | $R^2$ (competitive subset, $|PVI| \le 10$) | 0.561 | -- | -- |
 
 \newpage
@@ -436,31 +465,70 @@ The pipeline is implemented in Python 3.13, using NumPy and pandas for data mani
 
 # Empirical Results
 
-All figures reported in this section reflect the final, corrected pipeline (persuasion ceiling applied, unified floor-margin convention). Every reported statistic is reproducible end-to-end from `scripts/run_backtest.py` against the public data sources of Section 5.
+All figures reported in this section reflect the final, corrected pipeline (persuasion ceiling applied, unified floor-margin convention). Every reported statistic is reproducible end-to-end from `scripts/run_backtest.py` against the public data sources of Section 5. The efficiency tests below are presented in order of methodological priority: a primary test that directly evaluates the paper's own KKT stationarity condition (Appendix C.1), a secondary test isolating pre-allocation targeting, a decomposition of the model-implied counterfactual gain, out-of-sample replication of both new tests, and, retained for transparency, the original spending-versus-current-MSG correlation together with an explanation of why it was replaced.
 
 ## Internal Validation
 
-Three checks validate that the implementation matches the derivation of Section 4 before any result is interpreted substantively. First, the analytic marginal-seat-gain gradient (Section 4.3) was checked against a finite-difference numerical derivative of the objective; this comparison surfaced and confirmed the fix of a genuine implementation bug in which an earlier gradient routine computed $c_i/T_i$ rather than the derived $c_i R_i/(D_i T_i)$, an error invisible to unit tests built only on spending-parity cases (where the two expressions coincide) but material for the lopsided-spending races that dominate the actual data. Second, a suite of 341 automated tests across 19 files covers margin prediction, the win-probability/MSG chain, the persuasion ceiling's boundedness and endogeneity properties (Proposition 2), the optimizer's constraint satisfaction, and the $\sigma_i$ ordering diagnostic, and passes in full against the reported specification. Third, model calibration -- whether stated win probabilities match realized win frequencies -- is assessed directly against 2024 outcomes (Figure 3) and via the Brier score comparison of Section 8.5.
+Three checks validate that the implementation matches the derivation of Section 4 before any result is interpreted substantively. First, the analytic marginal-seat-gain gradient (Section 4.3) was checked against a finite-difference numerical derivative of the objective; this comparison surfaced and confirmed the fix of a genuine implementation bug in which an earlier gradient routine computed $c_i/T_i$ rather than the derived $c_i R_i/(D_i T_i)$, an error invisible to unit tests built only on spending-parity cases (where the two expressions coincide) but material for the lopsided-spending races that dominate the actual data. Second, a suite of 341 automated tests across 19 files covers margin prediction, the win-probability/MSG chain, the persuasion ceiling's boundedness and endogeneity properties (Proposition 2), the optimizer's constraint satisfaction, and the $\sigma_i$ ordering diagnostic, and passes in full against the reported specification. Third, model calibration -- whether stated win probabilities match realized win frequencies -- is assessed directly against 2024 outcomes (Figure 3).
 
 ![Model calibration: predicted win probability against realized win frequency, 2024 competitive races.](figures/model_calibration.png){width=75%}
 
-## Main Results
+## Primary Test: Marginal-Return Equalization
 
-The primary empirical test compares observed DCCC 2024 spending against the model's estimated marginal seat gain across the 53 races Cook Political Report rated Lean D, Toss-Up, or Lean R. Under efficient allocation, races with higher marginal seat gain per dollar should receive more spending, implying a positive Spearman rank correlation between spending and MSG. The observed correlation is strongly *negative*:
+Appendix C.1 derives that at a risk-neutral interior optimum, $\text{MSG}_i=\lambda$ (a constant shadow price) for every race receiving strictly-interior party funding -- efficient allocation *equalizes* marginal seat gain among funded races; it does not, on its own, imply any particular correlation between spending levels and MSG. This motivates a direct test of that condition rather than a correlation-based proxy for it.
 
-$$\rho = -0.809 \quad (p<0.001,\ \text{95\% CI } [-0.936,-0.618],\ n=53)$$
+For each race, "interior-funded" is defined as party spending strictly between zero and the concentration cap $\kappa B$ (Section 3.3), and an empirical shadow price $\hat\lambda$ is estimated as the median MSG among a group's interior-funded races. Table 4 reports the dispersion of MSG around $\hat\lambda$ for DCCC's observed 2024 allocation and for the model-optimal allocation, which by construction should show dispersion at or near zero (bounded only by SLSQP's convergence tolerance).
 
-A permutation test built on an exact empirical null -- 2,000 random reassignments of DCCC's observed per-race spending across the same 53 races, holding MSG fixed -- confirms the asymptotic test is not overstating significance: 0 of 2,000 shuffles produced $|\rho|\ge0.809$ (permutation $p=0.0$, versus asymptotic $p=2.4\times10^{-13}$).
+**Table 4: KKT Dispersion Among Interior-Funded Races, 2024**
 
-A model-optimal reallocation of the identical \$465 million party budget, holding every race's own candidate-committee floor fixed, yields an estimated **+2.83 additional expected seats** relative to DCCC's observed allocation (215.12 $\to$ 217.94 expected seats). Figure 4 shows the resulting reallocation by race.
+| Statistic | DCCC Observed | Model-Optimal |
+|---|---|---|
+| $n$ interior-funded | 56 | 112 |
+| $\hat\lambda$ (median MSG, seats/\$) | $2.34\times10^{-9}$ | $4.02\times10^{-9}$ |
+| Coefficient of variation | $1.32$ | $6.3\times10^{-6}$ |
+| Median absolute deviation from $\hat\lambda$ | $1.44\times10^{-9}$ | $1.6\times10^{-14}$ |
+| Interquartile range | $3.06\times10^{-9}$ | $3.2\times10^{-14}$ |
+| $p_{90}/p_{10}$ ratio | $25.9$ | $1.00002$ |
+| \% outside $\pm25\%$ of $\hat\lambda$ | $85.7\%$ | $0.0\%$ |
 
-![Optimizer-recommended allocation minus observed DCCC allocation, by race, 2024 cycle.](figures/allocation_difference.png){width=85%}
+DCCC's interior-funded races show a 90th-to-10th-percentile MSG ratio of nearly 26-to-1, and 86% fall outside a generous $\pm25\%$ band around the implied shadow price; the model-optimal allocation equalizes MSG almost exactly, as the theory requires. This is direct evidence that DCCC's observed allocation violates the necessary first-order condition for a risk-neutral interior optimum -- no assumption about the sign of any correlation is required to reach this conclusion.
+
+A complementary boundary check applies the same logic to races DCCC funded at exactly zero: complementary slackness requires that a race pinned at its lower bound have $\text{MSG}_i\le\lambda$ (no incentive to fund it further). Of 377 races DCCC gave zero party dollars to in 2024, 206 (55%) have model-estimated MSG exceeding $\hat\lambda$ by more than the $25\%$ tolerance band -- a large number that should be read as evidence the boundary condition is violated at scale, not as a precise headcount of 206 specific races each individually mispriced by a well-defined margin; the test is a coarse binary threshold, and Section 8.4 examines the composition of this group directly rather than treating the count alone as dispositive.
+
+To make the dispersion finding concrete, consider a single feasible transfer: moving \$100,000 in party funds from DCCC's lowest-MSG interior-funded race (WA-04, a Safe R seat where the fitted margin $\hat\mu=-40.6$ points and $\hat\sigma=11.0$ place the race so deep in the tail that its estimated marginal seat gain rounds to zero) to its highest-MSG-with-capacity race (GA-07, a Likely D seat closer to the tipping point) increases modeled expected seats by $+0.0396$ -- from a single \$100,000 reallocation out of a \$465 million budget. This is not a hypothetical: WA-04 is a real interior-funded race in the observed data, illustrating concretely what the aggregate dispersion statistic means for an actual dollar.
+
+## Secondary Test: Pre-Allocation Targeting
+
+A separate question from equalization is whether DCCC directed money toward races with higher pre-allocation potential in the first place. Correlating observed spending against MSG evaluated *at that same observed spending level* -- the original test design -- is confounded: diminishing returns mechanically depresses a race's own current-MSG reading the more it has already received, independent of whether the money was well targeted. Section 8.8 revisits this confound directly; here, MSG is instead evaluated at each race's own candidate-only floor ($D_i=f_i$, no party money), a quantity fixed before any party dollar is committed and therefore immune to the confound.
+
+$$\rho_{\text{floor}} = -0.122 \quad (p=0.384,\ n=53)$$
+
+This is a **null result**: no statistically detectable relationship, in either direction, between observed DCCC party spending and each race's pre-allocation marginal potential. It should not be read as evidence that DCCC's initial targeting was reasonable, nor as evidence that it was systematically biased -- a null result establishes neither proposition. The defensible statement is that this analysis finds no evidence that observed party spending was systematically directed toward, or away from, races with greater model-estimated pre-allocation marginal return.
+
+## Model-Implied Counterfactual Gain and Its Decomposition
+
+A model-optimal reallocation of the identical \$465 million party budget, holding every race's own candidate-committee floor fixed, is estimated to yield **+2.83 additional expected seats** relative to DCCC's observed allocation (215.12 $\to$ 217.94). This figure is a model-implied counterfactual: it is generated by the same response surface and objective the optimizer maximizes, and the permutation tests of Section 8.8 establish that it is not achievable by arbitrary reallocation, but it has not been -- and cannot be, from observational data alone -- validated as the number of real seats such a reallocation would actually have produced.
+
+Because the optimizer in this baseline run is free to reallocate across the entire eligible universe rather than being restricted to races DCCC already funded, the +2.83 figure conflates two distinct sources of gain. Re-solving with every race DCCC funded at exactly zero held fixed at zero -- so the optimizer may only rebalance the budget among races already receiving some party money -- isolates an **intensity** component; the remainder is a **selection** component attributable specifically to funding previously-zero-funded races:
+
+**Table 5: Selection-versus-Intensity Decomposition, 2024**
+
+| Allocation | Expected Seats | Gain vs. DCCC |
+|---|---|---|
+| DCCC observed | 215.12 | -- |
+| Already-funded-only reallocation (selection frozen) | 215.38 | $+0.26$ (intensity) |
+| Full model-optimal reallocation | 217.94 | $+2.83$ (total) |
+| *Selection component (total $-$ intensity)* | -- | $+2.56$ |
+
+Rebalancing amounts among races DCCC was already funding recovers only 9% of the total modeled gain. The remaining 91% comes from the model funding 64 races DCCC gave zero party dollars to. This decomposition directly corrects an earlier, narrower reading of these results: the dominant pattern in the data is not that DCCC misjudged *how much* to give races it had already decided to support, but that a large number of races it did not engage with at all are estimated to have had real marginal value.
+
+This selection-dominated finding was checked against the possibility that it simply reproduces the near-zero-floor extrapolation pathology the persuasion ceiling exists to prevent (Section 4.4's corollary). It does not appear to: of the 64 newly-funded races, 45 (70%) fall in the Likely or Lean or Toss-Up Cook tiers, with realistic multi-million-dollar candidate floors and opponent spending well inside the historical panel's support (the ten largest, by dollars allocated, include VA-10, WI-01, PA-01, CA-40, FL-27, and FL-28 -- competitive-adjacent seats with plausible floors, not artifacts). The remaining 30% (17 of 64) are Safe-tier races, a real presence that should not be minimized: it indicates the persuasion ceiling narrows but does not eliminate the model's willingness to recommend money for uncompetitive seats, and is flagged here rather than smoothed over (Section 10.2 returns to this).
 
 ## Baseline Comparisons
 
-Table 4 compares four allocation strategies holding the total party budget fixed at DCCC's observed 2024 total: DCCC's actual allocation, a Cook-implied allocation (proportional to Cook's stated win probabilities), a null equal-weight allocation across the competitive set, and the model-optimal allocation. All four are evaluated under the identical true nonlinear objective $\sum_i\Phi(\mu_i(D_i)/\sigma_i)$, so no strategy benefits from a more favorable evaluation function.
+Table 6 situates the model-optimal allocation against two additional, MSG-free benchmarks holding the total party budget fixed at DCCC's observed 2024 total: a Cook-implied allocation (proportional to Cook's stated win probabilities) and a null equal-weight allocation across the competitive set. All rows are evaluated under the identical true nonlinear objective $\sum_i\Phi(\mu_i(D_i)/\sigma_i)$.
 
-**Table 4: Expected Seats by Allocation Strategy, 2024 Cycle**
+**Table 6: Expected Seats by Allocation Strategy, 2024 Cycle**
 
 | Strategy | Expected Seats | Gain vs. DCCC |
 |---|---|---|
@@ -471,21 +539,55 @@ Table 4 compares four allocation strategies holding the total party budget fixed
 
 ![Expected seats by allocation strategy, 2024 cycle.](figures/allocator_comparison.png){width=80%}
 
-Both MSG-free benchmarks (Cook-implied, Null) outperform DCCC's actual allocation, though narrowly -- evidence that the misallocation finding is not an artifact of comparing DCCC only to the model's own optimizer. The model optimizer's advantage over the two naive benchmarks (+2.60 over Null, +2.76 over Cook) is nearly as large as its advantage over DCCC itself (+2.83), indicating that MSG-based targeting, not generic diversification or competitiveness information alone, is doing the great majority of the work in this comparison.
+![Optimizer-recommended allocation minus observed DCCC allocation, by race, 2024 cycle.](figures/allocation_difference.png){width=85%}
+
+Both MSG-free benchmarks outperform DCCC's actual allocation, though narrowly. Combined with Table 4's dispersion result and Table 5's decomposition, the most defensible reading is that DCCC's allocation is directionally sensible at the margin (it beats a null equal-weight benchmark by only a small amount, not by a large negative margin) but leaves a specific, replicable, and now-decomposed inefficiency on the table.
 
 ## Sensitivity Analysis
 
-**Persuasion ceiling ($C_{\max}$).** Section 6.4's eight-point sweep shows the qualitative finding is not an artifact of the ceiling's calibration: Safe-tier party-budget share declines smoothly from 45% (uncapped) to 9.0% ($C_{\max}=10$) with no discontinuity anywhere in the tested range $\{3,\dots,30\}$ (Figure 1), and the sign and significance of $\rho$ are unaffected by the ceiling's presence -- the ceiling caps MSG's *magnitude* in near-zero-floor races without touching rank order, so $\rho$ moves only modestly (from $-0.789$ uncapped-gradient-corrected to $-0.809$ under the ceiling) relative to the much larger movement in the seat-gain figures (Section 8.2).
+**Persuasion ceiling ($C_{\max}$).** Section 6.4's seven-point sweep shows the +2.83 figure is not an artifact of the ceiling's calibration: Safe-tier party-budget share declines smoothly from 45% (uncapped) to 9.0% ($C_{\max}=10$) with no discontinuity anywhere in the tested range $\{3,\dots,30\}$ (Figure 1).
 
-**Spending elasticity ($\beta_{RC}$).** The bootstrap distribution of Section 6.5 (95% CI $[2.834,8.640]$) bounds how sensitive the headline seat-gain figure is to sampling uncertainty in the causal anchor; because the optimizer's ranking of which races to fund is driven primarily by *relative* MSG across races rather than the absolute level of $\beta_{RC}$, the qualitative reallocation pattern (Section 9.1) is materially more stable across this range than the point estimate of expected-seat gain itself.
+**Spending elasticity ($\beta_{RC}$).** The bootstrap distribution of Section 6.5 (95% CI $[2.834,8.640]$) bounds how sensitive the headline seat-gain figure is to sampling uncertainty in the causal anchor; because the KKT dispersion test's qualitative conclusion depends on the *relative* MSG ranking across races rather than the absolute level of $\beta_{RC}$, it is materially more stable across this range than the point estimate of expected-seat gain itself.
 
-**Budget concentration cap ($\kappa$).** The per-race concentration cap is swept over $\kappa\in\{0.05,0.10,0.15\}$ (Appendix F); the reported results use $\kappa=0.10$. The qualitative efficiency finding (negative $\rho$, positive model seat-gain) is unaffected across this range; tighter caps modestly reduce the model optimizer's achievable seat gain by preventing full concentration in the very highest-MSG races.
+**Budget concentration cap ($\kappa$).** The per-race concentration cap is swept over $\kappa\in\{0.05,0.10,0.15\}$ (Appendix F); the reported results use $\kappa=0.15$, the pipeline's baseline regime. The qualitative dispersion and decomposition findings are unaffected across this range; tighter caps modestly reduce the model optimizer's achievable seat gain by preventing full concentration in the very highest-MSG races.
 
-## Robustness Checks
+## Out-of-Sample Replication (2022)
 
-**Cook-category decomposition.** Table 5 decomposes the primary correlation by Cook rating category. Every category is negative, including nominally safe Likely R seats; the strongest relationships concentrate in the most contested tiers.
+The full pipeline -- margin model, $\sigma_i$ model, $\beta_{RC}$, and every diagnostic above -- is re-estimated using exclusively the 2012--2020 panel and applied without modification to the 2022 cycle, which enters no stage of estimation.
 
-**Table 5: Spearman Correlation by Cook Category, 2024**
+**Table 7: Out-of-Sample Replication, 2022 Cycle**
+
+| Metric | 2024 (Primary) | 2022 (OOS) |
+|---|---|---|
+| Estimation panel | 2012--2022 | 2012--2020 |
+| KKT dispersion, DCCC interior (CV) | $1.32$ | $1.25$ |
+| KKT dispersion, model-optimal (CV) | $6.3\times10^{-6}$ | $2.6\times10^{-6}$ |
+| $p_{90}/p_{10}$, DCCC interior | $25.9$ | $19.9$ |
+| \% DCCC interior outside $\pm25\%$ of $\hat\lambda$ | $85.7\%$ | $84.3\%$ |
+| Boundary violations (zero-funded, MSG $>\hat\lambda$) | 206 / 377 | 208 / 363 |
+| Floor-baseline $\rho_{\text{floor}}$ (targeting test) | $-0.122$ ($p=0.384$) | $-0.001$ ($p=0.995$) |
+| Total model-implied gain | $+2.83$ | $+3.22$ |
+| ...of which intensity | $+0.26$ (9%) | $+0.53$ (17%) |
+| ...of which selection | $+2.56$ (91%) | $+2.69$ (83%) |
+| \$100K pairwise transfer, $\Delta\mathbb E[\text{Seats}]$ | $+0.0396$ | $+0.0474$ |
+| DCCC expected seats | 215.12 | 213.37 |
+| Model optimizer expected seats | 217.94 | 216.59 |
+| Brier score (model) | 0.0312 | 0.0360 |
+| Brier score (Cook) | 0.0364 | 0.0340 |
+
+Every result replicates directionally and in approximate magnitude: large, comparable KKT dispersion in both cycles against near-perfect model-optimal equalization; a null floor-baseline targeting correlation in both cycles (2022's is closer to exactly zero than 2024's); and a selection-dominated gain decomposition in both cycles, with intensity's share slightly higher in 2022 (17% vs. 9%) but selection dominant in both. This consistency across two structurally different election environments, estimated from entirely non-overlapping data, is the strongest evidence that the KKT-equalization and selection findings are structural rather than artifacts of a single cycle. Win-probability calibration is more mixed: the model improves on Cook's Brier score by 14% in the 2024 primary sample but is 5.9% *worse* than Cook out-of-sample in 2022 -- a specific calibration finding distinct from the efficiency findings above, which are robust in both cycles.
+
+![Rank-rank scatter of spending versus current-MSG rank, retained for transparency and discussed in Section 8.8: observed spending rank vs. estimated MSG rank, competitive races.](figures/efficiency_frontier.png){width=48%}![Out-of-sample version, 2022 cycle.](figures/efficiency_frontier_2022.png){width=48%}
+
+## Superseded Diagnostic: Spending-vs-Current-MSG Correlation
+
+For transparency, and because it illustrates concretely why the primary test was redesigned, this subsection reports the originally-proposed efficiency test: the Spearman rank correlation between observed DCCC spending and MSG evaluated *at that same observed spending level*, across the 53 races Cook Political Report rated Lean D, Toss-Up, or Lean R in 2024.
+
+$$\rho = -0.809 \quad (p<0.001,\ \text{95\% CI } [-0.936,-0.618],\ n=53)$$
+
+A permutation test against an exact empirical null (2,000 random reassignments of DCCC's observed per-race spending, holding MSG fixed) confirms this correlation is not a small-sample artifact: 0 of 2,000 shuffles produced $|\rho|\ge0.809$. The correlation replicates out-of-sample ($\rho=-0.847$, $p<0.001$, $n=61$, 2022) and decomposes by Cook category as shown in Table 8, with every category negative and the strongest relationships in the most contested tiers.
+
+**Table 8: Spearman Correlation by Cook Category, 2024 (superseded diagnostic)**
 
 | Cook Category | $n$ | $\rho$ | $p$-value |
 |---|---|---|---|
@@ -495,60 +597,43 @@ Both MSG-free benchmarks (Cook-implied, Null) outperform DCCC's actual allocatio
 | Lean R | 7 | $-0.964$ | $<0.001$ |
 | Likely R | 36 | $-0.677$ | $<0.001$ |
 
-The qualitative pattern -- misallocation broad-based across categories, strongest in the Toss-Up/Lean R tiers where marginal dollars are most decisive for the majority threshold, weakest and statistically indistinguishable from zero only in Likely D -- is the durable finding; the Lean R estimate ($n=7$) should be read cautiously given its small category size.
+**Why this correlation does not, by itself, demonstrate misallocation.** Appendix C.1's KKT condition shows that an efficient risk-neutral allocation *equalizes* MSG among funded races rather than producing any particular sign of correlation between spending and MSG. Because MSG is decreasing in a race's own spending under diminishing returns (Section 4.3), any allocation process -- efficient or not -- that spends more on some races than others will mechanically tend to show lower current-MSG in the more-funded races, simply because they have moved further down their own response curve. A large, robust, out-of-sample-replicating negative $\rho$ is therefore consistent with genuine misallocation, but it is equally consistent with an efficient allocation process operating under ordinary diminishing returns. This is why Sections 8.2--8.4 substitute a test of the paper's own equalization condition (which the correlation sign cannot establish or refute) for this correlation as the paper's primary evidence. The permutation and Cook-category results above are retained because they remain useful robustness evidence for a different, narrower claim -- that DCCC's allocation is statistically distinguishable from a random reshuffle of its own dollars (the allocation-efficiency permutation test below) -- not because the correlation itself demonstrates inefficiency.
 
-**Allocation-efficiency permutation test.** A second permutation test reshuffles DCCC's own party-dollar allocation (coordinated plus independent expenditure spend, holding each race's own candidate-committee floor fixed) across the 53 races and evaluates $\mathbb E[\text{Seats}]$ under the true nonlinear objective for each of 2,000 shuffles. DCCC's actual allocation ($\mathbb E[\text{Seats}]=215.12$) is matched or exceeded by only 2.9% of random reshuffles of its own dollars (null mean $214.84$, 95% CI $[214.55,215.12]$); the model optimizer's allocation ($\mathbb E[\text{Seats}]=217.94$) is matched or exceeded by 0 of 2,000 reshuffles, indicating the optimizer's advantage reflects genuine MSG-based targeting rather than the generic benefit of any reallocation.
+**Allocation-efficiency permutation test.** A second permutation test reshuffles DCCC's own party-dollar allocation across the 53 races and evaluates $\mathbb E[\text{Seats}]$ under the true nonlinear objective for each of 2,000 shuffles. DCCC's actual allocation ($\mathbb E[\text{Seats}]=215.12$) is matched or exceeded by only 2.9% of random reshuffles of its own dollars (null mean $214.84$, 95% CI $[214.55,215.12]$); the model optimizer's allocation ($\mathbb E[\text{Seats}]=217.94$) is matched or exceeded by 0 of 2,000 reshuffles. This test's conclusion -- that DCCC's allocation and the model's are both distinguishable from arbitrary reshuffling -- is compatible with the equalization-violation finding above: DCCC's spending is not random, but it is also not equalized at the margin.
 
 ![Permutation-test null distributions against observed DCCC and model-optimizer allocations, 2024.](figures/permutation_tests_null_distributions.png){width=85%}
 
-**Out-of-sample validation (2022).** To test whether the efficiency finding reflects a property of the 2024 cycle specifically or a persistent structural pattern, the full pipeline -- margin model, $\sigma_i$ model, and $\beta_{RC}$ -- is re-estimated using exclusively the 2012--2020 panel and applied without modification to the 2022 cycle, which enters no stage of estimation.
-
-**Table 6: Out-of-Sample Validation, 2022 Cycle**
-
-| Metric | 2024 (Primary) | 2022 (OOS) |
-|---|---|---|
-| Estimation panel | 2012--2022 | 2012--2020 |
-| Competitive races ($n$) | 53 | 61 |
-| Spearman $\rho$ | $-0.809$ | $-0.847$ |
-| $p$-value | $<0.001$ | $<0.001$ |
-| 95% CI | $[-0.936,-0.618]$ | $[-0.916,-0.719]$ |
-| DCCC expected seats | 215.12 | 213.37 |
-| Model optimizer expected seats | 217.94 | 216.59 |
-| Model gain vs. DCCC | $+2.83$ | $+3.22$ |
-| Brier score (model) | 0.0312 | 0.0360 |
-| Brier score (Cook) | 0.0364 | 0.0340 |
-| Permutation $p$ (Spearman) | $0.0$ | $0.0$ |
-| DCCC allocation, \% of shuffles $\ge$ observed | 2.9\% | 19.2\% |
-
-The negative rank correlation replicates cleanly out-of-sample, with comparable magnitude and significance despite an entirely non-overlapping estimation window, a different national environment, and a different race composition -- the strongest evidence that the misallocation finding is structural rather than an artifact of a single favorable cycle. Win-probability calibration is more mixed: the model improves on Cook's Brier score by 14% in the 2024 primary sample but is 5.9% *worse* than Cook out-of-sample in 2022, a specific calibration finding distinct from the efficiency (targeting) finding, which is robust in both cycles.
-
-![Rank-rank efficiency frontier: observed spending rank vs. estimated MSG rank, competitive races.](figures/efficiency_frontier.png){width=48%}![Out-of-sample efficiency frontier, 2022 cycle.](figures/efficiency_frontier_2022.png){width=48%}
-
-**Winsorization (methodological demonstration).** As a check on whether either correlation is driven by a small number of extreme spending-ratio outliers, log-spending-ratios were winsorized at the 10th/90th, 5th/95th, and 1st/99th percentiles within each cycle's competitive set and $\rho$ recomputed under each trimmed specification. On the specification current at the time this check was run, both cycles' correlations were stable under winsorization at every trim level tested (maximum deviation from the untrimmed value: 0.01 in both cycles), ruling out the possibility that either result is an artifact of a handful of extreme-ratio races dominating the rank statistic. This check has not been re-executed against the fully corrected specification reported in Table 6 above and is reported here as a methodological demonstration of the robustness-check approach rather than as a currently-verified figure; re-running it against the final specification is noted as a direction for replication (Appendix D).
+**Winsorization (methodological demonstration, not re-verified against the final specification).** As a check on whether the superseded correlation is driven by a small number of extreme spending-ratio outliers, log-spending-ratios were winsorized at the 10th/90th, 5th/95th, and 1st/99th percentiles within each cycle's competitive set and $\rho$ recomputed under each trimmed specification on an earlier pipeline iteration; both cycles' correlations were stable under winsorization at every trim level tested. This predates the persuasion-ceiling and floor-margin-convention fixes reported elsewhere in this paper and has not been re-executed against the final specification; it is reported here as a methodological demonstration rather than a currently-verified figure (Appendix D).
 
 \newpage
 
 # Discussion
 
-## Why Competitive Districts Dominate
+## Why Marginal Returns Are Not Equalized: Two Candidate Mechanisms
 
-The optimizer concentrates party money in races where estimated marginal seat gain is highest, which in the fitted model are races combining two properties: a spending ratio still meaningfully below parity (so the log-ratio term of Section 4.2 has room to move) and a margin near the competitive tipping point (so the density term $\varphi(\mu_i/\sigma_i)/\sigma_i$ of Section 4.1 is large). In the 2024 sample, NC-13, FL-27, CT-02, FL-28, AZ-04, and CA-40 are the highest-MSG races under-invested by DCCC relative to the model's recommendation. Two of these (NC-13, FL-27) were won by Republicans in the actual 2024 election -- the model's high-MSG flag for both was, in retrospect, diagnostically correct, though this is a two-observation anecdote and not itself evidence of forecasting skill. Decomposed by tier, the optimizer funds Toss-Up races more heavily than Lean, Lean more than Likely, and Likely more than Safe on a *per-race* basis; the raw budget totals can appear to favor Likely-tier races in aggregate purely because there are far more Likely-tier races in the universe (76) than Toss-Up races (18), a composition effect rather than evidence the model deprioritizes competitive races.
+Section 8.4's decomposition shows the model-implied gain is dominated by selection (funding races DCCC left at zero) rather than intensity (resizing races already funded). This has a direct bearing on which real-world mechanisms are plausible explanations for the KKT dispersion finding, and it rules out treating them interchangeably.
 
-## Why Safe Seats Still Receive Funding
+**Mechanisms consistent with a selection-dominated gap** point to reasons a race might never have been engaged at all, independent of how well-calibrated DCCC's spending was among the races it did contest: capacity and staffing limits on how many races a committee can actively organize around in a single cycle; information timing -- a race's competitiveness may not have been legible to decision-makers at the point budgets were substantially set, which is a static-model limitation this paper shares with any single-period valuation and which a sequential, continuously-updated framework (developed in a companion paper) is explicitly designed to address; local candidate recruitment and self-funding dynamics the model does not observe; and genuine strategic considerations -- protecting incumbents, or pursuing the majority-probability objective of Section 3.4 rather than pure expected seats -- that could rationally leave some model-flagged races unengaged.
 
-Every race in the universe, including uncompetitive ones, continues to receive its own candidate-committee spending floor $f_i$ in every allocation strategy compared in Section 8.3 -- that money is raised directly by the candidate's own committee and is not redirected by any strategy under comparison, DCCC's actual behavior included. What changes across strategies is only the *party* allocation layered on top of that floor. The persuasion ceiling of Section 4.7 ensures that even the model-optimal strategy allocates only a small, non-zero party-budget share (9.0% at the calibrated $C_{\max}$) to Safe-tier races -- not zero, because the ceiling's endogenous scaling by $\Phi_0^{(i)}$ never drives $C_i$ to exactly zero away from the literal extremes $\Phi_0\in\{0,1\}$, but small, because $\Phi_0^{(i)}$ for a genuinely safe seat is far from the toss-up value where the ceiling is loosest.
+**Mechanisms consistent with an intensity gap** -- irreversible media-buy and staffing commitments, organizational resistance to withdrawing support once pledged, minimum-support expectations owed to a candidate -- remain relevant to the smaller (9--17%) intensity component, but do not explain why the larger selection component exists.
+
+These are offered as candidate explanations the data are consistent with, not conclusions the data establish; distinguishing among them would require information (internal committee deliberations, the timing of allocation decisions relative to when a race's competitiveness became apparent) outside the public data this framework is built on (Section 10.1).
+
+## Why Safe Seats Still Receive Some Funding
+
+Every race in the universe, including uncompetitive ones, continues to receive its own candidate-committee spending floor $f_i$ in every allocation strategy compared in Section 8.5 -- that money is raised directly by the candidate's own committee and is not redirected by any strategy under comparison, DCCC's actual behavior included. What changes across strategies is only the *party* allocation layered on top of that floor. The persuasion ceiling of Section 4.7 keeps even the model-optimal strategy's Safe-tier party-budget share small (9.0% at the calibrated $C_{\max}$) but not zero, and Section 8.4's composition check found a genuine, non-trivial minority (30%) of the newly-selected races are Safe-tier -- a real residual the ceiling narrows rather than eliminates, and a specific direction for tightening $C_{\max}$ or its functional form in future work.
 
 ## Endogenous Regularization
 
-Section 4's central methodological claim is that the persuasion ceiling succeeds where the two rejected alternatives (Section 4.6) failed specifically because it is endogenous to the model's own estimated state rather than fit against an external target. The rejected persuadable-multiplier approach failed because it tried to calibrate against a noisy external signal (repeat-challenger swings) contaminated by an unrelated confound (candidate-quality composition); the rejected $\sigma$-only approach failed because it scaled by a quantity ($\sigma_i$) that does not itself vary enough with competitiveness to do the discriminating work required. The persuasion ceiling instead scales by $\Phi_0^{(i)}$, a quantity computed directly from the same margin and uncertainty model the ceiling is correcting -- the correction and the thing being corrected share the same information set by construction, which is precisely what makes the parabola in Proposition 2 bind hardest exactly where the underlying causal identification (Section 6.1) is weakest and loosest exactly where it is strongest.
+Section 4's methodological claim is that the persuasion ceiling succeeds where the two rejected alternatives (Section 4.6) failed specifically because it is endogenous to the model's own estimated state rather than fit against an external target. The rejected persuadable-multiplier approach failed because it tried to calibrate against a noisy external signal (repeat-challenger swings) contaminated by an unrelated confound (candidate-quality composition); the rejected $\sigma$-only approach failed because it scaled by a quantity ($\sigma_i$) that does not itself vary enough with competitiveness to do the discriminating work required. The persuasion ceiling instead scales by $\Phi_0^{(i)}$, a quantity computed directly from the same margin and uncertainty model the ceiling is correcting -- the correction and the thing being corrected share the same information set by construction, which is what makes the parabola in Proposition 2 bind hardest for races the model already considers hopeless and loosest for races it considers competitive, on the plausibility-and-stakes logic of Section 4.9 rather than on any claim about where $\beta_{RC}$'s causal identification is concentrated (Section 6.5 shows it is not concentrated in the competitive tier).
 
 ## Strategic Implications
 
-For a campaign committee, the framework's practical output is a ranked list of races by estimated marginal seat gain per dollar at current spending levels, updated as spending and structural characteristics change, together with an explicit accounting of which races' funding levels are most and least sensitive to the model's more uncertain inputs (the open-seat calibration bound, the bootstrap range on $\beta_{RC}$). Rather than replacing strategist judgment, the framework is best used as a systematic check against it: races where the model's recommendation diverges sharply from a committee's planned allocation are exactly the races where a committee should be able to articulate *why* -- a candidate-quality signal, a local dynamic, or a risk consideration the expected-seats objective does not capture -- rather than treating divergence as evidence the model is wrong by default.
+For a campaign committee, the framework's practical output is a ranked list of races by estimated marginal seat gain at current spending levels, an explicit flag on which races violate the equalization condition of Section 8.2, and a decomposition (Section 8.4) of how much of any recommended reallocation comes from resizing current commitments versus engaging currently-unfunded races -- the latter being the larger and, given Section 9.1's discussion, the more actionable category to interrogate directly ("why is this race at zero?") rather than the former. Rather than replacing strategist judgment, the framework is best used as a systematic check against it: races flagged by the boundary test (Section 8.2) are exactly the races where a committee should be able to articulate *why* it remains uninvested -- a candidate-quality signal, a capacity constraint, or a timing consideration the static model does not capture -- rather than treating the flag as self-evidently a mistake.
 
 ## Generalizability
 
-The mathematical structure developed here -- a constrained budget allocated across many opportunities with heterogeneous, uncertain, diminishing-returns payoffs, correlated through a common environmental factor, and requiring an endogenous regularization against a spending-response singularity at the smallest allocations -- is not specific to congressional elections. The same structure describes marketing budget allocation across channels or customer segments with saturating response curves; nonprofit fundraising-campaign targeting across donor segments; portions of military logistics resource allocation across theaters with correlated risk; public-policy program budgeting across jurisdictions; and healthcare resource allocation across facilities or interventions with diminishing marginal benefit. In each of these domains, a version of the singularity proved in Proposition 1 will recur wherever a response function is specified in a form ($\log$-ratio, elasticity, or similar) whose gradient diverges at a resource floor of zero, and the endogenous-ceiling design requirements of Section 4.5 -- bounded, differentiable, calibration-friendly, and scaled by the model's own estimated state rather than an external constant -- generalize directly.
+The mathematical structure developed here -- a constrained budget allocated across many opportunities with heterogeneous, uncertain, diminishing-returns payoffs, correlated through a common environmental factor, and requiring an endogenous regularizer against the finite-but-implausible extrapolation risk characterized in Proposition 1's corollary -- is not specific to congressional elections. The same structure describes marketing budget allocation across channels or customer segments with saturating response curves; nonprofit fundraising-campaign targeting across donor segments; portions of military logistics resource allocation across theaters with correlated risk; public-policy program budgeting across jurisdictions; and healthcare resource allocation across facilities or interventions with diminishing marginal benefit. In each of these domains, a version of the extrapolation risk characterized in Proposition 1 will recur wherever a response function is specified in a form ($\log$-ratio, elasticity, or similar) whose gradient is large near a resource floor of zero even though the function itself is bounded there, and the endogenous-ceiling design requirements of Section 4.5 -- bounded, differentiable, calibration-friendly, and scaled by the model's own estimated state rather than an external constant -- generalize directly. The selection-versus-intensity decomposition of Section 8.4 also generalizes: any setting with a discrete "which opportunities to engage" decision layered on top of a continuous "how much to commit" decision admits the same split, and the finding that selection dominated intensity here is a testable, not assumed, property of any such system.
 
 \newpage
 
@@ -556,11 +641,11 @@ The mathematical structure developed here -- a constrained budget allocated acro
 
 ## Data
 
-The framework relies exclusively on public data, which excludes several variables a real committee's internal decision-making likely uses: internal polling (as opposed to public polling averages), qualitative candidate-quality assessments beyond incumbency status, and complete outside-group (non-party Super PAC) spending, which is unevenly disclosed before 2016 and is therefore excluded from the primary spending measure. Committed-but-undisbursed party spending is not observable in public FEC filings at all, a limitation that matters most for the sequential extension of this framework (Section 9.4's companion-paper pointer) rather than for the single-period analysis reported here.
+The framework relies exclusively on public data, which excludes several variables a real committee's internal decision-making likely uses: internal polling (as opposed to public polling averages), qualitative candidate-quality assessments beyond incumbency status, and complete outside-group (non-party Super PAC) spending, which is unevenly disclosed before 2016 and is therefore excluded from the primary spending measure. Committed-but-undisbursed party spending is not observable in public FEC filings at all, a limitation that matters most for the sequential extension of this framework (Section 9.1's companion-paper pointer) rather than for the single-period analysis reported here.
 
 ## Modeling
 
-The log-ratio spending specification (Section 4.2) is itself a modeling choice motivated by theoretical priors (Erikson and Palfrey 2000) rather than derived from first principles, and Proposition 1 shows it is precisely this choice that produces the singularity Section 4 spends its remaining subsections correcting. The portfolio covariance structure (Section 3.4) is, in the current implementation, a flat single-factor placeholder tied to the national generic ballot rather than the fully structural factor loading $\beta_i=\varphi(\mu_i/\sigma_i)\alpha_3/\sigma_i$ derived in Appendix B.6 -- every reported $\text{Var}[\text{Seats}]$ and risk-penalty figure in this paper uses the placeholder, not the structural derivation, and a genuine multi-factor risk model (incorporating regional or urbanicity-based factors beyond the single national ballot) remains a direction for future estimation work. The $\sigma_i$ model's own internal ordering diagnostic -- the expectation that open-seat uncertainty exceeds challenger uncertainty, which in turn exceeds incumbent uncertainty -- fails under the corrected specification in every tested partisan-lean bin, an open question not resolved in this paper (Appendix D). Finally, $\sigma_i$ itself is a generated regressor: its own estimation uncertainty is not propagated into downstream MSG and optimizer quantities, a standard two-stage-estimation limitation present throughout the pipeline.
+The log-ratio spending specification (Section 4.2) is itself a modeling choice motivated by theoretical priors (Erikson and Palfrey 2000) rather than derived from first principles, and Proposition 1 shows it is precisely this choice that produces the finite-peak extrapolation risk Section 4's remaining subsections regularize against. The portfolio covariance structure (Section 3.4) is, in the current implementation, a flat single-factor placeholder tied to the national generic ballot rather than the fully structural factor loading $\beta_i=\varphi(\mu_i/\sigma_i)\alpha_3/\sigma_i$ derived in Appendix B.6 -- every reported $\text{Var}[\text{Seats}]$ and risk-penalty figure in this paper uses the placeholder, not the structural derivation, and a genuine multi-factor risk model (incorporating regional or urbanicity-based factors beyond the single national ballot) remains a direction for future estimation work. The $\sigma_i$ model's own internal ordering diagnostic -- the expectation that open-seat uncertainty exceeds challenger uncertainty, which in turn exceeds incumbent uncertainty -- fails under the corrected specification in every tested partisan-lean bin, an open question not resolved in this paper (Appendix D). Finally, $\sigma_i$ itself is a generated regressor: its own estimation uncertainty is not propagated into downstream MSG and optimizer quantities, a standard two-stage-estimation limitation present throughout the pipeline.
 
 ## Computational
 
@@ -574,17 +659,13 @@ Several gaps separate this framework from an operational, real-time deployment t
 
 # Conclusion
 
-Political campaigns operate under severe budget constraints and substantial electoral uncertainty, yet the committees allocating hundreds of millions of dollars per cycle do so largely without an explicit model of the marginal return on the next dollar. This paper reframes that decision as a constrained capital-allocation problem, developing a complete pipeline from causally identified spending elasticities through a nonlinear margin-to-probability conversion and a portfolio-level risk model to a constrained optimizer -- and, in doing so, exposes a mathematical pathology intrinsic to the natural specification of that pipeline: an unbounded marginal-return gradient as a race's own spending approaches zero. We derive this singularity formally, state the design requirements a correction must satisfy, and supply one -- an endogenous, bounded, differentiable persuasion ceiling calibrated by transparent sensitivity analysis rather than fixed by assumption.
+Political campaigns operate under severe budget constraints and substantial electoral uncertainty, yet the committees allocating hundreds of millions of dollars per cycle do so largely without an explicit model of the marginal return on the next dollar. This paper reframes that decision as a constrained capital-allocation problem, developing a complete pipeline from causally identified spending elasticities through a nonlinear margin-to-probability conversion and a portfolio-level risk model to a constrained optimizer. In doing so it identifies a genuine mathematical property of the natural specification of that pipeline -- marginal seat gain is finite everywhere, including as a race's own spending approaches zero, but non-monotonic, with a finite interior peak that can land at an implausible value if a race's real spending floor happens to sit nearby. We derive this behavior formally, show it is a finite-sample extrapolation risk rather than an asymptotic divergence, state the design requirements a correction must satisfy, and supply one -- an endogenous, bounded, differentiable persuasion ceiling calibrated by transparent sensitivity analysis rather than fixed by assumption.
 
-Applied to public FEC and election data, the corrected framework finds that the DCCC's observed 2024 spending is significantly negatively correlated with the model's estimated marginal seat gain, the opposite of what efficient allocation implies, and that a same-budget model-optimal reallocation yields an estimated 2.8 additional expected seats. Both findings replicate on a fully out-of-sample 2022 backtest, using a model that never sees 2022 data during estimation, and both survive permutation tests, Cook-category stratification, and a sensitivity sweep over the persuasion ceiling's single free parameter.
+Applied to public FEC and election data, the evidence does not show that the DCCC systematically identified the wrong races at the outset: a test correlating observed spending against each race's pre-allocation marginal potential returns a null result in both the 2024 primary sample and a fully out-of-sample 2022 replication. It does show that the DCCC's final allocation leaves substantial, replicated differences in marginal return across races receiving discretionary funding -- a direct violation of the paper's own derived condition for a risk-neutral efficient allocation, with a 90th-to-10th-percentile MSG ratio near 20--26-to-1 among funded races in both cycles, against near-exact equalization in the model-optimal allocation. Decomposing the resulting model-implied gain (+2.83 seats in 2024, +3.22 in 2022) shows it is dominated (83--91%) by funding races that received no party money at all, not by resizing amounts among races already funded -- indicating incomplete engagement with plausible opportunities, or constraints on selection not represented in the model, rather than poor calibration of amounts within an already-chosen portfolio.
 
-The paper's contribution is therefore twofold. Mathematically, it derives and solves a general problem -- the unbounded-gradient singularity that arises whenever a diminishing-returns response function is combined with an unconstrained optimizer near a resource floor of zero -- with a solution that generalizes beyond campaign finance to any capital-allocation setting sharing this structure. Empirically, it provides campaign committees and researchers a fully reproducible, publicly replicable framework for asking, and answering, whether political capital is deployed where the marginal dollar produces the greatest expected return. The immediate research agenda this leaves open is a reorientation already implicit in the framework's design: from *does spending affect electoral outcomes* to *where does the next dollar produce the highest expected seat gain*, and from forecasting elections to evaluating whether the capital raised to influence them is allocated efficiently.
+The paper's contribution is therefore threefold. Mathematically, it derives the true limiting behavior of a marginal-return function built on a log-ratio spending specification, corrects an initially incorrect characterization of that behavior as an unbounded singularity, and supplies an endogenous regularizer suited to the actual (finite-peak, extrapolation-risk) problem this creates -- a solution that generalizes beyond campaign finance to any capital-allocation setting sharing this structure. Methodologically, it develops a direct test of an optimization model's own KKT stationarity condition as an efficiency diagnostic, in place of a spending-versus-marginal-return correlation that is mechanically confounded by diminishing returns, and a decomposition separating gains attributable to which opportunities are engaged from gains attributable to how intensely they are funded. Empirically, it provides campaign committees and researchers a fully reproducible, publicly replicable framework for asking, and answering, a narrower and more defensible question than the paper originally posed: not whether a committee chose the wrong races, but whether its final spending levels are consistent with equalized marginal returns, and how much of any available improvement comes from re-engaging currently-unfunded opportunities versus resizing existing ones. The immediate research agenda this leaves open is to identify which of the candidate mechanisms in Section 9.1 -- capacity constraints, information timing, or strategic considerations outside the model -- actually accounts for the selection gap, a question the public data underlying this framework cannot resolve on its own.
 
 \newpage
-
-# Acknowledgments
-
-The authors thank [collaborators/reviewers TBD] for comments on an earlier draft. [Funding source, if any, TBD.]
 
 # Data Availability
 
@@ -596,7 +677,8 @@ The complete estimation, calibration, and optimization pipeline is available at:
 
 **Repository:** `https://github.com/callum-doty/political-portfolio`
 **Commit:** `78c524e6f1f8e3b569512b2e80677a9ba4693549`
-**Entry point:** `scripts/run_backtest.py` (primary pipeline); `scripts/run_estimation.py` (parameter estimation stage)
+**Entry point:** `scripts/run_backtest.py` (primary pipeline, including the KKT dispersion, boundary, floor-baseline, and pairwise-transfer diagnostics of Section 8); `scripts/run_estimation.py` (parameter estimation stage)
+**Bibliography:** `references.bib` (machine-readable BibTeX for every citation in this paper)
 **Environment:** Python 3.13.1; NumPy 2.2.1; SciPy 1.17.1; pandas 2.2.3; statsmodels 0.14.6; cvxpy 1.9.2 (full pinned environment in Appendix K / `requirements.txt`)
 
 # Conflict of Interest
@@ -607,11 +689,21 @@ The authors declare no conflict of interest. This research was not funded by, an
 
 # References
 
+Ansolabehere, S., de Figueiredo, J. M., and Snyder, J. M. (2003). Why is there so little money in U.S. politics? *Journal of Economic Perspectives*, 17(1), 105--130.
+
+Ansolabehere, S., and Snyder, J. M. (2002). The incumbency advantage in U.S. elections: An analysis of state and federal offices, 1942--2000. *Election Law Journal*, 1(3), 315--338.
+
 Bellman, R. (1957). *Dynamic Programming*. Princeton University Press.
+
+Boyd, S., and Vandenberghe, L. (2004). *Convex Optimization*. Cambridge University Press.
+
+Dantzig, G. B. (1963). *Linear Programming and Extensions*. Princeton University Press.
 
 Duan, N. (1983). Smearing estimate: A nonparametric retransformation method. *Journal of the American Statistical Association*, 78(383), 605--610.
 
 Erikson, R. S., and Palfrey, T. R. (2000). Equilibrium in campaign spending games. *American Political Science Review*, 94(3), 595--609.
+
+Gelman, A., and King, G. (1993). Why are American Presidential election campaign polls so variable when votes are so predictable? *British Journal of Political Science*, 23(4), 409--451.
 
 Gerber, A. (1998). Estimating the effect of campaign spending on Senate election outcomes using instrumental variables. *American Political Science Review*, 92(2), 401--411.
 
@@ -627,83 +719,18 @@ Levitt, S. D. (1994). Using repeat challengers to estimate the effect of campaig
 
 Markowitz, H. (1952). Portfolio selection. *The Journal of Finance*, 7(1), 77--91.
 
+Montgomery, J. M., Hollenbach, F. M., and Ward, M. D. (2012). Ensemble predictions of the 2012 US presidential election. *PS: Political Science \& Politics*, 45(4), 651--654.
+
 Oster, E. (2019). Unobservable selection and coefficient stability: Theory and evidence. *Journal of Business and Economic Statistics*, 37(2), 187--204.
+
+Sharpe, W. F. (1964). Capital asset prices: A theory of market equilibrium under conditions of risk. *The Journal of Finance*, 19(3), 425--442.
 
 Sides, J., Vavreck, L., and Warshaw, C. (2022). The Bitter End: The 2020 Presidential Campaign and the Challenge to American Democracy. Princeton University Press.
 
-\footnotesize
-\begin{verbatim}
-@article{bellman1957dynamic,
-  title={Dynamic Programming},
-  author={Bellman, Richard},
-  year={1957},
-  publisher={Princeton University Press}
-}
-@article{duan1983smearing,
-  title={Smearing estimate: A nonparametric retransformation method},
-  author={Duan, Naihua},
-  journal={Journal of the American Statistical Association},
-  volume={78}, number={383}, pages={605--610}, year={1983}
-}
-@article{erikson2000equilibrium,
-  title={Equilibrium in campaign spending games},
-  author={Erikson, Robert S and Palfrey, Thomas R},
-  journal={American Political Science Review},
-  volume={94}, number={3}, pages={595--609}, year={2000}
-}
-@article{gerber1998estimating,
-  title={Estimating the effect of campaign spending on Senate election outcomes using instrumental variables},
-  author={Gerber, Alan},
-  journal={American Political Science Review},
-  volume={92}, number={2}, pages={401--411}, year={1998}
-}
-@book{green2008get,
-  title={Get Out the Vote: How to Increase Voter Turnout},
-  author={Green, Donald P and Gerber, Alan S},
-  year={2008}, publisher={Brookings Institution Press}
-}
-@book{ibaraki1988resource,
-  title={Resource Allocation Problems: Algorithmic Approaches},
-  author={Ibaraki, Toshihide and Katoh, Naoki},
-  year={1988}, publisher={MIT Press}
-}
-@article{jacobson1978effects,
-  title={The effects of campaign spending in congressional elections},
-  author={Jacobson, Gary C},
-  journal={American Political Science Review},
-  volume={72}, number={2}, pages={469--491}, year={1978}
-}
-@article{jacobson1990effects,
-  title={The effects of campaign spending in House elections: New evidence for old arguments},
-  author={Jacobson, Gary C},
-  journal={American Journal of Political Science},
-  volume={34}, number={2}, pages={334--362}, year={1990}
-}
-@article{levitt1994using,
-  title={Using repeat challengers to estimate the effect of campaign spending on election outcomes in the U.S. House},
-  author={Levitt, Steven D},
-  journal={Journal of Political Economy},
-  volume={102}, number={4}, pages={777--798}, year={1994}
-}
-@article{markowitz1952portfolio,
-  title={Portfolio selection},
-  author={Markowitz, Harry},
-  journal={The Journal of Finance},
-  volume={7}, number={1}, pages={77--91}, year={1952}
-}
-@article{oster2019unobservable,
-  title={Unobservable selection and coefficient stability: Theory and evidence},
-  author={Oster, Emily},
-  journal={Journal of Business and Economic Statistics},
-  volume={37}, number={2}, pages={187--204}, year={2019}
-}
-@book{sides2022bitter,
-  title={The Bitter End: The 2020 Presidential Campaign and the Challenge to American Democracy},
-  author={Sides, John and Vavreck, Lynn and Warshaw, Christopher},
-  year={2022}, publisher={Princeton University Press}
-}
-\end{verbatim}
-\normalsize
+Stratmann, T. (2005). Some talk: Money in politics. A (partial) review of the literature. *Public Choice*, 124(1--2), 135--156.
+
+Machine-readable BibTeX entries for every reference above are provided as `references.bib` in the replication repository (Code Availability).
+
 
 \newpage
 
@@ -727,7 +754,7 @@ With a race-pair fixed effect $\alpha_i$ absorbing every time-invariant matchup 
 
 $$\Delta\text{Margin}_i = \beta_{RC}\,\Delta\log(\text{ratio})_i + \Delta\eta_i \quad\Longrightarrow\quad \hat\beta_{RC} = \frac{\sum_i \Delta\log(\text{ratio})_i\,\Delta\text{Margin}_i}{\sum_i \big(\Delta\log(\text{ratio})_i\big)^2}$$
 
-the ordinary least-squares slope of a no-intercept regression of $\Delta\text{Margin}_i$ on $\Delta\log(\text{ratio})_i$. This estimator is mechanically valid regardless of context; that it recovers a *causal* effect additionally requires $\text{Cov}\big(\Delta\log(\text{ratio})_i,\Delta\eta_i\big)=0$ conditional on the national environment -- an identifying assumption, not a derived result (Section 6.1).
+the ordinary least-squares slope of a no-intercept regression of $\Delta\text{Margin}_i$ on $\Delta\log(\text{ratio})_i$. This estimator is mechanically valid regardless of context; that it recovers a *causal* effect additionally requires $\text{Cov}\big(\Delta\log(\text{ratio})_i,\Delta\eta_i\big)=0$ conditional on the national environment -- an identifying assumption, not a derived result (Section 6.3).
 
 ## B.3 Bayesian Shrinkage Posterior
 
@@ -773,42 +800,42 @@ This structural loading is maximized for races near parity ($\mu_i\approx0$) and
 
 ## C.1 KKT Stationarity Conditions
 
-For the optimization problem of Section 3.5, $\max_{\mathbf x}\sum_iP_i(x_i) - \gamma\,\mathbf d(\mathbf x)'\Sigma\,\mathbf d(\mathbf x)$ subject to $\sum_ix_i\le B$ and $0\le x_i\le\kappa B$, form the Lagrangian with multiplier $\lambda\ge0$ on the budget constraint and $\underline\nu_i,\overline\nu_i\ge0$ on the lower and upper bounds:
+For the optimization problem of Section 3.5, $\max_{\mathbf x}\sum_iP_i(x_i) - \gamma\,\mathbf 1'\Sigma(\mathbf x)\mathbf 1$ subject to $\sum_ix_i\le B$ and $0\le x_i\le\kappa B$, form the Lagrangian with multiplier $\lambda\ge0$ on the budget constraint and $\underline\nu_i,\overline\nu_i\ge0$ on the lower and upper bounds:
 
-$$\mathcal L = \sum_iP_i(x_i) - \gamma\,\mathbf d(\mathbf x)'\Sigma\,\mathbf d(\mathbf x) - \lambda\Big(\sum_ix_i - B\Big) + \sum_i\underline\nu_i x_i - \sum_i\overline\nu_i(x_i-\kappa B)$$
+$$\mathcal L = \sum_iP_i(x_i) - \gamma\,\mathbf 1'\Sigma(\mathbf x)\mathbf 1 - \lambda\Big(\sum_ix_i - B\Big) + \sum_i\underline\nu_i x_i - \sum_i\overline\nu_i(x_i-\kappa B)$$
 
-Stationarity requires $\partial\mathcal L/\partial x_i = 0$ for every $i$:
+Stationarity requires $\partial\mathcal L/\partial x_i = 0$ for every $i$. Writing $\partial\big[\mathbf 1'\Sigma(\mathbf x)\mathbf 1\big]/\partial x_i \equiv V_i(\mathbf x)$ for the (generally allocation-dependent) marginal risk contribution of race $i$:
 
-$$\text{MSG}_i - \gamma\cdot2(\Sigma\mathbf d)_i - \lambda + \underline\nu_i - \overline\nu_i = 0$$
+$$\text{MSG}_i - \gamma\,V_i(\mathbf x) - \lambda + \underline\nu_i - \overline\nu_i = 0$$
 
 Complementary slackness ($\underline\nu_ix_i=0$, $\overline\nu_i(x_i-\kappa B)=0$) implies that for any race funded strictly between its bounds ($0<x_i<\kappa B$), both multipliers vanish and stationarity reduces to
 
-$$\text{MSG}_i - \gamma\cdot 2(\Sigma\mathbf d)_i = \lambda \qquad\text{for all interior-funded races}$$
+$$\text{MSG}_i - \gamma\, V_i(\mathbf x) = \lambda \qquad\text{for all interior-funded races}$$
 
-i.e., risk-adjusted marginal seat gain is equalized across every race not pinned at a boundary, with $\lambda$ interpretable as the shadow price of the budget constraint. Races pinned at their floor ($x_i=0$) or cap ($x_i=\kappa B$) satisfy the stationarity condition with a nonzero multiplier instead, motivating the `n_corner_solutions` diagnostic tracked in the optimizer implementation (Section 7.2, Algorithm 1, step 7).
+i.e., risk-adjusted marginal seat gain is equalized across every race not pinned at a boundary, with $\lambda$ interpretable as the shadow price of the budget constraint. In the risk-neutral case $\gamma=0$ used throughout Section 8, this reduces to $\text{MSG}_i=\lambda$ for all interior-funded races regardless of $V_i(\mathbf x)$'s exact form -- the object Table 4's dispersion test evaluates directly. Races pinned at their floor ($x_i=0$) or cap ($x_i=\kappa B$) satisfy the stationarity condition with a nonzero multiplier instead: at $x_i=0$, $\underline\nu_i=\lambda+\gamma V_i-\text{MSG}_i\ge0 \iff \text{MSG}_i\le\lambda+\gamma V_i$, and symmetrically $\text{MSG}_i\ge\lambda+\gamma V_i$ at $x_i=\kappa B$ -- the boundary inequalities Section 8.2's boundary test evaluates (at $\gamma=0$). This also motivates the `n_corner_solutions` diagnostic tracked in the optimizer implementation (Section 7.2, Algorithm 1, step 7).
 
 ## C.2 Proof That the Efficiency Test Is Risk-Tolerance-Robust (Section 3.4 claim)
 
-**Claim.** *Among races matched on factor loading $\beta_i$ (equivalently, matched on Cook category and partisan lean, per Appendix B.6's derivation that $\beta_i$ is itself a function of $\mu_i,\sigma_i$), the risk-adjustment term $\gamma\cdot2(\Sigma\mathbf d)_i$ in the interior stationarity condition (Appendix C.1) is approximately constant across the matched group, for any fixed but unobserved $\gamma$.*
+**Claim.** *Among races matched on factor loading $\beta_i$ (equivalently, matched on Cook category and partisan lean, per Appendix B.6's derivation that $\beta_i$ is itself a function of $\mu_i,\sigma_i$), the risk-adjustment term $\gamma\, V_i(\mathbf x)$ in the interior stationarity condition (Appendix C.1) is approximately constant across the matched group, for any fixed but unobserved $\gamma$.*
 
-*Sketch.* Because $\Sigma = \boldsymbol\beta\boldsymbol\beta'\sigma_G^2$ under the single-factor structure of Section 3.4, $(\Sigma\mathbf d)_i = \beta_i\sigma_G^2\sum_j\beta_jd_j$, a product of race $i$'s own loading $\beta_i$ and a portfolio-wide scalar common to every race. Within a group matched on $\beta_i$, this term varies only through the (small, second-order) variation in $\beta_i$ that survives the matching criterion, so $\gamma\cdot2(\Sigma\mathbf d)_i$ is approximately a constant offset within the group for *any* value of $\gamma$, including an unobserved one. The interior stationarity condition therefore reduces, within the matched group, to approximate equalization of raw $\text{MSG}_i$ alone -- which is exactly the quantity the Spearman rank test of Section 8.2 evaluates -- making the sign of the resulting correlation uninformative about $\gamma$ and informative only about whether raw MSG is equalized, i.e., about efficiency. $\blacksquare$
+*Sketch.* Under the structural loading of Appendix B.6, $\Sigma_{ij}(\mathbf x) = \beta_i(x_i)\beta_j(x_j)\sigma_G^2$ for $i\ne j$, so $V_i(\mathbf x) = \partial\big[\mathbf 1'\Sigma(\mathbf x)\mathbf 1\big]/\partial x_i$ is, to leading order, proportional to race $i$'s own loading $\beta_i(x_i)$ times a portfolio-wide scalar common to every race ($2\sigma_G^2\sum_j\beta_j(x_j)$, plus the idiosyncratic-variance term's own derivative). Within a group matched on $\beta_i$, this term varies only through the (small, second-order) variation in $\beta_i$ that survives the matching criterion, so $\gamma\,V_i(\mathbf x)$ is approximately a constant offset within the group for *any* value of $\gamma$, including an unobserved one. The interior stationarity condition therefore reduces, within the matched group, to approximate equalization of raw $\text{MSG}_i$ alone -- which is exactly the quantity Section 8.2's KKT dispersion test evaluates directly (and, within a Cook-category/PVI-matched subgroup, what the superseded correlation test of Section 8.7 was originally intended to approximate) -- making this conclusion robust to $\gamma$ rather than dependent on knowing the committee's true risk tolerance. $\blacksquare$
 
 # Appendix D: Additional Robustness Analyses
 
-## D.1 Winsorization Detail (Table 2a)
+## D.1 Winsorization Detail
 
-**Table D.1: Winsorization robustness of Spearman $\rho$ (methodological demonstration; see Section 8.5 caveat -- predates the final gradient specification)**
+**Table D.1: Winsorization robustness of Spearman $\rho$ (methodological demonstration; see Section 8.8 caveat -- predates the final gradient specification)**
 
 | Cycle | $n$ | untrimmed | wins. 10/90 | wins. 5/95 | wins. 1/99 |
 |---|---|---|---|---|---|
 | 2024 | 53 | $-0.582$ | $-0.594$ | $-0.592$ | $-0.583$ |
 | 2022 | 61 | $-0.750$ | $-0.757$ | $-0.753$ | $-0.750$ |
 
-Both cycles were stable under winsorization at every trim level tested on the pipeline specification current when this check was run, differing from the untrimmed value by no more than 0.01. As noted in Section 8.5, this check has not been re-executed against the final, fully corrected specification (Table 6) and should be re-verified before being cited as current.
+Both cycles were stable under winsorization at every trim level tested on the pipeline specification current when this check was run, differing from the untrimmed value by no more than 0.01. As noted in Section 8.8, this check has not been re-executed against the final, fully corrected specification (Table 7) and should be re-verified before being cited as current.
 
 ## D.2 Matched-Group Efficiency Test (superseded pipeline snapshot)
 
-Within races matched on Cook category (Lean D, Toss-Up) and partisan lean (within $\pm5$ PVI points, Section 3.4), an earlier pipeline pass found $n=44$, $\rho=-0.559$ ($p=0.0001$). This is an ad hoc subsample statistic not part of the standard pipeline output and, like Appendix D.1, has not been recomputed against the final specification; it is retained here as a historical data point rather than a currently verified figure. The Cook-category decomposition of Table 5 (current, final specification) is the recommended reference for the matched-group intuition going forward.
+Within races matched on Cook category (Lean D, Toss-Up) and partisan lean (within $\pm5$ PVI points, Section 3.3), an earlier pipeline pass found $n=44$, $\rho=-0.559$ ($p=0.0001$). This is an ad hoc subsample statistic not part of the standard pipeline output and, like Appendix D.1, has not been recomputed against the final specification; it is retained here as a historical data point rather than a currently verified figure, and shares the same diminishing-returns confound as the superseded correlation test of Section 8.8 more broadly. The Cook-category decomposition of Table 8 and the KKT dispersion test of Table 4 (both current, final specification) are the recommended references going forward.
 
 ## D.3 $\sigma_i$ Ordering Anomaly (open question)
 
@@ -818,17 +845,20 @@ The $\sigma_i$ model's internal ordering diagnostic expects $\sigma_i^{\text{ope
 
 ## E.1 Persuasion Ceiling $C_{\max}$ Sweep
 
-**Table E.1: Safe-tier party-budget share across the $C_{\max}$ sweep**
+**Table E.1: Party-budget share by Cook tier and total expected seats across the $C_{\max}$ sweep**
 
-| $C_{\max}$ (pp) | 3 | 5 | 7 | 10 | 15 | 20 | 25 | 30 |
-|---|---|---|---|---|---|---|---|---|
-| Safe-tier budget share | lowest | low | low | **9.0\%** | high | high | high | highest |
+| $C_{\max}$ (pp) | 3 | 5 | 7 | 10 | 15 | 20 | 30 |
+|---|---|---|---|---|---|---|---|
+| Safe-tier share | 6.9\% | 7.4\% | 8.0\% | **9.0\%** | 10.3\% | 11.2\% | 12.6\% |
+| Competitive-tier share | 63.3\% | 62.5\% | 61.4\% | **60.0\%** | 58.3\% | 57.0\% | 55.2\% |
+| Likely-tier share | 29.8\% | 30.1\% | 30.6\% | **31.0\%** | 31.5\% | 31.8\% | 32.2\% |
+| Expected seats | 215.10 | 216.24 | 217.06 | **217.94** | 218.94 | 219.63 | 220.57 |
 
-Safe-tier budget share declines smoothly and monotonically as $C_{\max}$ shrinks, with no discontinuity or fragile threshold anywhere in the tested range. The interval $[5,10]$ offers the best ratio of competitive-tier to non-competitive-tier seat gain before Likely-tier reallocation begins to dominate the marginal gain at larger $C_{\max}$. The full numeric series underlying this table is in `outputs/.persuasion_ceiling_sweep_cache.npz` and plotted in Figure 1.
+Every quantity moves smoothly and monotonically across the tested range, with no discontinuity or fragile threshold. There is no sharply defined local optimum in this table by any single criterion -- Safe-tier share is minimized at the smallest tested $C_{\max}$ and expected seats is maximized at the largest -- so $C_{\max}=10.0$ (bold column) is a moderate choice balancing a Safe-tier share held under 10% against retaining a majority of the party budget in the Competitive tier, not a value selected because the data exhibit a distinct peak there. The pre-ceiling uncapped baseline (Section 4.4's corollary) allocated 45% of the party budget to Safe-tier races, well outside this entire tested range. The full numeric series underlying this table is in `outputs/.persuasion_ceiling_sweep_cache.npz` and plotted in Figure 1.
 
 ## E.2 Budget Concentration Cap ($\kappa$) Sweep
 
-Per Section 8.4, $\kappa\in\{0.05,0.10,0.15\}$ is swept; the reported main results use $\kappa=0.10$. The sign and significance of the efficiency test are unaffected across this range.
+Per Section 8.6, $\kappa\in\{0.05,0.10,0.15\}$ is swept; the reported main results use $\kappa=0.15$, the pipeline's baseline regime. The sign and significance of the efficiency tests are unaffected across this range.
 
 ## E.3 Risk-Aversion ($\gamma$) Grid
 
@@ -880,6 +910,31 @@ Output: beta_OS_calib, beta_OS_lower_bound
 ```
 \normalsize
 
+## G.2 Selection-versus-Intensity Gain Decomposition (Section 8.4)
+
+\footnotesize
+```
+Input:  races, coef, sigma_model, budget, cov_matrix, party_budget,
+        cap_fraction, outputs (MSG at DCCC's observed allocation)
+Output: intensity_gain, selection_gain, total_gain
+
+1.  full_result <- optimize_nonlinear(races, ..., fixed_zero_mask=None)
+      [unconstrained: may fund any race, Algorithm 1]
+2.  zero_mask_i <- (d_total_i - cand_floor_i) <= tol   for each race i
+      [races DCCC funded at (approximately) zero party dollars]
+3.  constrained_result <- optimize_nonlinear(races, ...,
+      fixed_zero_mask=zero_mask)
+      [bounds forced to (0,0) for every zero_mask race; Section 7.1]
+4.  dccc_seats     <- sum(o.p_win for o in outputs)
+5.  intensity_gain <- constrained_result.expected_seats - dccc_seats
+6.  selection_gain <- full_result.expected_seats
+                       - constrained_result.expected_seats
+7.  total_gain     <- full_result.expected_seats - dccc_seats
+      [= intensity_gain + selection_gain, by construction]
+8.  Return intensity_gain, selection_gain, total_gain
+```
+\normalsize
+
 # Appendix H: Database Schema
 
 **Table H.1: Key Processed Model Artifacts (`data/processed/`)**
@@ -896,10 +951,11 @@ Output: beta_OS_calib, beta_OS_lower_bound
 
 | File | Contents |
 |---|---|
-| `permutation_tests.json` / `_2022.json` | Full permutation-test null distributions and observed statistics |
-| `allocator_comparison_table.csv` / `_2022.csv` | Table 4 / Table 6 source data |
-| `spearman_by_cook_category.csv` / `_2022.csv` | Table 5 source data |
-| `.persuasion_ceiling_sweep_cache.npz` | Appendix E.1 sweep results |
+| `efficiency_tests_redesigned.json` / `_2022.json` | KKT dispersion, boundary, floor-baseline, transfer, decomposition (Tables 4, 5, 7) |
+| `permutation_tests.json` / `_2022.json` | Full permutation-test null distributions and observed statistics (Section 8.8) |
+| `allocator_comparison_table.csv` / `_2022.csv` | Table 6 source data |
+| `spearman_by_cook_category.csv` / `_2022.csv` | Table 8 source data |
+| `.persuasion_ceiling_sweep_cache.npz` | Table E.1 / Figure 1 sweep results |
 | `beta_rc_bootstrap_distribution.csv` | Figure 2 source data |
 
 # Appendix I: Additional Figures
@@ -938,6 +994,10 @@ uncertainty:
   permutation_draws: 2000
 
 optimizer:
+  # gamma_values[1:] are intentionally null in this file: the mid/high
+  # risk-aversion levels are calibrated at runtime from the risk-neutral
+  # solve's own portfolio variance (Section 6.6/Appendix E.3), not fixed
+  # in advance, so they cannot be literal constants here.
   gamma_values: [0.0, null, null]
   cap_regimes: [0.05, 0.10, 0.15]
   min_allocation: 0.0
@@ -958,14 +1018,13 @@ validation:
 - [x] Complete estimation code is version-controlled and publicly available (Code Availability)
 - [x] Random seeds are fixed for all stochastic procedures (bootstrap, permutation; seed 42)
 - [x] Configuration parameters are centralized in a single file, not hard-coded (Appendix F, K)
-- [x] Primary result ($\rho=-0.809$) is independently reproduced by a permutation-based exact test (Section 8.2)
-- [x] Primary result replicates out-of-sample on a non-overlapping estimation window (Section 8.5, Table 6)
+- [x] Primary KKT dispersion result is computed and reported for both cycles from the same pipeline run that produces every other headline figure (Section 8.2, `outputs/efficiency_tests_redesigned*.json`)
+- [x] Primary result replicates out-of-sample on a non-overlapping estimation window (Section 8.7, Table 7)
+- [x] Floor-baseline null result and boundary-violation counts are likewise computed identically in both cycles (Section 8.3, 8.7)
 - [x] Analytic gradients are validated against finite-difference numerical derivatives (Section 8.1)
-- [x] An automated test suite (341 tests, 19 files) covers the estimation and optimization pipeline (Section 8.1)
+- [x] An automated test suite (341 tests, 19 files) covers the estimation and optimization pipeline (Section 8.1); all pass against the code producing the new diagnostics
+- [x] Selection-versus-intensity gain decomposition is reproducible via `optimize_nonlinear(..., fixed_zero_mask=...)` (Section 8.4, Appendix G)
 - [ ] Winsorization and matched-group robustness checks re-verified against the final specification (Appendix D.1--D.2; flagged as outstanding)
 - [ ] $\sigma_i$ ordering anomaly resolved (Appendix D.3; flagged as open)
 - [ ] Structural (non-placeholder) portfolio factor model estimated (Section 10.2, Appendix B.6; flagged as future work)
-
-## Research Gap
-
-No existing work combines all three components required to solve the campaign-allocation problem: (i) a causally identified, conditional-on-district spending response function, of the kind the campaign finance literature can supply piecewise but has not embedded in an allocation model; (ii) a nonlinear, uncertainty-aware conversion from expected margin to win probability, of the kind forecasting models estimate in isolation but do not differentiate with respect to spending; and (iii) a constrained, portfolio-level optimization layer that accounts for cross-race covariance and a fixed budget, of the kind operations research formalizes abstractly but does not calibrate to political data. This paper's contribution is to build and calibrate the object that sits at the intersection of these three literatures, and, in doing so, to expose and solve a mathematical pathology -- an unbounded marginal-return gradient -- that arises specifically from combining a causally-motivated log-ratio spending specification with an unconstrained optimizer, a problem invisible to any of the three literatures taken separately.
+- [ ] Risk-averse ($\gamma>0$) solver's frozen-covariance approximation reconciled with the corrected $\text{Var}[\text{Seats}]=\mathbf 1'\Sigma(\mathbf x)\mathbf 1$ formula (Section 3.4's implementation note; flagged as future work)
