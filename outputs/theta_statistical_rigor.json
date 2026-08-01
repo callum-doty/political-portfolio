@@ -4,9 +4,9 @@
       "seed": 20260716,
       "period": 0,
       "days_remaining": 98,
-      "mean_theta": 5.0103381900634,
+      "mean_theta": 4.643658492970351,
       "frac_deploy_now": 0.0,
-      "basis_r2": 2.220446049250313e-16,
+      "basis_r2": 0.0,
       "g_t_coef": 0.0,
       "g_t_pvalue": NaN
     },
@@ -14,7 +14,7 @@
       "seed": 1,
       "period": 0,
       "days_remaining": 98,
-      "mean_theta": 5.10801618826891,
+      "mean_theta": 4.688210198552999,
       "frac_deploy_now": 0.0,
       "basis_r2": 0.0,
       "g_t_coef": 0.0,
@@ -24,9 +24,9 @@
       "seed": 2,
       "period": 0,
       "days_remaining": 98,
-      "mean_theta": 5.109990014238946,
+      "mean_theta": 4.742504442222356,
       "frac_deploy_now": 0.0,
-      "basis_r2": 0.0,
+      "basis_r2": 2.220446049250313e-16,
       "g_t_coef": 0.0,
       "g_t_pvalue": NaN
     },
@@ -34,7 +34,7 @@
       "seed": 3,
       "period": 0,
       "days_remaining": 98,
-      "mean_theta": 5.264647206594281,
+      "mean_theta": 4.904305544414774,
       "frac_deploy_now": 0.0,
       "basis_r2": 0.0,
       "g_t_coef": 0.0,
@@ -44,9 +44,9 @@
       "seed": 4,
       "period": 0,
       "days_remaining": 98,
-      "mean_theta": 5.109173659270636,
+      "mean_theta": 4.71938910555819,
       "frac_deploy_now": 0.0,
-      "basis_r2": 0.0,
+      "basis_r2": 2.220446049250313e-16,
       "g_t_coef": 0.0,
       "g_t_pvalue": NaN
     }
@@ -54,35 +54,35 @@
   "out_of_sample_K2000": {
     "period": 0,
     "days_remaining": 98,
-    "mean_theta": 4.9566280604357384,
+    "mean_theta": 4.604277965587946,
     "frac_deploy_now": 0.0,
-    "basis_r2": 0.0,
+    "basis_r2": -2.220446049250313e-16,
     "g_t_coef": 0.0,
     "g_t_pvalue": NaN,
-    "mean_theta_held_out": 4.9511507509446515,
+    "mean_theta_held_out": 4.598800656096858,
     "frac_deploy_now_held_out": 0.0
   },
   "k_sensitivity": {
     "2000": {
       "period": 0,
       "days_remaining": 98,
-      "mean_theta": 5.0103381900634,
+      "mean_theta": 4.643658492970351,
       "frac_deploy_now": 0.0,
-      "basis_r2": 2.220446049250313e-16,
+      "basis_r2": 0.0,
       "g_t_coef": 0.0,
       "g_t_pvalue": NaN
     },
     "5000": {
       "period": 0,
       "days_remaining": 98,
-      "mean_theta": 5.10123999753436,
+      "mean_theta": 4.769372866408627,
       "frac_deploy_now": 0.0,
       "basis_r2": 0.0,
       "g_t_coef": 0.0,
       "g_t_pvalue": NaN
     }
   },
-  "theta0_mc_mean": 5.120433051687234,
-  "theta0_mc_se": 0.0408096866426414,
-  "theta0_mc_sd_across_seeds": 0.09125323347341135
+  "theta0_mc_mean": 4.739613556743733,
+  "theta0_mc_se": 0.04437933975662765,
+  "theta0_mc_sd_across_seeds": 0.09923522049237841
 }

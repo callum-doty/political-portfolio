@@ -287,7 +287,12 @@ def run_continuous_phi_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: n
     # --- Backward induction over (t, remaining-budget grid state) ---
     remaining_days = np.array([(n_periods - t) * lsm.PERIOD_DAYS for t in range(n_periods + 1)])
 
-    term_val = norm.cdf(mu_committed[-1][:, -1, :] / sigma_arr).sum(axis=1)
+    # Same terminal-boundary fix as solve_bellman_lsm.py (2026-07-28 audit,
+    # extended after external review): mu_committed[-1][:, -1, :] already IS
+    # the fully resolved margin at T, so no separate sigma_i floor belongs
+    # here -- remaining_variance(sigma, 0) is exactly 0 for every race.
+    terminal_sigma = np.sqrt(np.maximum(lsm.remaining_variance(sigma_arr, 0.0), 1e-6))
+    term_val = norm.cdf(mu_committed[-1][:, -1, :] / terminal_sigma).sum(axis=1)
     V_star_by_g = {g: term_val.copy() for g in range(n_grid)}
 
     schedule = []

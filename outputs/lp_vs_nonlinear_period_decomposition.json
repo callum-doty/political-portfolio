@@ -1,0 +1,94 @@
+{
+  "periods_checked": [
+    0,
+    2,
+    4,
+    6
+  ],
+  "results": [
+    {
+      "period": 0,
+      "days_remaining": 98,
+      "lp_deploy_value": 230.53446929705393,
+      "nonlinear_deploy_value": 233.7370629092124,
+      "deploy_value_diff": 3.2025936121584664,
+      "lp": {
+        "n_funded_races": 7,
+        "concentration_top5_share": 0.7500000000000018,
+        "avg_party_alloc_funded": 56094788.000844054,
+        "max_party_alloc": 58899527.40088639,
+        "call_seconds": 0.015355825424194336
+      },
+      "nonlinear": {
+        "n_funded_races": 237,
+        "concentration_top5_share": 0.12319027100627676,
+        "avg_party_alloc_funded": 1656808.0821589972,
+        "max_party_alloc": 11881095.668741252,
+        "call_seconds": 63.22533297538757
+      }
+    },
+    {
+      "period": 2,
+      "days_remaining": 70,
+      "lp_deploy_value": 232.25265188127145,
+      "nonlinear_deploy_value": 235.21984404965104,
+      "deploy_value_diff": 2.967192168379597,
+      "lp": {
+        "n_funded_races": 7,
+        "concentration_top5_share": 0.7500000000000016,
+        "avg_party_alloc_funded": 56094788.00084407,
+        "max_party_alloc": 58899527.40088639,
+        "call_seconds": 0.011078119277954102
+      },
+      "nonlinear": {
+        "n_funded_races": 244,
+        "concentration_top5_share": 0.11517715670416206,
+        "avg_party_alloc_funded": 1609276.7039256038,
+        "max_party_alloc": 11080585.960621288,
+        "call_seconds": 49.5837938785553
+      }
+    },
+    {
+      "period": 4,
+      "days_remaining": 42,
+      "lp_deploy_value": 233.05288702954266,
+      "nonlinear_deploy_value": 235.1500229998405,
+      "deploy_value_diff": 2.097135970297842,
+      "lp": {
+        "n_funded_races": 7,
+        "concentration_top5_share": 0.7500000000000007,
+        "avg_party_alloc_funded": 56094788.000844136,
+        "max_party_alloc": 58899527.40088639,
+        "call_seconds": 0.009702920913696289
+      },
+      "nonlinear": {
+        "n_funded_races": 241,
+        "concentration_top5_share": 0.10959842550921094,
+        "avg_party_alloc_funded": 1629309.1948940617,
+        "max_party_alloc": 10557110.164513638,
+        "call_seconds": 49.01187467575073
+      }
+    },
+    {
+      "period": 6,
+      "days_remaining": 14,
+      "lp_deploy_value": 231.92029985407447,
+      "nonlinear_deploy_value": 233.0109272193256,
+      "deploy_value_diff": 1.0906273652511231,
+      "lp": {
+        "n_funded_races": 7,
+        "concentration_top5_share": 0.7500000000000006,
+        "avg_party_alloc_funded": 56094788.000844136,
+        "max_party_alloc": 58899527.40088639,
+        "call_seconds": 0.010252714157104492
+      },
+      "nonlinear": {
+        "n_funded_races": 258,
+        "concentration_top5_share": 0.1028280569132979,
+        "avg_party_alloc_funded": 1521951.5058653147,
+        "max_party_alloc": 9727994.626226377,
+        "call_seconds": 15.686423778533936
+      }
+    }
+  ]
+}

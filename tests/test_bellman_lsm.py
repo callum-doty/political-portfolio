@@ -496,6 +496,43 @@ class TestVarianceDoubleCountRegression:
         assert corrected < old_double_counted
         assert corrected == pytest.approx(np.sqrt(v_remaining), rel=1e-9)
 
+    def test_terminal_boundary_uses_same_formula_as_every_other_period(self, monkeypatch, synthetic_races, tmp_path):
+        """External review (2026-07-28) caught a second, subtler instance of
+        the same double-count: the terminal condition (used to seed V_star
+        for the whole backward induction) special-cased sigma_arr for the
+        default enable_stochastic=True path, even though every intermediate
+        period's widened_sigma had already been fixed to use v_remaining(t)
+        alone. This bug specifically required enable_stochastic=True (the
+        default, matching every headline Theta(0) run) to manifest --
+        TestVarianceDoubleCountRegression's static-benchmark test above uses
+        enable_stochastic=False throughout and would NOT have caught it,
+        since that path already used a near-zero terminal widening before
+        this fix too. This test forces every OTHER evolution channel off
+        (trickle, opponent reaction, and the idiosyncratic epsilon draw
+        itself, via a zeroed incremental_variances) while leaving
+        enable_stochastic=True -- the exact code path the bug lived in --
+        so nothing in the simulated state evolves and Theta must again be
+        exactly 0 at every period, including the one immediately before T
+        where the terminal anchor and the last intermediate widened_sigma
+        must now agree."""
+        monkeypatch.setattr(lsm, "build_universe", lambda cycle=2026: synthetic_races)
+        monkeypatch.setattr(lsm, "K_PATHS", 40)
+        monkeypatch.setattr(lsm, "N_PERIODS", 3)
+        monkeypatch.setattr(lsm, "_TRICKLE_PATH", tmp_path / "no_trickle_for_this_test.json")
+        monkeypatch.setattr(lsm, "incremental_variances",
+                             lambda sigma_static, n_periods: np.zeros(n_periods))
+        monkeypatch.setattr(lsm, "SIGMA_G_PER_SQRT_DAY", 0.0)
+
+        tiers_per_race = [r.cook_rating for r in synthetic_races]
+        eta_by_tier = {"Toss-Up": 0.0, "Lean D": 0.0, "Lean R": 0.0, "Safe D": 0.0, "Safe R": 0.0}
+        resid_by_tier = {"Toss-Up": 0.0, "Lean D": 0.0, "Lean R": 0.0, "Safe D": 0.0, "Safe R": 0.0}
+        eta_arr, resid_arr = lsm.tile_single_cycle(eta_by_tier, resid_by_tier, tiers_per_race, k_paths=40)
+        result = lsm.run_lsm(eta_arr, resid_arr, "terminal_boundary_regression_test",
+                              enable_trickle=False, enable_stochastic=True,
+                              enable_opponent_reaction=False)
+        for entry in result["theta_by_period"]:
+            assert entry["mean_theta"] == pytest.approx(0.0, abs=1e-6), entry
+
 
 class TestSpendTrickle:
     """docs/theta_followup_plan.md Section 0.1.1's blocked fix: wait-branch

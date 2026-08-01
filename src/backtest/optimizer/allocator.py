@@ -43,7 +43,7 @@ def _precompute_race_arrays(
     races: list[RaceRecord],
     coef: MarginModelCoefficients,
     sigma_model: SigmaModel,
-    eta: float = 0.0,
+    eta: float | np.ndarray = 0.0,
 ) -> dict:
     """
     Pre-compute per-race static arrays for the non-linear optimizer.
@@ -141,9 +141,16 @@ def _reactive_r(party: np.ndarray, arrays: dict) -> np.ndarray:
     When DCCC increases spending above observed levels, the NRCC/CLF are
     assumed to partially match the increment at rate η.  Spending at or
     below observed levels draws no adversarial response.
+
+    eta may be a scalar (uniform reaction) or a (n_races,) array (per-race,
+    e.g. per-Cook-tier reaction -- Paper III Section 4.1 rejects a pooled
+    scalar as mis-specified). np.all() keeps the scalar fast-path exact
+    while also handling the array case, which "eta == 0.0" alone cannot:
+    that comparison returns an array of booleans, and `if` on a multi-
+    element array raises ValueError.
     """
     eta = arrays["eta"]
-    if eta == 0.0:
+    if np.all(eta == 0.0):
         return np.maximum(arrays["r_total"], 1.0)
     increment = np.maximum(party - arrays["party_obs"], 0.0)
     return np.maximum(arrays["r_total"] + eta * increment, 1.0)
@@ -245,7 +252,7 @@ def optimize_nonlinear(
     gamma: float,
     cap_fraction: float,
     party_budget: float | None = None,
-    eta: float = 0.0,
+    eta: float | np.ndarray = 0.0,
     fixed_zero_mask: np.ndarray | None = None,
 ) -> OptimizerResult:
     """

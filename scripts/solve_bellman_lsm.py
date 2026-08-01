@@ -51,6 +51,7 @@ Output: outputs/theta_schedule.json
 """
 
 from __future__ import annotations
+import dataclasses
 import json
 import sys
 from datetime import date
@@ -68,7 +69,9 @@ from backtest import config
 from backtest.data.universe import build_universe
 from backtest.model.margin import MarginModelCoefficients
 from backtest.model.win_prob import compute_outputs_batch
-from backtest.optimizer.allocator import optimize
+from backtest.optimizer.allocator import (
+    optimize, optimize_nonlinear, _precompute_race_arrays, _reactive_r, _apply_ceiling,
+)
 from backtest.types import SigmaModel, ModelOutputs
 
 from estimate_eta_reaction import build_period_panel, build_delta_panel, TIERS
@@ -246,7 +249,7 @@ def margin_gradient(coef, pvi, incumb_status, d_total, r_total, eta: float = 0.0
 def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, label: str,
             eta_summary: dict | None = None, enable_trickle: bool = True,
             enable_stochastic: bool = True, enable_opponent_reaction: bool = True,
-            held_out_frac: float = 0.0) -> dict:
+            held_out_frac: float = 0.0, use_nonlinear_allocator: bool = False) -> dict:
     """eta_arr_by_path / resid_std_arr_by_path: shape (K_PATHS, n) -- either
     a single cycle's fit tiled identically across every path (tile_single_cycle,
     the original eta_fit_2022/eta_fit_2024 brackets) or a genuine per-path
@@ -274,7 +277,21 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
     realized future payoff never informed the regression that decided their
     stopping choice -- the standard fix for Longstaff-Schwartz's in-sample
     look-ahead bias. When 0 (default), behavior is unchanged: every path is
-    used both to fit and to evaluate, exactly as before this addition."""
+    used both to fit and to evaluate, exactly as before this addition.
+
+    use_nonlinear_allocator (LP-vs-nonlinear reduced-scope comparison,
+    "Option B" -- external review, 2026-07-29): if True, EVERY period's
+    deploy branch (not just t=0, unlike the cheaper "Option A" one-time
+    comparison in scripts/theta_lp_vs_nonlinear_deploy_branch.py) uses
+    optimize_nonlinear() instead of the fast LP allocator, scored via the
+    SAME ceiling-respecting mu computation Option A required after its own
+    smoke test caught a naive linear-gradient shortcut inflating deploy
+    value by ~46 seats out of 434 (bypassing the persuasion ceiling
+    entirely). Default False reproduces the existing LP-based behavior
+    exactly -- this flag changes nothing about any already-reported figure
+    unless explicitly set. optimize_nonlinear() is far slower per call
+    (tens of seconds to, occasionally, over an hour, vs. ~11ms for the LP),
+    so this is only ever run at a drastically reduced K_PATHS."""
     coef, sigma_model = load_coef_and_sigma()
     races = build_universe(cycle=2026)
     n = len(races)
@@ -437,41 +454,91 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         the mean-zero residual noise component is correctly left to
         widened_sigma, unchanged), and add the resulting shift on top of
         mu_t + delta_mu before convolving."""
-        p_win0 = norm.cdf(mu_t / sigma_arr)
-        phi0 = norm.pdf(mu_t / sigma_arr)
-        grad = np.array([margin_gradient(coef, pvi_arr[i], incumb_arr[i], d_t[i], r_t[i], eta_arr_k[i])
-                          for i in range(n)])
-        msg = phi0 / sigma_arr * grad
-        outs = [ModelOutputs(district_id=races[i].district_id, ratio=d_t[i] / (d_t[i] + r_t[i]),
-                              mu_hat=mu_t[i], sigma_i=sigma_arr[i], p_win=p_win0[i], msg_i=msg[i])
-                for i in range(n)]
-        res = optimize(outs, budget=F0, cov_matrix=np.eye(n) * 1e-6,
-                        gamma=0.0, cap_fraction=0.15, floor_allocations=d_t, party_budget=F0,
-                        d_total_obs=d_t)
-        delta_s = np.maximum(res.allocations - d_t, 0.0)
-        delta_mu = grad * delta_s
-
         r_terminal_expected = np.maximum(r_t + eta_arr_k * (d_terminal - d_t), 1.0)
         trickle_drift = _mu_struct_at(d_terminal, r_terminal_expected) - _mu_struct_at(d_t, r_t)
 
-        deployed_mu = mu_t + delta_mu + trickle_drift
+        if use_nonlinear_allocator:
+            # Option B: the allocation AND the resulting mu both come from
+            # the true, diminishing-returns-respecting objective -- reusing
+            # the allocator's own internal ceiling math directly (rather
+            # than re-deriving it) is what Option A's smoke test showed is
+            # required; a naive margin_gradient()-based delta_mu, applied to
+            # this allocator's (much larger, since it isn't knapsack-
+            # constrained by a linear objective) chosen allocations, bypasses
+            # the persuasion ceiling and inflates deploy value enormously.
+            #
+            # races (module-level 2026 universe, built once at the top of
+            # run_lsm()) carries each race's ORIGINAL, t=0 cand_d_total/
+            # r_total -- optimize_nonlinear() reads its per-race floor and R
+            # directly from those fields (it takes no separate floor
+            # argument), so at any period after t=0, d_t/r_t (this period's
+            # TRICKLED, simulated state) must be baked into fresh RaceRecord
+            # copies first, exactly the established pattern
+            # dynamic/ledger.py's apply_to_races() already uses for the same
+            # reason -- passing the stale, unmodified `races` here would
+            # optimize against the wrong (t=0) state for every period but
+            # the first.
+            # d_total is ALSO overridden (equal to cand_d_total=d_t), not just
+            # r_total/cand_d_total: _precompute_race_arrays derives party_obs
+            # (the "already observed" party-spend baseline _reactive_r's η
+            # threshold is measured against) from race.d_total. Leaving it at
+            # its real, historical 2026 value -- unrelated to the simulated
+            # d_t -- would give _reactive_r a stale, wrong threshold; setting
+            # d_total=d_t makes party_obs=0, matching the LP branch's own
+            # d_total_obs=d_t (zero party spend "already observed" relative
+            # to this period's own trickled baseline).
+            races_t = [dataclasses.replace(r, cand_d_total=float(d_t[i]), r_total=float(r_t[i]),
+                                            d_total=float(d_t[i]))
+                       for i, r in enumerate(races)]
+            res = optimize_nonlinear(races_t, coef, sigma_model, budget=F0, cov_matrix=np.eye(n) * 1e-6,
+                                      gamma=0.0, cap_fraction=0.15, party_budget=F0, eta=eta_arr_k)
+            arrays = _precompute_race_arrays(races_t, coef, sigma_model, eta=eta_arr_k)
+            party = np.maximum(res.allocations - d_t, 0.0)
+            d = np.maximum(arrays["floors"] + party, 1.0)
+            r = _reactive_r(party, arrays)
+            t_ = d + r
+            ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
+            log_ratio = np.log(ratio)
+            log_total_pv = np.log(t_ / arrays["cvap"])
+            mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+            mu_capped, _ = _apply_ceiling(mu_raw, arrays)
+            deployed_mu = mu_capped + trickle_drift
+        else:
+            p_win0 = norm.cdf(mu_t / sigma_arr)
+            phi0 = norm.pdf(mu_t / sigma_arr)
+            grad = np.array([margin_gradient(coef, pvi_arr[i], incumb_arr[i], d_t[i], r_t[i], eta_arr_k[i])
+                              for i in range(n)])
+            msg = phi0 / sigma_arr * grad
+            outs = [ModelOutputs(district_id=races[i].district_id, ratio=d_t[i] / (d_t[i] + r_t[i]),
+                                  mu_hat=mu_t[i], sigma_i=sigma_arr[i], p_win=p_win0[i], msg_i=msg[i])
+                    for i in range(n)]
+            res = optimize(outs, budget=F0, cov_matrix=np.eye(n) * 1e-6,
+                            gamma=0.0, cap_fraction=0.15, floor_allocations=d_t, party_budget=F0,
+                            d_total_obs=d_t)
+            delta_s = np.maximum(res.allocations - d_t, 0.0)
+            delta_mu = grad * delta_s
+            deployed_mu = mu_t + delta_mu + trickle_drift
+
         return norm.cdf(deployed_mu / widened_sigma).sum()
 
     # --- Backward induction ---
     remaining_days = np.array([(N_PERIODS - t) * PERIOD_DAYS for t in range(N_PERIODS + 1)])
 
-    # Mechanism-decomposition consistency fix (found via the A/B sanity check,
-    # 2026-07-28): the terminal boundary must respect enable_stochastic the
-    # same way the backward-induction loop's widened_sigma now does. Left
-    # hardcoded to sigma_arr regardless of the toggle, scenario A (everything
-    # off -- nothing evolves, so Theta should be ~0) instead gave Theta(0)
-    # comparable to the full model, because intermediate steps correctly
-    # collapsed to a ~0 floor while this anchor still applied the full,
-    # unrelated sigma_i -- a discontinuity exactly at the boundary that has
-    # nothing to do with genuine option value. When enable_stochastic=True
-    # (the default, matching every headline Theta(0) figure reported so far),
-    # this is unchanged: sigma_arr, matching Appendix C.1's stated boundary.
-    terminal_sigma = sigma_arr if enable_stochastic else np.sqrt(np.full_like(sigma_arr, 1e-6))
+    # Terminal boundary, made fully consistent with the intermediate-period
+    # fix (2026-07-28 audit, extended after external review caught the
+    # remaining inconsistency): mu_paths[:, -1, :] already IS the fully
+    # resolved simulated margin at T (eps_cum has accumulated its complete
+    # budget by construction -- Appendix B.2's telescoping identity). There
+    # is no separate, additional sigma_i-scale noise left to apply on top of
+    # that -- doing so was the same double-count as the intermediate-period
+    # bug, just at the one period where it happens to leave Theta(T)=0
+    # unaffected (both branches are still evaluated identically there) while
+    # still distorting the terminal ANCHOR value the whole backward
+    # induction is regressed against. remaining_variance(sigma, 0) is
+    # exactly 0 for every race regardless of the mechanism-decomposition
+    # toggles, so this is now the single formula used at every period,
+    # unconditionally -- no enable_stochastic branch needed here at all.
+    terminal_sigma = np.sqrt(np.maximum(remaining_variance(sigma_arr, 0.0), 1e-6))
     print(f"  [{label}] computing terminal condition (forced deploy, {K_PATHS} paths)...")
     V_star = np.array([
         _deploy_value(mu_paths[k, -1, :], r_paths[k, -1, :], terminal_sigma, eta_arr[k],
