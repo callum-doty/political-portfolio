@@ -86,6 +86,57 @@ def run_one_seed(seed: int) -> dict:
     }
 
 
+def run_one_seed_single_cycle(seed: int, fit_cycle: int) -> dict:
+    """Item (6): the same paired LP-vs-nonlinear comparison, but for a
+    single-cycle eta bracket (eta_fit_2022 or eta_fit_2024) instead of
+    eta_bootstrap_all_cycles -- tile_single_cycle's identical (eta,
+    resid_std) per tier across every path, rather than a per-path bootstrap
+    draw. `seed` controls only the state-path RNG here (d/r/eps/G_t), since
+    tile_single_cycle has no randomness of its own to seed."""
+    races = lsm.build_universe(cycle=2026)
+    tiers_per_race = [r.cook_rating for r in races]
+
+    eta_by_tier, resid_std_by_tier = lsm.fit_eta_and_resid(fit_cycle)
+    eta_arr_by_path, resid_std_arr_by_path = lsm.tile_single_cycle(
+        eta_by_tier, resid_std_by_tier, tiers_per_race, lsm.K_PATHS)
+    label = f"eta_fit_{fit_cycle}"
+
+    print(f"\n=== {label}, seed={seed}: nonlinear-throughout ===")
+    lsm.RNG = np.random.default_rng(seed)
+    t0 = time.time()
+    res_nonlinear = lsm.run_lsm(eta_arr_by_path, resid_std_arr_by_path,
+                                 f"{label}_seed{seed}_nonlinear",
+                                 eta_summary={"single_cycle_fit": eta_by_tier},
+                                 use_nonlinear_allocator=True)
+    elapsed_nonlinear = time.time() - t0
+    print(f"  -> wall time: {elapsed_nonlinear/3600:.2f} hours")
+
+    print(f"=== {label}, seed={seed}: LP-throughout, paired ===")
+    lsm.RNG = np.random.default_rng(seed)
+    t0 = time.time()
+    res_lp = lsm.run_lsm(eta_arr_by_path, resid_std_arr_by_path,
+                          f"{label}_seed{seed}_lp",
+                          eta_summary={"single_cycle_fit": eta_by_tier},
+                          use_nonlinear_allocator=False)
+    elapsed_lp = time.time() - t0
+
+    theta0_nonlinear = res_nonlinear["theta_by_period"][0]["mean_theta"]
+    theta0_lp = res_lp["theta_by_period"][0]["mean_theta"]
+    delta = theta0_nonlinear - theta0_lp
+    print(f"  {label} seed={seed}: Theta_LP(0)={theta0_lp:+.4f}  "
+          f"Theta_nonlinear(0)={theta0_nonlinear:+.4f}  Delta_allocator={delta:+.4f}")
+
+    return {
+        "scenario": label, "seed": seed,
+        "theta0_lp": theta0_lp, "theta0_nonlinear": theta0_nonlinear,
+        "delta_allocator": delta,
+        "frac_deploy_now_lp": res_lp["theta_by_period"][0]["frac_deploy_now"],
+        "frac_deploy_now_nonlinear": res_nonlinear["theta_by_period"][0]["frac_deploy_now"],
+        "nonlinear_wall_seconds": elapsed_nonlinear, "lp_wall_seconds": elapsed_lp,
+        "nonlinear_full": res_nonlinear, "lp_full": res_lp,
+    }
+
+
 def main():
     lsm.K_PATHS = K_PATHS_REDUCED
     print(f"K_PATHS={lsm.K_PATHS}, N_PERIODS={lsm.N_PERIODS} ({lsm.N_PERIODS * lsm.PERIOD_DAYS} days)")
