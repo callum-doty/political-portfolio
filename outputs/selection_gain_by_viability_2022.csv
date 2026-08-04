@@ -1,0 +1,6 @@
+scenario,modeled_gain,pct_of_headline
+A. All races,3.2225042472673806,100.0
+B. Flagged (publicly viable) excluded,1.0364887712223378,32.2
+"C. Unexplained residual only, newly-fundable",0.8294657425653327,25.7
+D. Flagged races soft-penalized,2.408908967646539,74.8
+E. Material unexplained-only (5-6 races),0.7706601583405472,23.9

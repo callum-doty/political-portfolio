@@ -195,10 +195,48 @@ Races closest to a genuine toss-up lose the least; the most lopsided-by-label ti
 
 ---
 
-## 9. Current state and open items
+## 9. External review: selection gain by viability-flag treatment
 
-- The retrospective +2.83/+3.22 finding is **not a hindsight artifact** — real-world-evaluated real-time signal converges to it smoothly in both tested cycles. This is the headline result of this investigation.
-- The 2026 live estimate should currently be read as **+4.2 seats** (floor-maturity-corrected), not +7.9, with the caveat that the underlying DCCC baseline is built from only 18 of 434 races and will move as `L_t` grows. Rerun `scripts/decompose_2026_gain_maturity_ceiling.py` periodically.
+An external review of this document (2026-08-04) pushed back directly on Section 1's headcount: *"counting flagged races is not enough... because 83-91% of Paper I's gain came from selecting previously unfunded races, this could mean that much of the gain comes from races the optimizer likes because it lacks viability information that DCCC observed or implicitly considered."* The reviewer specified the exact table needed and a decision rule for reading it: *"if X remains near two or three seats, your result becomes far more credible; if it falls near zero, the optimizer has mostly rediscovered races that were technically available but operationally nonviable."*
+
+**Script:** `scripts/decompose_selection_gain_by_viability.py` · **Output:** `outputs/selection_gain_by_viability{,_2022}.csv`
+
+Five eligible-universe scenarios, same optimizer and same DCCC-observed baseline throughout — only which races are fundable changes:
+
+| Scenario | 2024 gain | % of headline | 2022 gain | % of headline |
+|---|---|---|---|---|
+| A. All races (headline) | +2.83 | 100% | +3.22 | 100% |
+| **B. Flagged races hard-excluded** | **+0.61** | **21.5%** | **+1.04** | **32.2%** |
+| C. Unexplained residual only, newly-fundable | +0.45 | 15.8% | +0.83 | 25.7% |
+| D. Flagged races soft-penalized (graduated by n_flags) | +2.16 | 76.5% | +2.41 | 74.8% |
+| E. Material unexplained-only (5-6 races) | +0.43 | 15.3% | +0.77 | 23.9% |
+
+![Selection gain by viability-flag treatment, both cycles](../outputs/selection_gain_by_viability.png)
+
+*(`scripts/plot_selection_gain_by_viability.py`)*
+
+**Applying the reviewer's own decision rule: X (scenario B) lands at +0.61 / +1.04 — much closer to "near zero" than "near two or three seats."** When the 56/60 flagged races are hard-excluded, 78-85% of the headline gain disappears. A large majority of the retrospective headline is concentrated specifically in races with an independently plausible reason DCCC skipped them — the risk the reviewer named directly, not a hypothetical.
+
+The one real counterweight: under a graduated, non-binary penalty (scenario D — discount proportional to how many flags a race tripped, not full exclusion), 75-77% of the gain survives. Hard exclusion assumes a flagged race is worth exactly zero, which the audit never claimed — "weak fundraising" is a discount, not proof of zero viability. Which treatment is closer to the truth is a judgment call the data alone can't resolve, and this document does not resolve it either.
+
+Dollar allocation under the unrestricted optimum: $136M to flagged races vs. $28M to unexplained races (2024); $88.6M vs. $27.6M (2022). Per-race, the unexplained residual draws *more* money on average ($3.5M vs. $2.4M in 2024) than the flagged group — consistent with the model treating the residual as genuinely undervalued rather than marginal, for whatever that's worth given scenario B above.
+
+**This materially downgrades the confidence read from Sections 1-8.** The omitted-information audit's headcount (87.5%/83.3% explicable) reads as reassuring in isolation; the gain-weighted version does not.
+
+### 9.1 A partial, currently-unused district-validity layer
+
+The same review raised LA-06 (§7) as an instance of a broader need: a formal district-validity layer (current boundaries, rating freshness, redistricting flags, special-election status). Checked directly: `RaceRecord.redistricting_flagged` already exists and is already computed for every cycle (13 districts flagged for 2026, including LA-06) — but a repo-wide search confirms it is **passive metadata only**: stored, surfaced in the per-race output table, never used to exclude or discount anything in the optimizer, validation gates, or any decomposition in this document.
+
+Quantified for 2026: the 13 redistricting-flagged districts account for **+0.77 of the +7.9 gain (9.7%)** and $23.8M in recommended money — material, not dominant. NC-14 and NC-06 are the largest individual contributors among them. A full validity layer (current candidate roster, incumbency, rating freshness date, structural-input comparability) as the reviewer specifies remains unbuilt; this is confirmation that the one piece already on hand (`redistricting_flagged`) is real but currently inert.
+
+---
+
+## 10. Current state and open items
+
+- The retrospective +2.83/+3.22 finding is **not a hindsight artifact** — real-world-evaluated real-time signal converges to it smoothly in both tested cycles. This remains true.
+- **But Section 9 downgrades how much of that finding should be trusted as genuine targeting inefficiency versus the optimizer lacking viability information DCCC had.** Under hard exclusion of flagged races, 78-85% of the headline evaporates — closer to the reviewer's "near zero" reading than "near two or three seats." The soft-penalty version keeps 75-77%. Read Sections 1-8's confidence level through Section 9, not independently of it.
+- The 2026 live estimate should currently be read as **+4.2 seats** (floor-maturity-corrected), not +7.9 — and Section 9's viability discount has not yet been applied on top of that; the two corrections have not been combined into a single number. The underlying DCCC baseline is also still built from only 18 of 434 races and will move as `L_t` grows. Rerun `scripts/decompose_2026_gain_maturity_ceiling.py` periodically.
+- **Not yet built, both explicitly out of scope for this document:** (1) a genuine predictive model of DCCC's *eventual* allocation conditional on today's information (Cook/PVI, candidate and opponent funds, incumbency, historical pacing, days remaining, national environment) — the +7.9/+4.2 figures compare against a naive proportional scaling of DCCC's thin current pattern, not a real forecast of where DCCC will end up, which is the actually-decisive missing comparison; (2) a joint uncertainty simulation over DCCC's future targeting and intensity, future candidate/opponent spending, GB movement, model coefficients, the maturity-ceiling calibration, viability constraints, and Θ/reserve-policy uncertainty — the bootstrap CI in Section 5 only ever measured resampling noise within the 18 committed races, never the dominant uncertainty (the missing 416-race pattern). Both are real next steps, not implemented here.
 - `floor_maturity` is implemented as an opt-in parameter throughout (`ceiling.py`, `allocator.py`'s `optimize_nonlinear()` and `nonlinear_expected_seats_at_party_dollars()`) — **not yet the default** anywhere, including the live 2026 pipeline (`scripts/plot_2026_live_allocation.py`). Whether to make it the default is an open decision, not yet made.
 - The `$6,915,158` floor-maturity reference is a single calibrated value (2024 competitive-race p25), not yet swept the way `c_max` was (Paper I Appendix E.1, 7 points). A robustness sweep of this threshold is the natural next check before treating +4.2 as load-bearing.
 - Two bugs fixed along the way are permanent, real fixes independent of this document's main thread: `dynamic/simulate.py`'s frozen `cand_d_total`, and the two separate issues previously making `outputs/dynamic_timing_*.csv` untrustworthy (`config.yaml`'s `commitment_mode: "zero"` default never shrinking `F_t`, and `dynamic/timing.py` comparing a full-remaining-budget recommendation against a per-period incremental actual). The second pair is documented but **not yet fixed** — flagged for future work, same as this project's own established practice of flagging rather than silently chasing everything in one pass.
@@ -219,6 +257,8 @@ Races closest to a genuine toss-up lose the least; the most lopsided-by-label ti
 | `scripts/plot_2026_gain_robustness.py` | Figure for §5–6 |
 | `scripts/check_2026_likely_r_ceiling_balance.py` | Likely R / Safe R Φ0/persuadability/saturation diagnosis (§7) |
 | `scripts/decompose_2026_gain_maturity_ceiling.py` | Floor-maturity ceiling, second test (§8) |
+| `scripts/decompose_selection_gain_by_viability.py` | Selection gain by viability-flag treatment, 5 scenarios (§9) |
+| `scripts/plot_selection_gain_by_viability.py` | Figure for §9 |
 
 | Code change | File |
 |---|---|
