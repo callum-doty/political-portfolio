@@ -9,3 +9,32 @@ Dropping 11 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'NY-29', 'PR
 _ballot_last_names(2026): /Users/callumdoty/Desktop/Political Portfolio/data/raw/mit_elections/1976-2024-house.tab has no GEN-stage rows for 2026 (MIT MEDSL data lags the live cycle — its latest covered year is typically the prior completed election). The Senate/President-runner exclusion filter in load_candidate_disbursements() will be SKIPPED for this cycle: any House member's committee that disbursed >$10M while running for a different office will NOT be excluded from district totals until MIT's data catches up.
 _ballot_last_names(2026): /Users/callumdoty/Desktop/Political Portfolio/data/raw/mit_elections/1976-2024-house.tab has no GEN-stage rows for 2026 (MIT MEDSL data lags the live cycle — its latest covered year is typically the prior completed election). The Senate/President-runner exclusion filter in load_candidate_disbursements() will be SKIPPED for this cycle: any House member's committee that disbursed >$10M while running for a different office will NOT be excluded from district totals until MIT's data catches up.
 Dropping 11 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+scenario=eta_fit_2024 K_PATHS=15, N_PERIODS=7 (98 days)
+
+=== Surrogate-throughout (paired) ===
+  [eta_fit_2024_surrogate] computing terminal condition (forced deploy, 15 paths)...
+  [eta_fit_2024_surrogate] t=6 (14d left): mean Theta=-2.3319 seats, frac(deploy now)=1.000, basis R2=0.184, g_t_coef=+0.33256 (p=0.468)
+  [eta_fit_2024_surrogate] t=5 (28d left): mean Theta=-1.8970 seats, frac(deploy now)=1.000, basis R2=0.741, g_t_coef=+0.11838 (p=0.158)
+  [eta_fit_2024_surrogate] t=4 (42d left): mean Theta=-1.3438 seats, frac(deploy now)=1.000, basis R2=0.462, g_t_coef=-0.14144 (p=0.148)
+  [eta_fit_2024_surrogate] t=3 (56d left): mean Theta=-1.1860 seats, frac(deploy now)=1.000, basis R2=0.181, g_t_coef=+0.02088 (p=0.853)
+  [eta_fit_2024_surrogate] t=2 (70d left): mean Theta=-0.8803 seats, frac(deploy now)=1.000, basis R2=0.132, g_t_coef=-0.07918 (p=0.513)
+  [eta_fit_2024_surrogate] t=1 (84d left): mean Theta=-0.7247 seats, frac(deploy now)=1.000, basis R2=0.334, g_t_coef=-0.09550 (p=0.427)
+  [eta_fit_2024_surrogate] t=0 (98d left): mean Theta=-0.4530 seats, frac(deploy now)=1.000, basis R2=0.000, g_t_coef=+0.00000 (p=nan)
+  -> surrogate-throughout wall time: 5.5s
+
+=== Nonlinear-throughout, SAME state-path RNG seed (paired) ===
+  [eta_fit_2024_nonlinear] computing terminal condition (forced deploy, 15 paths)...
+  [eta_fit_2024_nonlinear] t=6 (14d left): mean Theta=-2.3188 seats, frac(deploy now)=1.000, basis R2=0.201, g_t_coef=+0.16406 (p=0.702)
+  [eta_fit_2024_nonlinear] t=5 (28d left): mean Theta=-1.8905 seats, frac(deploy now)=1.000, basis R2=0.732, g_t_coef=+0.10671 (p=0.199)
+  [eta_fit_2024_nonlinear] t=4 (42d left): mean Theta=-1.3536 seats, frac(deploy now)=1.000, basis R2=0.459, g_t_coef=-0.14763 (p=0.134)
+  [eta_fit_2024_nonlinear] t=3 (56d left): mean Theta=-1.1765 seats, frac(deploy now)=1.000, basis R2=0.179, g_t_coef=+0.02167 (p=0.848)
+  [eta_fit_2024_nonlinear] t=2 (70d left): mean Theta=-0.8813 seats, frac(deploy now)=1.000, basis R2=0.137, g_t_coef=-0.07601 (p=0.528)
+  [eta_fit_2024_nonlinear] t=1 (84d left): mean Theta=-0.7233 seats, frac(deploy now)=1.000, basis R2=0.324, g_t_coef=-0.09107 (p=0.447)
+  [eta_fit_2024_nonlinear] t=0 (98d left): mean Theta=-0.4606 seats, frac(deploy now)=1.000, basis R2=0.000, g_t_coef=+0.00000 (p=nan)
+  -> nonlinear-throughout wall time: 9.74 hours
+
+Theta(0) surrogate-throughout: -0.4530  (frac_deploy=1.000)
+Theta(0) nonlinear-throughout: -0.4606  (frac_deploy=1.000)
+Per-path deploy/wait classification agreement at t=0: 1.000 (15/15 paths)
+
+Saved -> /Users/callumdoty/Desktop/Political Portfolio/outputs/theta_surrogate_vs_nonlinear_eta_fit_2024.json
