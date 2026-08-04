@@ -44,6 +44,7 @@ def _precompute_race_arrays(
     coef: MarginModelCoefficients,
     sigma_model: SigmaModel,
     eta: float | np.ndarray = 0.0,
+    floor_maturity: np.ndarray | None = None,
 ) -> dict:
     """
     Pre-compute per-race static arrays for the non-linear optimizer.
@@ -56,6 +57,13 @@ def _precompute_race_arrays(
           η = 1.0 → dollar-for-dollar matching (MSG → 0 at spending parity).
           Late-cycle deployments behave as if η ≈ 0 because ad inventory
           is exhausted and NRCC cannot effectively redirect capital.
+    floor_maturity : (n_races,) optional, in [0, 1]. Scales the persuasion
+          ceiling per race (model/ceiling.py's portfolio-level fix) --
+          None (default) means every race gets maturity=1.0, identical to
+          the ceiling's original, unmodified behavior. Only non-None when a
+          caller explicitly wants the floor-maturity correction (e.g. the
+          real-time information-date checkpoint sweep); Paper I's
+          retrospective pipeline never passes this and is unaffected.
     """
     n = len(races)
     pvi = np.array([r.pvi for r in races])
@@ -114,7 +122,8 @@ def _precompute_race_arrays(
         for i in range(n)
     ])
     c_max = config.persuasion_ceiling_c_max()
-    C = ceiling.ceiling(mu_floor, sigma, c_max)
+    maturity_factor = 1.0 if floor_maturity is None else floor_maturity
+    C = ceiling.ceiling(mu_floor, sigma, c_max, maturity_factor)
 
     return dict(mu_const=mu_const, c_spend=c_spend, sigma=sigma,
                 r_total=r_total, floors=floors, cvap=cvap, alpha4=alpha4,
@@ -210,6 +219,7 @@ def nonlinear_expected_seats_at_party_dollars(
     sigma_model: SigmaModel,
     party_dollars: np.ndarray,
     eta: float = 0.0,
+    floor_maturity: np.ndarray | None = None,
 ) -> float:
     """
     True nonlinear E[Seats] = Σ Φ(μᵢ(Dᵢ)/σᵢ) for an explicit DCCC party-dollar
@@ -237,8 +247,16 @@ def nonlinear_expected_seats_at_party_dollars(
          personal war chest and redirect it to a Toss-Up, a power no real
          committee has and the model optimizer was never given.
     Both are confirmed fixed by scripts/investigate_null_benchmark_bias.py.
+
+    floor_maturity : (n_races,) optional, in [0, 1]. Portfolio-level
+        persuasion-ceiling correction (model/ceiling.py) -- None (default)
+        reproduces the original ceiling exactly. Pass the SAME array used
+        to produce party_dollars (e.g. from optimize_nonlinear) to keep the
+        decision and its evaluation on the same modeling basis; mixing an
+        uncorrected evaluation with a corrected decision scores the
+        recommendation against a ceiling it was never optimized under.
     """
-    arrays = _precompute_race_arrays(races, coef, sigma_model, eta=eta)
+    arrays = _precompute_race_arrays(races, coef, sigma_model, eta=eta, floor_maturity=floor_maturity)
     party = np.maximum(party_dollars, 0.0)
     return float(_p_win_vec(party, arrays).sum())
 
@@ -254,6 +272,7 @@ def optimize_nonlinear(
     party_budget: float | None = None,
     eta: float | np.ndarray = 0.0,
     fixed_zero_mask: np.ndarray | None = None,
+    floor_maturity: np.ndarray | None = None,
 ) -> OptimizerResult:
     """
     Non-linear portfolio optimizer using direct Φ(μ(D)/σ) evaluation.
@@ -272,6 +291,9 @@ def optimize_nonlinear(
                     NRCC/CLF match fraction of each new DCCC dollar above
                     observed spending. Set to 0 for retrospective analysis
                     or late-cycle deployment where γ ≈ 0 (ad inventory sold).
+    floor_maturity : (n_races,) optional, in [0, 1]. Portfolio-level
+                    persuasion-ceiling correction (model/ceiling.py) --
+                    None (default) reproduces the original ceiling exactly.
     fixed_zero_mask : (n_races,) boolean, optional. Races where True are
                     held at exactly zero party allocation (upper bound
                     forced to 0.0 alongside the usual lower bound of 0.0),
@@ -286,7 +308,7 @@ def optimize_nonlinear(
                     the same party budget across the already-funded set.
     """
     n = len(races)
-    arrays = _precompute_race_arrays(races, coef, sigma_model, eta=eta)
+    arrays = _precompute_race_arrays(races, coef, sigma_model, eta=eta, floor_maturity=floor_maturity)
     floors = arrays["floors"]
 
     pb = party_budget if party_budget is not None else float(np.sum(

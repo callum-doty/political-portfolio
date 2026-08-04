@@ -174,6 +174,19 @@ def _reconstruct_races_at(
             race,
             d_total=d_cand + d_coord + d_ie,
             r_total=r_cand + r_coord + r_ie,
+            # Bug fix (found while building the portfolio-level ceiling
+            # check): cand_d_total -- the field every optimizer/ceiling call
+            # actually reads as each race's floor -- was never updated here,
+            # only d_total/r_total. This module's own docstring already
+            # claimed "applied dynamically ... instead of being folded into
+            # this fixed total" for candidate spend; that claim was true for
+            # d_total but not for cand_d_total, so every downstream floor
+            # computation (predict_floor_margin, the persuasion ceiling,
+            # optimize_nonlinear's floor constraint) was silently using the
+            # cycle-*final* candidate floor at every historical checkpoint,
+            # not the period-specific one. No existing test caught this --
+            # TestDatedCandidateSpendReconstruction only asserts d_total.
+            cand_d_total=d_cand,
         ))
     return snapshot
 

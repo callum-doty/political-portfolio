@@ -77,6 +77,10 @@ def persuasion_ceiling_c_max() -> float:
     return float(_cfg["persuasion_ceiling"]["c_max"])
 
 
+def floor_maturity_reference_dollars() -> float:
+    return float(_cfg["persuasion_ceiling"]["floor_maturity_reference_dollars"])
+
+
 def validation_cfg() -> dict:
     return _cfg["validation"]
 

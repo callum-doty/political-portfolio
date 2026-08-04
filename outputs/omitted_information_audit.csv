@@ -1,0 +1,65 @@
+district_id,cook_rating,incumb_status,pvi,cand_d_total,r_total,outspent_ratio,indiv_share,msg_i_per_1m,model_recommended_party_dollars,model_party_share_pct,weak_fundraising,low_grassroots_support,severely_outspent,deep_structural_pvi,n_flags,explicable_by_observables,marginal_model_conviction
+VA-10,Lean D,Open,4.93,2838558.0,9517135.0,3.35,0.8,0.053161,9211875.0,1.981,True,False,True,False,2,True,False
+WI-01,Lean R,Challenger,-2.91,2295665.0,5885715.0,2.56,0.817,0.042084,7196268.0,1.548,True,False,False,False,1,True,False
+PA-01,Toss-Up,Challenger,-0.33,3962974.0,3794857.0,0.96,0.907,0.026159,7176770.0,1.543,False,False,False,False,0,False,False
+CA-03,Likely R,Challenger,-4.26,3262406.0,4352725.0,1.33,0.913,0.029554,6758137.0,1.453,True,False,False,False,1,True,False
+CA-40,Lean R,Challenger,-2.35,2080923.0,10118044.0,4.86,0.317,0.048882,6217052.0,1.337,True,True,True,False,3,True,False
+AZ-02,Likely R,Challenger,-6.43,5457626.0,8516970.0,1.56,0.963,0.015253,5901365.0,1.269,False,False,False,False,0,False,False
+FL-27,Toss-Up,Challenger,2.7,641799.0,1849517.0,2.88,0.906,0.243856,5699267.0,1.226,True,False,False,False,1,True,False
+MT-01,Likely R,Challenger,-6.65,6205246.0,9655719.0,1.56,0.86,0.012804,5687561.0,1.223,False,False,False,False,0,False,False
+NJ-02,Likely R,Challenger,-4.76,1705654.0,2950258.0,1.73,0.524,0.056759,5617433.0,1.208,True,True,False,False,2,True,False
+FL-28,Toss-Up,Challenger,0.74,1186116.0,1270924.0,1.07,0.919,0.094393,5305626.0,1.141,True,False,False,False,1,True,False
+NY-02,Likely R,Challenger,-3.77,1025032.0,2757787.0,2.69,0.826,0.102747,4966322.0,1.068,True,False,False,False,1,True,False
+MI-04,Likely R,Challenger,-5.2,1051050.0,3229965.0,3.07,0.947,0.084607,3947345.0,0.849,True,False,True,False,2,True,False
+FL-15,Likely R,Challenger,-3.49,542647.0,1815179.0,3.35,0.79,0.193511,3744917.0,0.805,True,False,True,False,2,True,False
+MN-01,Likely R,Open,-7.85,1200515.0,1914098.0,1.59,0.0,0.06325,3707081.0,0.797,True,True,False,False,2,True,False
+MN-08,Safe R,Challenger,-8.04,1231132.0,2176224.0,1.77,0.931,0.052038,3414665.0,0.734,True,False,False,False,1,True,False
+WI-08,Safe R,Open,-10.17,2776592.0,1557633.0,0.56,0.95,0.018426,3395563.0,0.73,True,False,False,False,1,True,False
+NC-13,Toss-Up,Incumbent,-1.86,1731102.0,4512302.0,2.61,0.364,0.24586,3264137.0,0.702,True,True,False,False,2,True,False
+CA-09,Likely D,Incumbent,4.99,4876310.0,3632540.0,0.74,0.832,0.0342,3084005.0,0.663,False,False,False,False,0,False,False
+CA-23,Safe R,Challenger,-8.14,770326.0,905220.0,1.18,0.959,0.088729,3069297.0,0.66,True,False,False,False,1,True,False
+NC-06,Likely D,Incumbent,4.16,988076.0,1480495.0,1.5,0.714,0.409459,2991689.0,0.643,True,False,False,False,1,True,False
+NC-14,Likely D,Incumbent,5.04,971905.0,1475689.0,1.52,0.691,0.411048,2876017.0,0.618,True,True,False,False,2,True,False
+TN-07,Safe R,Open,-10.1,1246180.0,2254372.0,1.81,0.969,0.055053,2821005.0,0.607,True,False,False,False,1,True,False
+VA-01,Likely R,Challenger,-6.88,722446.0,2005528.0,2.78,0.878,0.104437,2703880.0,0.581,True,False,False,False,1,True,False
+SC-01,Likely R,Challenger,-7.79,1093784.0,3053336.0,2.79,0.906,0.061766,2645574.0,0.569,True,False,False,False,1,True,False
+CO-04,Safe R,Open,-13.92,4278182.0,5434885.0,1.27,0.983,0.010261,2409017.0,0.518,False,False,False,False,0,False,False
+NH-01,Lean D,Incumbent,-0.62,3774742.0,1454683.0,0.39,0.669,0.019725,2312167.0,0.497,False,True,False,False,1,True,True
+NC-11,Safe R,Challenger,-8.23,620896.0,1432022.0,2.31,0.982,0.107867,2234031.0,0.48,True,False,False,False,1,True,True
+MD-02,Likely D,Open,6.59,1404405.0,325170.0,0.23,0.791,0.024822,2055210.0,0.442,True,False,False,False,1,True,True
+NH-02,Lean D,Open,1.2,4300981.0,896786.0,0.21,0.901,0.008587,2024719.0,0.435,False,False,False,False,0,False,True
+FL-09,Safe D,Incumbent,9.59,2209328.0,2081585.0,0.94,0.342,0.08398,2022760.0,0.435,True,True,False,False,2,True,True
+FL-22,Likely D,Incumbent,7.93,2245556.0,1881546.0,0.84,0.668,0.078826,2021839.0,0.435,True,True,False,False,2,True,True
+CT-02,Lean D,Incumbent,2.13,1139653.0,757453.0,0.66,0.457,0.156632,1841322.0,0.396,True,True,False,False,2,True,True
+OR-04,Likely D,Incumbent,3.83,2615675.0,1358091.0,0.52,0.526,0.02405,1799251.0,0.387,True,True,False,False,2,True,True
+TX-24,Safe R,Challenger,-11.11,1161871.0,2266135.0,1.95,0.98,0.035737,1769129.0,0.38,True,False,False,False,1,True,True
+AZ-04,Lean D,Incumbent,1.62,1813860.0,825631.0,0.46,0.701,0.06041,1677070.0,0.361,True,False,False,False,1,True,True
+IA-02,Likely R,Challenger,-4.04,501481.0,3828581.0,7.63,0.934,0.143714,1586702.0,0.341,True,False,True,False,2,True,True
+NM-01,Lean D,Challenger,4.29,1218913.0,191416.0,0.16,0.71,0.019393,1571561.0,0.338,True,False,False,False,1,True,True
+MN-03,Likely D,Open,6.68,2238265.0,372979.0,0.17,0.851,0.011618,1545611.0,0.332,True,False,False,False,1,True,True
+TN-05,Safe R,Challenger,-9.1,428528.0,1054347.0,2.46,0.977,0.138183,1512769.0,0.325,True,False,False,False,1,True,True
+MO-02,Likely R,Challenger,-7.99,678236.0,2697844.0,3.98,0.944,0.085307,1448754.0,0.312,True,False,True,False,2,True,True
+VA-05,Likely R,Challenger,-6.76,353530.0,1431065.0,4.05,0.949,0.191784,1437758.0,0.309,True,False,True,False,2,True,True
+IN-01,Likely D,Incumbent,3.57,3162106.0,1191044.0,0.38,0.606,0.015171,1382788.0,0.297,True,True,False,False,2,True,True
+OH-15,Likely R,Challenger,-6.12,472612.0,2620026.0,5.54,0.351,0.135144,1319076.0,0.284,True,True,True,False,3,True,True
+MI-03,Lean D,Incumbent,0.52,4946506.0,1292985.0,0.26,0.708,0.007928,1301106.0,0.28,False,False,False,False,0,False,True
+WA-06,Likely D,Open,6.01,1951071.0,255580.0,0.13,0.782,0.008451,1267434.0,0.273,True,False,False,False,1,True,True
+FL-07,Likely R,Challenger,-5.12,277060.0,1614017.0,5.83,0.447,0.258652,1255192.0,0.27,True,True,True,False,3,True,True
+TX-03,Safe R,Challenger,-12.26,428977.0,119411.0,0.28,0.342,0.059295,1244891.0,0.268,True,True,False,False,2,True,True
+OH-10,Likely R,Challenger,-4.18,205054.0,1395565.0,6.81,0.795,0.367014,1141512.0,0.245,True,False,True,False,2,True,True
+MI-01,Safe R,Challenger,-12.86,1004282.0,1917998.0,1.91,0.958,0.036531,1128092.0,0.243,True,False,False,False,1,True,True
+GA-02,Likely D,Incumbent,3.24,1785250.0,598266.0,0.34,0.363,0.035488,1072205.0,0.231,True,True,False,False,2,True,True
+PA-16,Safe R,Challenger,-12.69,771634.0,1531454.0,1.98,0.836,0.049944,1025086.0,0.22,True,False,False,False,1,True,True
+FL-23,Likely D,Incumbent,5.29,2091402.0,745570.0,0.36,0.669,0.029115,962544.0,0.207,True,True,False,False,2,True,True
+TX-28,Likely D,Incumbent,5.1,2489675.0,794117.0,0.32,0.506,0.021134,914755.0,0.197,True,True,False,False,2,True,True
+MD-06,Lean D,Incumbent,1.14,5930649.0,1367518.0,0.23,0.28,0.006235,880339.0,0.189,False,True,False,False,1,True,True
+NJ-03,Likely D,Incumbent,4.32,1315834.0,422738.0,0.32,0.649,0.042747,823624.0,0.177,True,True,False,False,2,True,True
+RI-01,Safe D,Challenger,12.3,1641064.0,303296.0,0.18,0.736,0.009508,800331.0,0.172,True,False,False,False,1,True,True
+IL-11,Likely D,Incumbent,5.09,2537017.0,664293.0,0.26,0.624,0.013645,734480.0,0.158,True,True,False,False,2,True,True
+NY-11,Likely R,Challenger,-5.64,273868.0,2075796.0,7.58,1.0,0.208408,725381.0,0.156,True,False,True,False,2,True,True
+NY-25,Likely D,Incumbent,7.0,1826736.0,603551.0,0.33,0.235,0.026412,703283.0,0.151,True,True,False,False,2,True,True
+CA-21,Safe D,Incumbent,9.24,1885604.0,753557.0,0.4,0.406,0.027107,679206.0,0.146,True,True,False,False,2,True,True
+CA-51,Safe D,Incumbent,11.44,1737189.0,762056.0,0.44,0.304,0.030958,576912.0,0.124,True,True,False,False,2,True,True
+OK-05,Safe R,Challenger,-12.64,575447.0,1648512.0,2.86,0.951,0.058824,575187.0,0.124,True,False,False,False,1,True,True
+OH-01,Lean D,Incumbent,1.49,3607909.0,538753.0,0.15,0.722,0.005344,484007.0,0.104,False,False,False,False,0,False,True
+WA-05,Safe R,Challenger,-8.08,591454.0,4670285.0,7.9,0.916,0.041197,481273.0,0.103,True,False,True,False,2,True,True

@@ -1,0 +1,37 @@
+{
+  "cycle": 2024,
+  "n_zero_funded_dccc": 377,
+  "n_newly_funded_by_model": 64,
+  "n_explicable_by_observables": 56,
+  "n_unexplained": 8,
+  "pct_unexplained": 12.5,
+  "n_unexplained_and_material": 5,
+  "flag_prevalence": {
+    "weak_fundraising": 54,
+    "low_grassroots_support": 23,
+    "severely_outspent": 12,
+    "deep_structural_pvi": 0
+  },
+  "n_marginal_model_conviction": 39,
+  "cohort_thresholds": {
+    "competitive_cand_d_total_p25": 3607908.97,
+    "competitive_indiv_share_p25": 0.6946469194084062
+  },
+  "unexplained_district_ids": [
+    "PA-01",
+    "AZ-02",
+    "MT-01",
+    "CA-09",
+    "CO-04",
+    "NH-02",
+    "MI-03",
+    "OH-01"
+  ],
+  "unexplained_and_material_district_ids": [
+    "PA-01",
+    "AZ-02",
+    "MT-01",
+    "CA-09",
+    "CO-04"
+  ]
+}

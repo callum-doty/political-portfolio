@@ -131,6 +131,21 @@ optimizer:
 # vs. 45% uncapped.
 persuasion_ceiling:
   c_max: 10.0
+  # Floor-maturity reference (docs -- model/ceiling.py's maturity()):
+  # combined D+R candidate-only floor spend, in dollars, above which a
+  # race's ceiling is treated as fully calibrated (maturity=1.0). Set to
+  # the 25th percentile of combined (cand_d_total + r_total) across the
+  # 53 Cook Toss-Up/Lean D/Lean R races in the 2024 cycle-FINAL universe
+  # (computed directly: build_universe(2024) -> competitive_subset(),
+  # 2026-08-04) -- i.e. "even a below-median competitive race, by the end
+  # of the cycle, has raised at least this much." Deliberately NOT the
+  # median (~$10.9M) or higher: using a threshold most final-cycle races
+  # clear only barely would itself distort Paper I's validated headline
+  # numbers, which this correction must leave untouched. Only used when a
+  # caller explicitly passes floor_maturity to optimize_nonlinear() --
+  # Paper I's own pipeline never does, so its numbers are unaffected
+  # regardless of this value.
+  floor_maturity_reference_dollars: 6915157.56
 
 # ─── Validation gate thresholds ───────────────────────────────────────────────
 validation:

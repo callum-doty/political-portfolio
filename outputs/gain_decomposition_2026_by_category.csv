@@ -1,0 +1,13 @@
+dimension,category,total_delta_seats,count
+cook_rating,Lean D,0.790886519390651,29
+cook_rating,Lean R,0.8240218338425681,10
+cook_rating,Likely D,1.1071514072331854,41
+cook_rating,Likely R,2.6168075014439376,37
+cook_rating,Safe D,0.5944845403548842,141
+cook_rating,Safe R,1.205275797851725,161
+cook_rating,Toss-Up,0.7635359280910805,15
+incumb_status,Challenger,5.525893480640366,195
+incumb_status,Incumbent,1.6183326835899026,189
+incumb_status,Open,0.7579373639777643,50
+committed_status,18 currently-committed races,0.09448929114511831,18
+committed_status,416 zero-committed races,7.807674237062914,416

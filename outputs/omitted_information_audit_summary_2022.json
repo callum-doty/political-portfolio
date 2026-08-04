@@ -1,0 +1,42 @@
+{
+  "cycle": 2022,
+  "n_zero_funded_dccc": 363,
+  "n_newly_funded_by_model": 72,
+  "n_explicable_by_observables": 60,
+  "n_unexplained": 12,
+  "pct_unexplained": 16.7,
+  "n_unexplained_and_material": 6,
+  "flag_prevalence": {
+    "weak_fundraising": 58,
+    "low_grassroots_support": 26,
+    "severely_outspent": 19,
+    "deep_structural_pvi": 6
+  },
+  "n_marginal_model_conviction": 44,
+  "cohort_thresholds": {
+    "competitive_cand_d_total_p25": 2700067.65,
+    "competitive_indiv_share_p25": 0.6657829113786954
+  },
+  "unexplained_district_ids": [
+    "CA-40",
+    "IA-01",
+    "IA-02",
+    "NJ-03",
+    "CA-03",
+    "NY-11",
+    "MD-01",
+    "IL-11",
+    "VA-10",
+    "NC-06",
+    "MT-01",
+    "KY-03"
+  ],
+  "unexplained_and_material_district_ids": [
+    "CA-40",
+    "IA-01",
+    "IA-02",
+    "NJ-03",
+    "CA-03",
+    "NY-11"
+  ]
+}
