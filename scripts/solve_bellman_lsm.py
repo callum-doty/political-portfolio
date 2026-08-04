@@ -76,6 +76,7 @@ from backtest.types import SigmaModel, ModelOutputs
 
 from estimate_eta_reaction import build_period_panel, build_delta_panel, TIERS
 from simulate_and_validate import incremental_variances, remaining_variance, SIGMA_G_PER_SQRT_DAY
+from concave_surrogate import surrogate_allocate
 
 ROOT = Path(__file__).parent.parent
 RNG = np.random.default_rng(20260716)
@@ -249,7 +250,8 @@ def margin_gradient(coef, pvi, incumb_status, d_total, r_total, eta: float = 0.0
 def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, label: str,
             eta_summary: dict | None = None, enable_trickle: bool = True,
             enable_stochastic: bool = True, enable_opponent_reaction: bool = True,
-            held_out_frac: float = 0.0, use_nonlinear_allocator: bool = False) -> dict:
+            held_out_frac: float = 0.0, use_nonlinear_allocator: bool = False,
+            use_surrogate_allocator: bool = False, return_period0_action: bool = False) -> dict:
     """eta_arr_by_path / resid_std_arr_by_path: shape (K_PATHS, n) -- either
     a single cycle's fit tiled identically across every path (tile_single_cycle,
     the original eta_fit_2022/eta_fit_2024 brackets) or a genuine per-path
@@ -457,7 +459,33 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         r_terminal_expected = np.maximum(r_t + eta_arr_k * (d_terminal - d_t), 1.0)
         trickle_drift = _mu_struct_at(d_terminal, r_terminal_expected) - _mu_struct_at(d_t, r_t)
 
-        if use_nonlinear_allocator:
+        if use_surrogate_allocator:
+            # Item (5) of Section 8.9's investigation plan: a validated,
+            # LP-speed (~0.025s/call vs. optimize_nonlinear()'s 40s-3,600s)
+            # surrogate that still respects diminishing returns, unlike the
+            # LP allocator. Validated (scripts/theta_concave_surrogate.py)
+            # against optimize_nonlinear() at 4 representative states before
+            # being used here: within 0.11-0.19 expected seats of the true
+            # optimum out of ~235-240 (i.e. >99.9% of optimal value
+            # captured), at roughly 2,000-2,700x the speed. Exploits
+            # _reactive_r()'s separability (R_i depends only on race i's
+            # own party spend) to solve the piecewise-linear-concave
+            # relaxation EXACTLY via a greedy water-filling sort, not an
+            # iterative solve -- this is what makes it fast.
+            races_t = [dataclasses.replace(r, cand_d_total=float(d_t[i]), r_total=float(r_t[i]),
+                                            d_total=float(d_t[i]))
+                       for i, r in enumerate(races)]
+            party, arrays = surrogate_allocate(races_t, coef, sigma_model, F0, 0.15, eta_arr_k)
+            d = np.maximum(arrays["floors"] + party, 1.0)
+            r = _reactive_r(party, arrays)
+            t_ = d + r
+            ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
+            log_ratio = np.log(ratio)
+            log_total_pv = np.log(t_ / arrays["cvap"])
+            mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+            mu_capped, _ = _apply_ceiling(mu_raw, arrays)
+            deployed_mu = mu_capped + trickle_drift
+        elif use_nonlinear_allocator:
             # Option B: the allocation AND the resulting mu both come from
             # the true, diminishing-returns-respecting objective -- reusing
             # the allocator's own internal ceiling math directly (rather
@@ -606,6 +634,8 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         theta_t = wait_vals - deploy_vals
         deploy_now = deploy_vals >= wait_vals
         V_star = np.where(deploy_now, deploy_vals, wait_vals)
+        if return_period0_action and tstep == 0:
+            period0_action = deploy_now.copy()
 
         # rsquared = 1 - ssr/centered_tss is -inf, not the mathematically
         # sensible 0, when V_star has ~zero cross-path variance (centered_tss
@@ -634,8 +664,11 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
               f"{held_out_msg}")
 
     theta_by_period = list(reversed(theta_by_period))
-    return {"label": label, "eta_summary": eta_summary, "n_periods": N_PERIODS, "k_paths": K_PATHS,
-            "theta_by_period": theta_by_period}
+    out = {"label": label, "eta_summary": eta_summary, "n_periods": N_PERIODS, "k_paths": K_PATHS,
+           "theta_by_period": theta_by_period}
+    if return_period0_action:
+        out["period0_action_deploy_now"] = period0_action.tolist()
+    return out
 
 
 def main():

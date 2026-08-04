@@ -1,0 +1,11 @@
+{
+  "k_paths": 2000,
+  "mode": "oos",
+  "seed": 5,
+  "result": {
+    "seed": 5,
+    "in_sample_theta": -0.1932492684293785,
+    "held_out_theta": -0.15159459802418496,
+    "wall_seconds": 518.2687649726868
+  }
+}

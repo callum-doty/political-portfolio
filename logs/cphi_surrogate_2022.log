@@ -1,0 +1,26 @@
+_ballot_last_names(2026): /Users/callumdoty/Desktop/Political Portfolio/data/raw/mit_elections/1976-2024-house.tab has no GEN-stage rows for 2026 (MIT MEDSL data lags the live cycle — its latest covered year is typically the prior completed election). The Senate/President-runner exclusion filter in load_candidate_disbursements() will be SKIPPED for this cycle: any House member's committee that disbursed >$10M while running for a different office will NOT be excluded from district totals until MIT's data catches up.
+_ballot_last_names(2026): /Users/callumdoty/Desktop/Political Portfolio/data/raw/mit_elections/1976-2024-house.tab has no GEN-stage rows for 2026 (MIT MEDSL data lags the live cycle — its latest covered year is typically the prior completed election). The Senate/President-runner exclusion filter in load_candidate_disbursements() will be SKIPPED for this cycle: any House member's committee that disbursed >$10M while running for a different office will NOT be excluded from district totals until MIT's data catches up.
+Dropping 11 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+Dropping 10 races with no PVI: ['DC-00', 'GU-00', 'MA-00', 'MI-14', 'MT-00', 'OH-16', 'PA-18', 'VI-00', 'KS-00', 'MO-00']
+load_ie_transactions_dated(2022): dropping 6249/17375 (36.0%) House-general IE rows with a blank exp_date. These transactions are excluded from point-in-time reconstruction entirely (not attributed to any period).
+load_ie_transactions_dated(2022): dropping 1 row(s) with exp_amo > $20M (implausible for a single IE transaction; see docstring).
+_ballot_last_names(2026): /Users/callumdoty/Desktop/Political Portfolio/data/raw/mit_elections/1976-2024-house.tab has no GEN-stage rows for 2026 (MIT MEDSL data lags the live cycle — its latest covered year is typically the prior completed election). The Senate/President-runner exclusion filter in load_candidate_disbursements() will be SKIPPED for this cycle: any House member's committee that disbursed >$10M while running for a different office will NOT be excluded from district totals until MIT's data catches up.
+_ballot_last_names(2026): /Users/callumdoty/Desktop/Political Portfolio/data/raw/mit_elections/1976-2024-house.tab has no GEN-stage rows for 2026 (MIT MEDSL data lags the live cycle — its latest covered year is typically the prior completed election). The Senate/President-runner exclusion filter in load_candidate_disbursements() will be SKIPPED for this cycle: any House member's committee that disbursed >$10M while running for a different office will NOT be excluded from district totals until MIT's data catches up.
+Dropping 11 races with no PVI: ['DC-00', 'GU-00', 'MI-14', 'MT-00', 'NY-29', 'PR-00', 'VI-00', 'GA-23', 'KS-00', 'MO-00', 'NY-27']
+[surrogate] N_PERIODS=7 (98 days), K_PATHS=2000, grid=['0.00', '0.25', '0.50', '0.75', '1.00']
+
+=== eta_fit_2022 (5pt grid, surrogate allocator) ===
+  [eta_fit_2022] precomputing floor_state for 4 nonzero grid levels x 2000 paths x 8 periods (64000 LP calls)...
+  [eta_fit_2022] grid level 0.25 done
+  [eta_fit_2022] grid level 0.50 done
+  [eta_fit_2022] grid level 0.75 done
+  [eta_fit_2022] grid level 1.00 done
+  [eta_fit_2022] t=6 (14d left): V(g=0)=+246.1453, mean chosen frac=0.592, R2=0.406
+  [eta_fit_2022] t=5 (28d left): V(g=0)=+246.4959, mean chosen frac=0.365, R2=0.694
+  [eta_fit_2022] t=4 (42d left): V(g=0)=+246.6712, mean chosen frac=0.230, R2=0.736
+  [eta_fit_2022] t=3 (56d left): V(g=0)=+246.7688, mean chosen frac=0.145, R2=0.707
+  [eta_fit_2022] t=2 (70d left): V(g=0)=+246.8227, mean chosen frac=0.103, R2=0.629
+  [eta_fit_2022] t=1 (84d left): V(g=0)=+246.8437, mean chosen frac=0.050, R2=0.481
+  [eta_fit_2022] t=0 (98d left): V(g=0)=+246.8437, mean chosen frac=0.000, R2=-0.000
+  -> saved /Users/callumdoty/Desktop/Political Portfolio/outputs/theta_schedule_continuous_phi_surrogate_eta_fit_2022_5pt.json
+

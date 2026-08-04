@@ -1,0 +1,87 @@
+{
+  "k_paths": 2000,
+  "seed": 20260716,
+  "scenario": "eta_fit_2022",
+  "wall_seconds": 515.6126170158386,
+  "result": {
+    "label": "eta_fit_2022_surrogate",
+    "eta_summary": {
+      "single_cycle_fit": {
+        "Safe D": 1.069694529719842,
+        "Likely D": -0.21203912431649052,
+        "Lean D": 0.2938841818755611,
+        "Toss-Up": 0.729939109263241,
+        "Lean R": 0.38688841357965864,
+        "Likely R": -0.017244985216736237,
+        "Safe R": -0.0033462387436219553
+      }
+    },
+    "n_periods": 7,
+    "k_paths": 2000,
+    "theta_by_period": [
+      {
+        "period": 0,
+        "days_remaining": 98,
+        "mean_theta": -0.29847141206144556,
+        "frac_deploy_now": 1.0,
+        "basis_r2": -2.220446049250313e-16,
+        "g_t_coef": 0.0,
+        "g_t_pvalue": NaN
+      },
+      {
+        "period": 1,
+        "days_remaining": 84,
+        "mean_theta": -0.527021141848216,
+        "frac_deploy_now": 0.999,
+        "basis_r2": 0.06184140581165154,
+        "g_t_coef": -0.0021182374222997735,
+        "g_t_pvalue": 0.7938353799930842
+      },
+      {
+        "period": 2,
+        "days_remaining": 70,
+        "mean_theta": -0.7663281833553792,
+        "frac_deploy_now": 0.999,
+        "basis_r2": 0.05987925555243012,
+        "g_t_coef": -0.0009854420692374521,
+        "g_t_pvalue": 0.8854837662434447
+      },
+      {
+        "period": 3,
+        "days_remaining": 56,
+        "mean_theta": -1.0349966693277046,
+        "frac_deploy_now": 0.9995,
+        "basis_r2": 0.053019683923861805,
+        "g_t_coef": 0.0017520045570718068,
+        "g_t_pvalue": 0.7805858819280981
+      },
+      {
+        "period": 4,
+        "days_remaining": 42,
+        "mean_theta": -1.429226261371195,
+        "frac_deploy_now": 1.0,
+        "basis_r2": 0.04303238317342706,
+        "g_t_coef": 0.0075907347348049825,
+        "g_t_pvalue": 0.2546283374207149
+      },
+      {
+        "period": 5,
+        "days_remaining": 28,
+        "mean_theta": -2.2401102888499507,
+        "frac_deploy_now": 1.0,
+        "basis_r2": 0.029310261421090833,
+        "g_t_coef": 0.006632255396843201,
+        "g_t_pvalue": 0.3953099473024431
+      },
+      {
+        "period": 6,
+        "days_remaining": 14,
+        "mean_theta": -5.752610277470012,
+        "frac_deploy_now": 1.0,
+        "basis_r2": 0.004028184212550134,
+        "g_t_coef": 0.004033060656763343,
+        "g_t_pvalue": 0.8445735990373786
+      }
+    ]
+  }
+}

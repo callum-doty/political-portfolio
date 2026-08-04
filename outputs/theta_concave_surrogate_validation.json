@@ -1,0 +1,57 @@
+{
+  "n_grid": 40,
+  "results": [
+    {
+      "period": 0,
+      "days_remaining": 98,
+      "nonlinear_value": 234.55192793003016,
+      "surrogate_value": 234.4378733571962,
+      "value_diff_surrogate_minus_nonlinear": -0.11405457283396458,
+      "nonlinear_elapsed_s": 65.51117062568665,
+      "surrogate_elapsed_s": 0.024688243865966797,
+      "nonlinear_n_funded": 237,
+      "nonlinear_top5_share": 0.12319027100627676,
+      "surrogate_n_funded": 129,
+      "surrogate_top5_share": 0.10875000000000003
+    },
+    {
+      "period": 2,
+      "days_remaining": 70,
+      "nonlinear_value": 237.22817045401112,
+      "surrogate_value": 237.0865506208085,
+      "value_diff_surrogate_minus_nonlinear": -0.1416198332026113,
+      "nonlinear_elapsed_s": 54.9628050327301,
+      "surrogate_elapsed_s": 0.024562835693359375,
+      "nonlinear_n_funded": 244,
+      "nonlinear_top5_share": 0.11517715670416206,
+      "surrogate_n_funded": 134,
+      "surrogate_top5_share": 0.10500000000000002
+    },
+    {
+      "period": 4,
+      "days_remaining": 42,
+      "nonlinear_value": 238.986227105801,
+      "surrogate_value": 238.815901457458,
+      "value_diff_surrogate_minus_nonlinear": -0.17032564834298114,
+      "nonlinear_elapsed_s": 53.998802185058594,
+      "surrogate_elapsed_s": 0.02490711212158203,
+      "nonlinear_n_funded": 241,
+      "nonlinear_top5_share": 0.10959842550921094,
+      "surrogate_n_funded": 137,
+      "surrogate_top5_share": 0.10374999999999983
+    },
+    {
+      "period": 6,
+      "days_remaining": 14,
+      "nonlinear_value": 240.30074104905933,
+      "surrogate_value": 240.11292371090377,
+      "value_diff_surrogate_minus_nonlinear": -0.18781733815555413,
+      "nonlinear_elapsed_s": 17.349780321121216,
+      "surrogate_elapsed_s": 0.025953054428100586,
+      "nonlinear_n_funded": 258,
+      "nonlinear_top5_share": 0.1028280569132979,
+      "surrogate_n_funded": 142,
+      "surrogate_top5_share": 0.09375000000000001
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "k_paths": 2000,
+  "mode": "seed",
+  "seed": 2,
+  "result": {
+    "seed": 2,
+    "mean_theta": -0.21085432271587615,
+    "frac_deploy_now": 0.5265,
+    "wall_seconds": 519.7818660736084
+  }
+}

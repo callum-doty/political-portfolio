@@ -41,101 +41,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent))
 
 import solve_bellman_lsm as lsm
-from backtest.optimizer.allocator import (
-    optimize_nonlinear, _precompute_race_arrays, _reactive_r, _apply_ceiling,
-)
+from backtest.optimizer.allocator import optimize_nonlinear, _precompute_race_arrays
+from concave_surrogate import race_payoff_at_party, surrogate_allocate as _surrogate_allocate_core
 import theta_lp_vs_nonlinear_period_decomposition as pd
 
 N_GRID = 40   # per-race breakpoints from 0 to cap
 
 
-def race_payoff_at_party(party: np.ndarray, arrays: dict) -> np.ndarray:
-    """f_i(party_i) = Phi(mu_i'(party_i)/sigma_i), vectorized over races at
-    a SHARED party vector -- used here only to evaluate a grid, race by
-    race, with all OTHER races' party held at whatever `party` specifies
-    (irrelevant to race i's own value, by separability, but computing all
-    races at once per grid point is far cheaper than a python loop)."""
-    d = np.maximum(arrays["floors"] + party, 1.0)
-    r = _reactive_r(party, arrays)
-    t_ = d + r
-    ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
-    log_ratio = np.log(ratio)
-    log_total_pv = np.log(t_ / arrays["cvap"])
-    mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
-    mu_capped, _ = _apply_ceiling(mu_raw, arrays)
-    return norm.cdf(mu_capped / arrays["sigma"])
-
-
-def build_concave_segments(arrays: dict, cap: np.ndarray, n_grid: int = N_GRID):
-    """For each race, evaluate f_i on a grid of party$ from 0 to cap_i,
-    then take the concave (upper) envelope of the resulting breakpoints so
-    segment slopes are guaranteed non-increasing -- required for the greedy
-    algorithm's optimality guarantee to hold exactly, not approximately.
-    Returns arrays of (race_idx, width, slope, x_start) for every segment
-    surviving the envelope step."""
-    n = len(cap)
-    grid_fracs = np.linspace(0.0, 1.0, n_grid + 1)
-    xs = grid_fracs[None, :] * cap[:, None]              # (n, n_grid+1)
-    fs = np.zeros_like(xs)
-    for k in range(n_grid + 1):
-        party_k = xs[:, k]
-        fs[:, k] = race_payoff_at_party(party_k, arrays)
-
-    race_idx_list, width_list, slope_list, xstart_list = [], [], [], []
-    for i in range(n):
-        x_i, f_i = xs[i], fs[i]
-        # Upper concave envelope via a monotone stack (classic "convex hull
-        # trick" applied to a maximization/concave problem): process
-        # breakpoints left to right, popping any preceding segment whose
-        # slope is EXCEEDED by the new one (that would violate concavity --
-        # a later segment steeper than an earlier one is impossible for a
-        # genuinely concave function, so its presence means an earlier
-        # breakpoint was on the "wrong side" of the true concave envelope).
-        pts_x = [x_i[0]]
-        pts_f = [f_i[0]]
-        for k in range(1, len(x_i)):
-            while len(pts_x) >= 2:
-                slope_prev = (pts_f[-1] - pts_f[-2]) / (pts_x[-1] - pts_x[-2])
-                slope_new = (f_i[k] - pts_f[-1]) / (x_i[k] - pts_x[-1])
-                if slope_new >= slope_prev - 1e-15:
-                    pts_x.pop(); pts_f.pop()
-                else:
-                    break
-            pts_x.append(x_i[k]); pts_f.append(f_i[k])
-        for k in range(len(pts_x) - 1):
-            w = pts_x[k + 1] - pts_x[k]
-            if w <= 0:
-                continue
-            slope = (pts_f[k + 1] - pts_f[k]) / w
-            race_idx_list.append(i); width_list.append(w)
-            slope_list.append(slope); xstart_list.append(pts_x[k])
-
-    return (np.array(race_idx_list), np.array(width_list),
-            np.array(slope_list), np.array(xstart_list))
-
-
-def greedy_allocate(race_idx, width, slope, xstart, n_races, budget) -> np.ndarray:
-    """Exact optimum of the piecewise-linear-concave relaxation: sort all
-    segments by slope descending, fill greedily until budget exhausted."""
-    order = np.argsort(-slope)
-    party = np.zeros(n_races)
-    remaining = budget
-    for k in order:
-        if remaining <= 0:
-            break
-        take = min(width[k], remaining)
-        party[race_idx[k]] += take
-        remaining -= take
-    return party
-
-
 def surrogate_allocate(races, coef, sigma_model, budget, cap_fraction, eta, n_grid=N_GRID):
-    arrays = _precompute_race_arrays(races, coef, sigma_model, eta=eta)
-    n = len(races)
-    cap = cap_fraction * budget * np.ones(n)
+    """Thin wrapper adding wall-clock timing around the shared core (which
+    validate_at_period below needs to report the speedup); the underlying
+    algorithm is defined once, in concave_surrogate.py, so both this
+    validation script and solve_bellman_lsm.py's use_surrogate_allocator
+    branch use the identical implementation."""
     t0 = time.time()
-    race_idx, width, slope, xstart = build_concave_segments(arrays, cap, n_grid)
-    party = greedy_allocate(race_idx, width, slope, xstart, n, budget)
+    party, _arrays = _surrogate_allocate_core(races, coef, sigma_model, budget, cap_fraction, eta, n_grid)
     elapsed = time.time() - t0
     return party, elapsed
 
