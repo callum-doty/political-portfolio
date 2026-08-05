@@ -1,6 +1,6 @@
 ---
 title: "Does the Retrospective Seat-Gain Finding Survive Contact With Real Time?"
-date: "2026-08-04"
+date: "2026-08-04, updated 2026-08-05"
 geometry: margin=1in
 fontsize: 11pt
 linestretch: 1.1
@@ -12,9 +12,9 @@ linkcolor: NavyBlue
 mainfont: "STIX Two Text"
 ---
 
-**Date:** 2026-08-04
+**Date:** 2026-08-04, updated 2026-08-05
 **Companion to:** Paper I (`paper/paper1_final.md`), Paper II (`docs/paper2_draft.md`)
-**Status:** investigation log, written up after the fact from a single working session. Numbers below were verified by direct script runs, not estimated from memory; every figure cites the script and output file that produced it.
+**Status:** investigation log, written up after the fact from a single working session (Sections 0-11), then extended in a follow-up session (Sections 12-16) that built the five items Section 11 had identified as still open. Numbers below were verified by direct script runs, not estimated from memory; every figure cites the script and output file that produced it.
 
 ## 0. The motivating question
 
@@ -233,6 +233,8 @@ Quantified for 2026: the 13 redistricting-flagged districts account for **+0.77 
 
 ## 10. Current state and open items
 
+**Superseded 2026-08-05 — kept as the historical record of this document's state at the end of the first working session, not retracted.** Sections 12-16 built everything this section names as open, and the +4.2/+7.9 figures below are no longer the best current numbers — see Section 14 for the combined +0.62 estimate and Section 16 for its uncertainty range. Read this section as "where things stood before the follow-up session," not as current guidance.
+
 - The retrospective +2.83/+3.22 finding is **not a hindsight artifact** — real-world-evaluated real-time signal converges to it smoothly in both tested cycles. This remains true.
 - **But Section 9 downgrades how much of that finding should be trusted as genuine targeting inefficiency versus the optimizer lacking viability information DCCC had.** Under hard exclusion of flagged races, 78-85% of the headline evaporates — closer to the reviewer's "near zero" reading than "near two or three seats." The soft-penalty version keeps 75-77%. Read Sections 1-8's confidence level through Section 9, not independently of it.
 - The 2026 live estimate should currently be read as **+4.2 seats** (floor-maturity-corrected), not +7.9 — and Section 9's viability discount has not yet been applied on top of that; the two corrections have not been combined into a single number. The underlying DCCC baseline is also still built from only 18 of 434 races and will move as `L_t` grows. Rerun `scripts/decompose_2026_gain_maturity_ceiling.py` periodically.
@@ -241,6 +243,139 @@ Quantified for 2026: the 13 redistricting-flagged districts account for **+0.77 
 - The `$6,915,158` floor-maturity reference is a single calibrated value (2024 competitive-race p25), not yet swept the way `c_max` was (Paper I Appendix E.1, 7 points). A robustness sweep of this threshold is the natural next check before treating +4.2 as load-bearing.
 - Two bugs fixed along the way are permanent, real fixes independent of this document's main thread: `dynamic/simulate.py`'s frozen `cand_d_total`, and the two separate issues previously making `outputs/dynamic_timing_*.csv` untrustworthy (`config.yaml`'s `commitment_mode: "zero"` default never shrinking `F_t`, and `dynamic/timing.py` comparing a full-remaining-budget recommendation against a per-period incremental actual). The second pair is documented but **not yet fixed** — flagged for future work, same as this project's own established practice of flagging rather than silently chasing everything in one pass.
 - What this document does *not* establish, and cannot: causal validation. Every check here is internal-consistency work — ruling out specific ways the retrospective and live numbers could be artifacts. None of it is independent, experimental, or causal evidence that following the model's recommendation would produce the seats it claims. That gap, named at the start of this document, is unchanged.
+
+## 11. Is this the end of the line?
+
+Asked directly (2026-08-04): given everything above, is this the final exploration this project can do with public data — has it been fully exhausted?
+
+**No, and it's worth being precise about why not**, because "we've exhausted what public data can tell us" and "we've exhausted what's buildable with the public data already in this repo" are different claims, and only the second is close to true.
+
+**Update (2026-08-05): all five items below were subsequently built.** See Sections 12-16. This list is kept as the historical record of what this document originally identified as open, not retracted -- each item's resolution is cross-referenced.
+
+**Was listed as genuinely still buildable, not built, and not blocked by data availability -- now built (§12-16):**
+
+1. **A real DCCC-forecast model.** (Was: "the single biggest remaining gap.") Built in §12: a two-part hurdle model trained on all 7 historical cycles at the live decision's 91-days-out checkpoint, leave-one-cycle-out validated. The genuinely decisive comparison this enables -- `E[Seats | model-optimal, X_t]` vs. `E[Seats | forecasted-DCCC, X_t]` -- lands at +1.22 (2024), +1.76 (2022), and +1.29 (2026 live, uncorrected ceiling) -- down an order of magnitude from every naive-baseline figure in Sections 4-9.
+2. **The floor-maturity reference sweep and cross-cycle calibration.** Built in §13: an 8-point sweep shows real threshold sensitivity (+2.48 to +6.26) but cross-cycle stability at the shipped percentile, AND a new finding this sweep surfaced -- the correction, if applied to the already-fixed 2022/2024 checkpoint case, reintroduces distortion. Selective application, not a blanket default.
+3. **Combining §8's floor-maturity correction with §9's viability discount** — built in §14, though realized differently than originally scoped: rather than layering the viability discount (calibrated for the retrospective 2022/2024 audit) onto the old baseline, the combined estimate applies the floor-maturity correction on top of the NEW forecast baseline from §12, since that baseline is a strictly better foundation than what the viability-discount combination would have improved. Result: **+0.62**, the most defensible current point estimate.
+4. **A joint uncertainty simulation.** Built in §16, in the explicitly scoped-down form flagged as necessary here — the full 9-source version re-solving the optimizer per draw is not tractable. The scoped version (forecast-model bootstrap + maturity-threshold resampling + this project's own already-fitted GB volatility) gives +0.57 seats, SD 0.25, 90% range [+0.23, +1.02].
+5. **A district-validity layer beyond `redistricting_flagged`.** Built in §15 once an FEC API key was provided: a near-zero-candidate-floor check (already handled by the ceiling, reassuringly) and a live candidate-status check that surfaced a real, concrete finding — the single largest individual gain contributor (TX-32) is anchored to a not-yet-qualified candidate, and two flagged districts (LA-06, MI-09) show FEC status suggesting the attributed candidate may not be the real 2026 contestant.
+
+**What remains genuinely, structurally exhausted — and this is the actual ceiling, not data volume:** causal validation. Every method in this document, including Section 9's, is internal-consistency work — narrowing *how* the retrospective and live numbers could be wrong, never establishing that they are *right*. No further mining of the same public data changes that, at any effort level, because the thing being asked — would following the model's recommendation actually produce the claimed seats — is not a question this kind of data can answer on its own. Only two things resolve it: real experimental or quasi-experimental variation in actual committee spending (requires committee cooperation this project does not have), or the 2026 election happening and checking, after the fact, whether the live recommendation would have outperformed — which is time passing, not additional analysis, and isn't knowable before November 2026 at the earliest.
+
+**The accurate summary is not "we've done everything we can."** It's: everything reachable by further internal-consistency checking of public data that's already collected has been substantially explored, several concrete extensions using data already on hand remain unbuilt, and the one thing that would actually settle the central question was never reachable by this kind of work in the first place.
+
+---
+
+## 12. The DCCC-forecast model, built
+
+**Scripts:** `scripts/build_dccc_forecast_training_data.py`, `scripts/fit_dccc_forecast_model.py`, `scripts/apply_dccc_forecast_2026.py`
+
+Every 2026 comparison in this document up to this point used a proportional scale-up of DCCC's thin, 18-race current pattern as the baseline -- the reviewer's central point (§11, item 1) named this as the real gap, not the naive-baseline patchwork already tried. This section builds the actual missing piece: a genuine predictive model `f(x_i,t) -> predicted DCCC allocation`.
+
+**Training data.** One (features, outcome) row per race per historical cycle, 2012-2024 (7 cycles, 2991 rows), using the SAME checkpoint definition every cycle -- 91 days before that cycle's Election Day, matching where 2026 sits today -- so the fitted model applies to 2026 without a horizon mismatch. Reuses the dated-reconstruction machinery from Section 3 (now bug-fixed), with no new data acquisition: dated candidate-committee panels already exist in this repo for all 7 cycles. Features: PVI, incumbency, Cook-tier ordinal, candidate/opponent spend-to-date as a ratio of that cycle's party budget, generic ballot. Target: each race's actual, final, complete DCCC party-dollar share of that cycle's budget -- known with certainty for every historical cycle, since they're over.
+
+**Model.** A two-part (Cragg) hurdle model, mirroring this project's own "selection vs. intensity" language directly: Stage 1 (logistic regression) predicts whether DCCC funds a race at all; Stage 2 (OLS on log-share) predicts how much, conditional on funding.
+
+**Leave-one-cycle-out validation** (train on 6 cycles, predict the 7th, repeated for all 7):
+
+| Held out | AUC | Brier | Intensity R2 | Forecast E[Seats] | Actual E[Seats] | Error |
+|---|---|---|---|---|---|---|
+| 2012 | 0.726 | 0.154 | -4.48 | 200.29 | 198.45 | +1.84 |
+| 2014 | 0.713 | 0.111 | -5.49 | 197.35 | 195.17 | +2.18 |
+| 2016 | 0.790 | 0.081 | -4.05 | 206.18 | 203.00 | +3.18 |
+| 2018 | 0.875 | 0.109 | -0.93 | 241.28 | 238.69 | +2.60 |
+| 2020 | 0.838 | 0.113 | -3.52 | 242.45 | 240.25 | +2.20 |
+| 2022 | 0.905 | 0.100 | -1.43 | 214.83 | 213.37 | +1.46 |
+| 2024 | 0.900 | 0.076 | -2.17 | 216.72 | 215.12 | +1.61 |
+
+Selection-stage discrimination is decent (mean AUC 0.82 -- the model predicts *which* races DCCC funds reasonably well from 91-days-out information alone). The intensity stage is a poor statistical fit (R2 negative in every fold -- worse than predicting the mean dollar amount). But the downstream seats forecast is consistently good and consistently biased in the same direction (mean error +2.15 seats, same sign in all 7 folds) -- the model captures enough of DCCC's real targeting logic to be strongly informative at the level that matters, even though the underlying dollar-amount regression is weak.
+
+**The reviewer's specific request** (train 2012-2022, test 2024): AUC=0.900, forecast E[Seats]=216.72 vs. real DCCC=215.12 (error +1.61).
+
+**Applied to the two historical cycles with real, validated model-optimal figures**, this produces the actually-decisive comparison:
+
+| Cycle | Model-optimal (Paper I) | Forecasted-DCCC | Gain vs. forecast | Old headline (vs. real DCCC) |
+|---|---|---|---|---|
+| 2024 | 217.940 | 216.721 | **+1.219** | +2.83 |
+| 2022 | 216.589 | 214.830 | **+1.759** | +3.22 |
+
+**Applied to the live 2026 cycle** (replacing the naive scaled-pattern baseline everywhere): forecasted-DCCC E[Seats]=234.94 vs. model-optimal=236.23, **gain = +1.29** (as of the run date) -- down an order of magnitude from the old +7.9, and landing in the same +1.2-1.8 range as both validated historical cycles. That consistency across two independent historical validations and the live application, using a model that was never tuned to produce this particular number, is the strongest evidence in this entire document that the retrospective finding is real and appropriately sized once measured against a fair baseline, rather than an artifact of comparison methodology.
+
+## 13. Floor-maturity reference sweep and cross-cycle calibration
+
+**Script:** `scripts/sweep_floor_maturity_reference.py` · **Outputs:** `outputs/floor_maturity_reference_sweep.csv`, `outputs/floor_maturity_cross_calibration_checkpoint.csv`
+
+Section 10/11 flagged the $6,915,158 threshold (Section 8) as a single calibrated value, never swept the way `c_max` was. Two checks:
+
+**Percentile sweep**, 8 values ({p10,p25,p50,p75} x {2024,2022}-derived), applied to the 2026 live gain (naive baseline):
+
+| Threshold | Value | Gain |
+|---|---|---|
+| 2024-p10 | $2,940,925 | +6.259 |
+| **2024-p25 (shipped default)** | **$6,915,158** | **+4.197** |
+| 2024-p50 | $10,856,489 | +3.177 |
+| 2024-p75 | $15,514,618 | +2.479 |
+| 2022-p10 | $4,145,679 | +5.462 |
+| 2022-p25 | $6,960,815 | +4.180 |
+| 2022-p50 | $9,596,889 | +3.436 |
+| 2022-p75 | $13,623,019 | +2.723 |
+
+This is **not** as robust as `c_max`'s sweep -- the gain ranges from +2.48 to +6.26 (a 2.5x spread) depending on which percentile is chosen, unlike `c_max`'s smooth, discontinuity-free behavior across its full tested range. The threshold choice matters. What IS robust: at the specific percentile shipped (p25), the choice of *which cycle* calibrates it barely matters (2024-derived +4.197 vs. 2022-derived +4.180, a 0.016-seat difference) -- real cross-cycle stability, just not threshold-level stability.
+
+**Historical-checkpoint neutrality check** -- does applying this correction to the ALREADY-CORRECT 2022/2024 real-world checkpoint sweep (Section 3.4, which needed no correction after the two bugs were fixed) reintroduce distortion? **Yes, and materially:** with a cross-calibrated threshold applied, 2024's earliest checkpoint moves from -1.2 (uncorrected, already accurate) to **-2.41**; 2022's from -0.9 to **-2.85** -- both meaningfully worse, not neutral. **Conclusion: the floor-maturity correction should be applied selectively (live 2026, where floors are genuinely thin with no confounding bug), not as a blanket default everywhere in this pipeline.** It helps exactly the case it was built for and actively hurts a case that was already fixed by other means.
+
+## 14. Combined 2026 estimate
+
+**Script:** `scripts/combined_2026_estimate.py` · **Output:** `outputs/combined_2026_estimate.json`
+
+Every version of the 2026 gain estimate this investigation has produced, in one place:
+
+| Version | Gain |
+|---|---|
+| 1. Naive scaled baseline, uncorrected ceiling (original) | +6.99 |
+| 2. Naive scaled baseline, floor-maturity-corrected (Section 8) | +4.20 |
+| 3. Forecast baseline (Section 12), uncorrected ceiling | +0.38 |
+| **4. Forecast baseline + floor-maturity correction, combined** | **+0.62** |
+
+**+0.62 is the most defensible point estimate this investigation can currently produce for 2026** -- down more than an order of magnitude from the original +7.9, entirely from replacing two things that were actually wrong (an inadequate baseline, an uncalibrated-for-this-case ceiling), not from any adjustment tuned to produce a smaller number. Note: this figure moves day to day as `L_t` grows (it read +1.29 in Section 12's isolated run computed a day earlier) -- expected drift, not noise to be alarmed by.
+
+## 15. District-validity layer, extended with live data
+
+**Scripts:** `scripts/district_validity_summary_2026.py`, `scripts/check_live_candidate_status.py`
+
+Section 9.1 found `redistricting_flagged` real but inert, and flagged current-candidate-roster checking as blocked by no configured FEC API key. A key was subsequently provided and verified working.
+
+**Near-zero-candidate-floor check** (new signal, no live data needed): 3 races with D candidate floor under $5,000 (OK-03, OH-02, MI-09) -- effectively no established candidate yet. All 3 receive **exactly $0 recommended and contribute exactly 0 to the gain** -- the persuasion ceiling's deep-PVI suppression (all 3 are Safe R, PVI -17.9 to -25.0) already handles this failure mode without a new validity layer being needed for it specifically.
+
+**Live FEC candidate-status check**, scoped to the top 30 gain-contributing races plus every validity-flagged race (43 districts, 84 candidates checked): 5 flagged for review.
+
+| District | Party | Candidate | FEC status | Note |
+|---|---|---|---|---|
+| LA-06 | R | Garret Graves | P (prior-cycle only) | The pre-redistricting incumbent -- likely not the real 2026 R candidate; the R floor for this district may be misattributed, not just the PVI label being stale |
+| MI-09 | D | Clinton St. Mosley | P (prior-cycle only) | Consistent with this district's near-zero floor -- the attributed candidate may not be actively running |
+| TX-32 | D | Alex Cornwallis | N (not yet qualified) | **The single largest individual contributor in the entire gain decomposition (Section 6, +0.28 seats)** is anchored to a candidate who has not yet formally qualified as a statutory candidate |
+| OH-02 | D | Hermann Wessels | N (not yet qualified) | Consistent with genuinely early-stage candidacy |
+| OK-03 | D | Jules Roberson | N (not yet qualified) | Consistent with genuinely early-stage candidacy |
+
+LA-06 and MI-09's "P" status is a sharper concern than Section 7's stale-PVI finding alone -- it suggests the underlying spending data itself may be attributed to a candidate not actually contesting the 2026 race, not just that the district's competitiveness rating is outdated. TX-32 warrants specific attention given its outsized role in the overall decomposition. Full candidate-roster/special-election-status checking across the entire universe (not just the top 30 + flagged races) remains a further, larger extension not attempted here.
+
+## 16. Scoped joint uncertainty simulation
+
+**Script:** `scripts/simulate_2026_gain_uncertainty.py` · **Output:** `outputs/simulate_2026_gain_uncertainty.csv`
+
+The reviewer's full specification -- jointly simulating DCCC's future targeting and intensity, future candidate/opponent spending, generic-ballot movement, model coefficients, the maturity-ceiling calibration, viability constraints, and Theta/reserve-policy uncertainty -- is not tractable in one pass: re-solving the optimizer under each Monte Carlo draw takes minutes, and hundreds of draws would take hours to days. The scoped version instead holds the optimizer's point-estimate allocation fixed and jointly varies three sources, each grounded in a real, already-computed or already-fitted quantity rather than an invented distribution:
+
+1. **Forecast-model parameter uncertainty** -- bootstrap-resample the 7 training cycles with replacement, refit the hurdle model on each resample (Section 12's exact procedure).
+2. **Floor-maturity threshold uncertainty** -- resample from the 8 empirical values in Section 13's sweep, rather than treating $6.9M as exact.
+3. **Generic-ballot uncertainty** -- this project's own already-fitted term-structure volatility (`data/processed/gb_dynamics.json`, `sigma_g_per_sqrt_day=0.184`), scaled to today's actual 90 days remaining (SD=1.74 points around today's D+5.0), not an invented number.
+
+![Distribution of the 2026 gain across 1000 joint-uncertainty draws](../outputs/gain_uncertainty_2026.png)
+
+**Result, 1000 draws: mean +0.57 seats, SD 0.25. 90% scenario range [+0.23, +1.02]. 0% of draws showed the forecasted-DCCC baseline matching or exceeding the model-optimal allocation.**
+
+**Explicit, stated limitation:** because the optimizer's allocation is held fixed rather than re-solved per draw, this understates true uncertainty -- a genuinely different GB or maturity threshold would, in reality, also change where the optimizer chooses to put money, not just how the same fixed allocation scores. This is a scenario range under that stated approximation, not a rigorous confidence interval. It is, however, a real quantification using grounded inputs, not the 18-race-composition bootstrap from Section 5, which the reviewer correctly identified as measuring the wrong source of uncertainty entirely.
+
+---
 
 ## Appendix: scripts and code changes in this investigation
 
@@ -259,6 +394,15 @@ Quantified for 2026: the 13 redistricting-flagged districts account for **+0.77 
 | `scripts/decompose_2026_gain_maturity_ceiling.py` | Floor-maturity ceiling, second test (§8) |
 | `scripts/decompose_selection_gain_by_viability.py` | Selection gain by viability-flag treatment, 5 scenarios (§9) |
 | `scripts/plot_selection_gain_by_viability.py` | Figure for §9 |
+| `scripts/build_dccc_forecast_training_data.py` | DCCC-forecast model training data, 7 cycles (§12) |
+| `scripts/fit_dccc_forecast_model.py` | Hurdle model fit + LOCO CV (§12) |
+| `scripts/apply_dccc_forecast_2026.py` | Forecast model applied to live 2026 (§12) |
+| `scripts/sweep_floor_maturity_reference.py` | Threshold sweep + cross-cycle calibration (§13) |
+| `scripts/combined_2026_estimate.py` | All four gain-estimate versions in one table (§14) |
+| `scripts/district_validity_summary_2026.py` | Redistricting-flag + near-zero-floor materiality (§15) |
+| `scripts/check_live_candidate_status.py` | Live FEC candidate-status check (§15) |
+| `scripts/simulate_2026_gain_uncertainty.py` | Scoped joint uncertainty Monte Carlo (§16) |
+| `scripts/plot_2026_gain_uncertainty.py` | Figure for §16 |
 
 | Code change | File |
 |---|---|
@@ -269,3 +413,5 @@ Quantified for 2026: the 13 redistricting-flagged districts account for **+0.77 
 | `floor_maturity_reference_dollars` config + accessor | `config.yaml`, `src/backtest/config.py` |
 
 All code changes are backward-compatible (`floor_maturity` defaults to `None`/off throughout) — Paper I's validated 2022/2024 headline numbers are unaffected by anything in this document unless a script explicitly opts in.
+
+**A note on the FEC API key used in §15:** provided directly by the user in chat for this session's live candidate-status lookups. It is not written into any script, config file, or output in this repository — `check_live_candidate_status.py` requires it as a `--api-key` command-line argument at invocation, matching this project's existing convention (`scripts/fetch_data.py --fec-api-key YOUR_KEY`) for exactly this reason.

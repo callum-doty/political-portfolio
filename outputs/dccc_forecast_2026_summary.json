@@ -1,0 +1,8 @@
+{
+  "as_of": "2026-08-05",
+  "model_optimal_expected_seats": 236.231005755975,
+  "forecasted_dccc_expected_seats": 234.9419190411812,
+  "gain_vs_forecast": 1.2890867147937968,
+  "old_scaled_baseline_expected_seats": 228.32884222776698,
+  "gain_vs_old_scaled_baseline": 7.902163528208007
+}
