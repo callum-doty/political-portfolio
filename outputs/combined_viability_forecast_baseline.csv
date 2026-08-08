@@ -1,0 +1,7 @@
+cycle,scenario,gain,pct_of_A
+2024,A_all_races_vs_forecast,1.2195982738742543,
+2024,B_flagged_excluded_vs_forecast,-0.9985495257064088,-81.87528197578962
+2024,D_flagged_penalized_vs_forecast,0.5551470596442982,45.518845962349744
+2022,A_all_races_vs_forecast,1.7622065370263726,
+2022,B_flagged_excluded_vs_forecast,-0.4238089390186701,-24.04990164965706
+2022,D_flagged_penalized_vs_forecast,0.9486112574055312,53.83087836039134

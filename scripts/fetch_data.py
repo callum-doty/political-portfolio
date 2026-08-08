@@ -77,6 +77,8 @@ DCCC_COMMITTEE_ID = "C00000935"
 # Any independent_expenditures_*.csv / coordinated_expenditures_*.csv fetched
 # under the old ID must be re-fetched -- see FINDINGS.md for the affected cycles.
 NRCC_COMMITTEE_ID = "C00075820"
+DNC_COMMITTEE_ID = "C00010603"
+DSCC_COMMITTEE_ID = "C00042366"
 
 
 FIPS_TO_STATE = {
@@ -473,6 +475,347 @@ def _load_candidate_committee_crosswalk(cycle: int) -> dict[str, str]:
     return dict(zip(principal["cand_id"], principal["cmte_id"]))
 
 
+# ─── State-party 24K coordinated expenditures (FINDINGS.md Section 10.7, Gap 3) ──
+#
+# FINDINGS.md previously documented the raw bulk file at
+# data/raw/bulk_all/itoth.txt -- that path is wrong (bulk_all/ only holds
+# weball*.txt candidate-totals files). The real file lives at
+# data/raw/all_committee_transactions/itoth.txt (167MB, ~1.01M rows), with
+# 7 additional undocumented sibling files (itoth 2.txt ... itoth 8.txt,
+# 90MB-3.3GB) covering other, OVERLAPPING date ranges -- verified directly
+# against the files (a sampled per-file year scan), not assumed from
+# filenames, which give no indication of coverage (the same numbered-
+# sibling unreliability _load_candidate_committee_crosswalk already works
+# around for ccl*.txt).
+
+_ITOTH_COLUMNS = [
+    "cmte_id", "amndt_ind", "rpt_tp", "transaction_pgi", "image_num", "transaction_tp",
+    "entity_tp", "name", "city", "state", "zip", "employer", "occupation", "transaction_dt",
+    "transaction_amt", "other_id", "tran_id", "file_num", "memo_cd", "memo_text", "sub_id",
+]
+
+_CN_COLUMNS = [
+    "cand_id", "cand_name", "cand_pty_affiliation", "cand_election_yr", "cand_office_st",
+    "cand_office", "cand_office_district", "cand_ici", "cand_status", "cand_pcc",
+    "cand_st1", "cand_st2", "cand_city", "cand_state", "cand_zip4",
+]
+
+# The CMTE_TP/CMTE_DSGN/CMTE_PTY_AFFILIATION filter alone is far too loose --
+# verified directly against the real committee_master data (2026-08): it
+# also passes 235 committees including town/county Democratic committees
+# ("KENNEBUNKPORT DEMOCRATIC COMMITTEE", ME), party caucuses ("AFRICAN
+# AMERICAN CAUCUS OF THE NORTH CAROLINA DEMOCRATIC PARTY"), GOTV/PAC-style
+# committees ("RICO DEMOCRATIC GOTV"), and legislative-district clubs
+# ("70TH ASSEMBLY DISTRICT DEMOCRATIC COALITION TASK FORCE", CA) -- none of
+# which are the actual state party. A blocklist-only approach (excluding
+# sub-state name patterns) is insufficient on its own, since it still
+# passed e.g. "IDP5 FEDERAL" and "ORLEANS DEMOCRATIC EXECUTIVE COMMITTEE
+# FEDERAL" (Orleans Parish, LA -- a county-equivalent with no "PARISH" in
+# its own name). The precise, whitelist-style check below instead requires
+# a committee to (a) spell out its OWN registered state's full name inside
+# its own committee name, cross-checked against CMTE_ST rather than just
+# grepped -- real state parties consistently do this
+# ("NEBRASKA DEMOCRATIC PARTY", "DEMOCRATIC PARTY OF SOUTH CAROLINA"),
+# sub-state committees almost never do ("KENNEBUNKPORT..." never spells
+# "MAINE"; "IDP5 FEDERAL" never spells "IOWA") -- AND (b) use one of the
+# small set of structural suffixes real state parties actually register
+# under. Both conditions were spot-checked to correctly admit every real
+# state party in the sample above and correctly reject every false
+# positive found, before being adopted here.
+_FULL_STATE_NAMES = {
+    "AL": "ALABAMA", "AK": "ALASKA", "AZ": "ARIZONA", "AR": "ARKANSAS", "CA": "CALIFORNIA",
+    "CO": "COLORADO", "CT": "CONNECTICUT", "DE": "DELAWARE", "DC": "DISTRICT OF COLUMBIA",
+    "FL": "FLORIDA", "GA": "GEORGIA", "HI": "HAWAII", "ID": "IDAHO", "IL": "ILLINOIS",
+    "IN": "INDIANA", "IA": "IOWA", "KS": "KANSAS", "KY": "KENTUCKY", "LA": "LOUISIANA",
+    "ME": "MAINE", "MD": "MARYLAND", "MA": "MASSACHUSETTS", "MI": "MICHIGAN", "MN": "MINNESOTA",
+    "MS": "MISSISSIPPI", "MO": "MISSOURI", "MT": "MONTANA", "NE": "NEBRASKA", "NV": "NEVADA",
+    "NH": "NEW HAMPSHIRE", "NJ": "NEW JERSEY", "NM": "NEW MEXICO", "NY": "NEW YORK",
+    "NC": "NORTH CAROLINA", "ND": "NORTH DAKOTA", "OH": "OHIO", "OK": "OKLAHOMA", "OR": "OREGON",
+    "PA": "PENNSYLVANIA", "RI": "RHODE ISLAND", "SC": "SOUTH CAROLINA", "SD": "SOUTH DAKOTA",
+    "TN": "TENNESSEE", "TX": "TEXAS", "UT": "UTAH", "VT": "VERMONT", "VA": "VIRGINIA",
+    "WA": "WASHINGTON", "WV": "WEST VIRGINIA", "WI": "WISCONSIN", "WY": "WYOMING",
+}
+
+_STATE_PARTY_SUFFIX_PATTERN = (
+    r"DEMOCRATIC[- ](?:PARTY|STATE CENTRAL COMMITTEE|EXECUTIVE COMMITTEE|"
+    r"CENTRAL EXECUTIVE COMMITTEE|FARMER-LABOR PARTY|NONPARTISAN LEAGUE PARTY|"
+    r"STATE COMMITTEE|STATE CMTE)|"
+    r"STATE DEMOCRATIC (?:CENTRAL |EXECUTIVE )?COMMITTEE|"
+    r"(?:STATE CENTRAL|STATE EXECUTIVE) COMMITTEE.*DEMOCRAT"
+)
+
+# A handful of real state party committees, individually verified directly
+# against data/raw/committee_master/cm*.txt (2026-08), register under names
+# no DEMOCRATIC/PARTY text pattern could plausibly catch (Georgia's federal
+# party committee is literally named "GEORGIA FEDERAL ELECTIONS COMMITTEE",
+# with no "DEMOCRATIC" or "PARTY" anywhere in it) or spell their state only
+# as a two-letter abbreviation rather than the full name ("DEMOCRATIC STATE
+# CENTRAL COMMITTEE OF LA"; "WV STATE DEMOCRATIC EXECUTIVE COMMITTEE") --
+# whole-word abbreviation matching was deliberately NOT added to
+# has_own_state_name below to catch these generically, since several state
+# abbreviations (IN, OR, ME, HI, PA, ...) are also common English words and
+# would produce real false positives elsewhere in the committee master.
+# Same manual, individually-verified-exception pattern this project already
+# uses for live_cycle_ballot_exclusions (config.yaml) -- add here only,
+# never inferred.
+_MANUAL_STATE_PARTY_COMMITTEE_IDS = {
+    "GA": "C00041269",  # GEORGIA FEDERAL ELECTIONS COMMITTEE
+    "LA": "C00071365",  # DEMOCRATIC STATE CENTRAL COMMITTEE OF LA
+    "WV": "C00162578",  # WV STATE DEMOCRATIC EXECUTIVE COMMITTEE / W VA STATE DEMOCRATIC EX COM
+    "WY": "C00001917",  # WY DEMOCRATIC STATE CENTRAL COMMITTEE
+}
+# Indiana has no committee this heuristic (structural or manual) covers with
+# confidence -- its closest candidate, "INDIANA DEMOCRATIC CONGRESSIONAL
+# VICTORY COMMITTEE" (C00108613), is a joint-fundraising-style "victory"
+# committee, not unambiguously the state party itself (unlike the VICTORY
+# FUND entries that appear only as OTHER state parties' connected_org_nm,
+# i.e. a fund THEY control, not their own registration). Left out rather
+# than guessed -- Indiana's state-party 24K coordinated spend (if any) is
+# a known, documented gap in this function's coverage, not silently assumed
+# zero or silently included on a weak match.
+
+# Belt-and-suspenders blocklist -- catches the rare case where a genuinely
+# sub-state committee happens to also spell out its state's full name (e.g.
+# a county committee named "X COUNTY CALIFORNIA DEMOCRATIC PARTY"), plus two
+# patterns found only after broadening the suffix regex above: "DISTRICT"
+# (bare, not just "CONGRESSIONAL DISTRICT" -- state legislative/party
+# sub-districts like "SIXTH DISTRICT DEMOCRATIC PARTY OF WISCONSIN" also
+# spell out the full state name and would otherwise pass) and "TRUST" (joint
+# fundraising vehicles like "CALIFORNIA STATE OF THE UNION DEMOCRATIC PARTY
+# TRUST" are not the state party committee itself).
+_SUBSTATE_NAME_PATTERNS = ("COUNTY", "DISTRICT", "TOWNSHIP", "PRECINCT", "WARD ", "PARISH",
+                           "CLUB", "CAUCUS", "COALITION", "TASK FORCE", " CITY ", "TRUST")
+
+
+def _load_committee_master() -> pd.DataFrame:
+    """Map every committee to its type/designation/party, from the raw
+    committee-master bulk file(s) (data/raw/committee_master/cm*.txt --
+    same inconsistent-numbered-filename situation as ccl*.txt, so every
+    cm*.txt present is read, not just cm.txt).
+
+    Raw schema (pipe-delimited, no header): CMTE_ID, CMTE_NM, TRES_NM,
+    CMTE_ST1, CMTE_ST2, CMTE_CITY, CMTE_ST, CMTE_ZIP, CMTE_DSGN, CMTE_TP,
+    CMTE_PTY_AFFILIATION, CMTE_FILING_FREQ, ORG_TP, CONNECTED_ORG_NM, CAND_ID."""
+    import pandas as pd
+
+    cm_dir = config.raw_path("committee_master")
+    cols = ["cmte_id", "cmte_nm", "tres_nm", "cmte_st1", "cmte_st2", "cmte_city", "cmte_st",
+            "cmte_zip", "cmte_dsgn", "cmte_tp", "cmte_pty_affiliation", "cmte_filing_freq",
+            "org_tp", "connected_org_nm", "cand_id"]
+    paths = sorted(cm_dir.glob("cm*.txt")) if cm_dir.exists() else []
+    if not paths:
+        raise FileNotFoundError(f"No cm*.txt files found in {cm_dir}")
+    frames = [pd.read_csv(p, sep="|", header=None, names=cols, dtype=str) for p in paths]
+    all_df = pd.concat(frames, ignore_index=True)
+    return all_df.drop_duplicates(subset=["cmte_id"], keep="last")
+
+
+def identify_state_dem_party_committees(exclude_national: set[str] | None = None) -> "pd.DataFrame":
+    """State-level Democratic party committees: CMTE_TP in {X (non-qualified
+    party), Y (qualified party)}, CMTE_DSGN == "U" (unauthorized -- the
+    designation party committees themselves use, distinct from a candidate's
+    own authorized/principal committee), CMTE_PTY_AFFILIATION == "DEM",
+    excluding known national committees and sub-state (county/congressional-
+    district-level) committees by name pattern.
+
+    Not guaranteed complete or precise -- verified directly against the real
+    committee_master data (2026-08): correctly identifies 48 of 50 states'
+    Democratic party committees (49 including the manual-override list's WY/
+    GA/LA/WV entries above, which the structural pattern alone cannot catch)
+    and correctly excludes every sub-state false positive found during
+    development (town/county committees, congressional- and state-legislative-
+    district party organizations, caucuses, clubs, joint-fundraising trusts --
+    an earlier, looser version of this filter incorrectly admitted 235
+    committees before the whitelist-style state-name + suffix-pattern check
+    and the manual-override list were added). Indiana has no committee this
+    function covers with confidence (see _MANUAL_STATE_PARTY_COMMITTEE_IDS's
+    comment) and DC is out of scope for this project's House-race universe
+    regardless. Errs toward excluding an ambiguous committee rather than
+    including one, matching this project's standing preference for an honest
+    undercount over a fabricated-precision overcount (see e.g. Gap 2's
+    committee-ID correction in this same section of FINDINGS.md)."""
+    import pandas as pd
+
+    if exclude_national is None:
+        exclude_national = {DCCC_COMMITTEE_ID, DNC_COMMITTEE_ID, DSCC_COMMITTEE_ID}
+    cm = _load_committee_master()
+    is_party_committee = cm["cmte_tp"].isin(["X", "Y"]) & (cm["cmte_dsgn"] == "U")
+    is_dem = cm["cmte_pty_affiliation"] == "DEM"
+    not_national = ~cm["cmte_id"].isin(exclude_national)
+
+    name_upper = cm["cmte_nm"].fillna("").str.upper()
+    state_full = cm["cmte_st"].map(_FULL_STATE_NAMES).fillna("")
+    has_own_state_name = pd.Series(
+        [bool(s) and s in n for s, n in zip(state_full, name_upper)], index=cm.index,
+    )
+    has_party_suffix = name_upper.str.contains(_STATE_PARTY_SUFFIX_PATTERN, na=False, regex=True)
+    is_substate = name_upper.str.contains("|".join(_SUBSTATE_NAME_PATTERNS), na=False, regex=True)
+
+    candidates = cm[
+        is_party_committee & is_dem & not_national
+        & has_own_state_name & has_party_suffix & ~is_substate
+    ].copy()
+    manual = cm[cm["cmte_id"].isin(_MANUAL_STATE_PARTY_COMMITTEE_IDS.values())].copy()
+    candidates = pd.concat([candidates, manual], ignore_index=True).drop_duplicates(subset=["cmte_id"])
+    return candidates[["cmte_id", "cmte_nm", "cmte_st"]].rename(
+        columns={"cmte_id": "committee_id", "cmte_nm": "committee_name", "cmte_st": "state"}
+    )
+
+
+def _itoth_file_year_range(path: Path) -> tuple[int, int]:
+    """Cheap, O(1)-I/O sampled scan (5 seek points, not exhaustive) of one
+    itoth*.txt bulk file's approximate TRANSACTION_DT year coverage, used
+    only to decide which of the (up to 8, up to 3.3GB each) files are worth
+    a full scan for a given cycle. Assumes each file's rows are roughly
+    chronologically grouped (verified directly: a denser every-2000th-row
+    sample of all 8 files at implementation time showed each file spanning
+    a narrow, contiguous 2-6 year window, not scattered across decades) --
+    callers should still treat the returned range as approximate (see
+    parse_state_party_coordinated_24k's +/-1 year padding when deciding
+    file relevance), not an exact bound."""
+    size = path.stat().st_size
+    if size == 0:
+        return (0, 0)
+    years: set[int] = set()
+    with open(path, "rb") as f:
+        for frac in (0.0, 0.25, 0.5, 0.75, 0.99):
+            f.seek(int(size * frac))
+            if frac > 0.0:
+                f.readline()  # discard partial line from an arbitrary seek offset
+            line = f.readline().decode("latin-1", errors="replace")
+            fields = line.split("|")
+            if len(fields) > 13:
+                dt = fields[13].strip()
+                if len(dt) == 8 and dt.isdigit():
+                    years.add(int(dt[4:8]))
+    return (min(years), max(years)) if years else (0, 0)
+
+
+def _scan_itoth_file_for_24k(path: Path, cycle_years: set[int], chunksize: int = 200_000) -> "pd.DataFrame":
+    """Chunked scan of one itoth*.txt bulk file (files up to 3.3GB, so this
+    is never read into memory at once), filtered to TRANSACTION_TP == "24K"
+    (FEC Schedule B line 23, "Coordinated Party Expenditures") and
+    ENTITY_TP == "CCM" (recipient is a candidate's principal campaign
+    committee, not another committee/PAC -- excludes the large majority of
+    24K rows, which are committee-to-committee transfers with no single
+    House race to attribute to), restricted to cycle_years via
+    TRANSACTION_DT."""
+    import pandas as pd
+
+    keep = []
+    for chunk in pd.read_csv(
+        path, sep="|", header=None, names=_ITOTH_COLUMNS, dtype=str,
+        chunksize=chunksize, encoding="latin-1", on_bad_lines="skip",
+    ):
+        mask = (chunk["transaction_tp"] == "24K") & (chunk["entity_tp"] == "CCM")
+        sub = chunk[mask]
+        if len(sub):
+            years = pd.to_numeric(sub["transaction_dt"].str.strip().str[4:8], errors="coerce")
+            sub = sub[years.isin(cycle_years)]
+        if len(sub):
+            keep.append(sub)
+    if not keep:
+        return pd.DataFrame(columns=_ITOTH_COLUMNS)
+    return pd.concat(keep, ignore_index=True)
+
+
+def parse_state_party_coordinated_24k(cycle: int) -> "pd.DataFrame":
+    """State Democratic party committees' 24K coordinated expenditures into
+    House candidate committees, aggregated per district -- the data gap
+    FINDINGS.md Section 10.7 (Gap 3) documented as "out of scope for this
+    audit" and left as future work. Additive to, NOT a duplicate of, the
+    existing DCCC-only coordinated_dccc_{cycle}.csv path (fetched via the
+    FEC API against C00000935 specifically) -- DCCC's own 24K rows are
+    explicitly excluded here to avoid double-counting.
+
+    District attribution: 24K rows carry CMTE_ID (the filing party
+    committee) and OTHER_ID (the recipient candidate committee) but no
+    district directly, unlike the API-based coordinated_{dccc,nrcc} fetch
+    (which gets candidate_office_state/district for free in the API
+    response). Resolved here via the same CAND_ID <-> principal-committee
+    crosswalk _load_candidate_committee_crosswalk() already builds from
+    ccl*.txt for the candidate-periodic-reports fetch, inverted (committee
+    -> candidate) and joined to candidate_master/cn*.txt for
+    CAND_OFFICE_ST/CAND_OFFICE_DISTRICT.
+
+    Output columns match coordinated_{dccc,nrcc}_{cycle}.csv's existing
+    schema so consolidate_fec_files() can merge this in as a third source
+    with no changes to src/backtest/data/fec.py's consumption path:
+        district_id, party, cycle, coordinated_expenditures
+    """
+    import pandas as pd
+
+    all_dir = config.raw_path("all_committee_transactions")
+    paths = sorted(all_dir.glob("itoth*.txt")) if all_dir.exists() else []
+    if not paths:
+        raise FileNotFoundError(f"No itoth*.txt files found in {all_dir}")
+
+    cycle_years = {cycle - 1, cycle}
+    relevant_paths = []
+    for p in paths:
+        lo, hi = _itoth_file_year_range(p)
+        if lo == 0 and hi == 0:
+            continue
+        if (lo - 1) <= max(cycle_years) and (hi + 1) >= min(cycle_years):
+            relevant_paths.append(p)
+    if not relevant_paths:
+        logger.warning(
+            f"24K state-party scan {cycle}: no itoth*.txt file's sampled date range "
+            f"overlaps {sorted(cycle_years)} -- returning an empty result."
+        )
+        return pd.DataFrame(columns=["district_id", "party", "cycle", "coordinated_expenditures"])
+
+    logger.info(f"24K state-party scan {cycle}: scanning {[p.name for p in relevant_paths]} "
+                f"(cycle_years={sorted(cycle_years)})")
+    frames = [_scan_itoth_file_for_24k(p, cycle_years) for p in relevant_paths]
+    raw = pd.concat(frames, ignore_index=True)
+    n_before_dedup = len(raw)
+    raw = raw.drop_duplicates(subset=["sub_id"])   # dedup across overlapping-vintage files
+    logger.info(f"24K state-party scan {cycle}: {n_before_dedup} raw 24K/CCM rows, "
+                f"{len(raw)} after cross-file dedup on sub_id")
+
+    state_dem = identify_state_dem_party_committees()
+    raw = raw[raw["cmte_id"] != DCCC_COMMITTEE_ID]   # never double-count DCCC's own coordinated spend
+    raw = raw.merge(state_dem[["committee_id"]], left_on="cmte_id", right_on="committee_id", how="inner")
+    logger.info(f"24K state-party scan {cycle}: {len(raw)} rows from an identified state Dem party committee")
+
+    crosswalk = _load_candidate_committee_crosswalk(cycle)   # CAND_ID -> principal CMTE_ID
+    committee_to_cand = {v: k for k, v in crosswalk.items()}   # inverted: CMTE_ID -> CAND_ID
+    raw["cand_id"] = raw["other_id"].map(committee_to_cand)
+    n_unmatched = int(raw["cand_id"].isna().sum())
+    if n_unmatched:
+        logger.warning(f"24K state-party scan {cycle}: {n_unmatched} row(s) had no matching House "
+                        f"principal-committee crosswalk entry for OTHER_ID and were dropped.")
+    raw = raw[raw["cand_id"].notna()]
+
+    cn_dir = config.raw_path("candidate_master")
+    cn_paths = sorted(cn_dir.glob("cn*.txt")) if cn_dir.exists() else []
+    if not cn_paths:
+        raise FileNotFoundError(f"No cn*.txt files found in {cn_dir}")
+    cn = pd.concat(
+        [pd.read_csv(p, sep="|", header=None, names=_CN_COLUMNS, dtype=str) for p in cn_paths],
+        ignore_index=True,
+    ).drop_duplicates(subset=["cand_id"], keep="last")
+    cn["district_id"] = cn["cand_office_st"] + "-" + cn["cand_office_district"].fillna("00").str.zfill(2)
+    raw = raw.merge(cn[["cand_id", "district_id"]], on="cand_id", how="left")
+    n_no_district = int(raw["district_id"].isna().sum())
+    if n_no_district:
+        logger.warning(f"24K state-party scan {cycle}: {n_no_district} row(s) had a candidate_id "
+                        f"with no candidate_master match and were dropped.")
+    raw = raw[raw["district_id"].notna()]
+
+    raw["transaction_amt"] = pd.to_numeric(raw["transaction_amt"], errors="coerce").fillna(0.0)
+    out = (
+        raw.groupby("district_id")["transaction_amt"].sum().reset_index()
+        .rename(columns={"transaction_amt": "coordinated_expenditures"})
+    )
+    out["party"] = "D"
+    out["cycle"] = cycle
+    logger.info(f"24K state-party scan {cycle}: ${out['coordinated_expenditures'].sum():,.0f} "
+                f"across {len(out)} districts")
+    return out[["district_id", "party", "cycle", "coordinated_expenditures"]]
+
+
 _PERIODIC_REPORT_COLUMNS = [
     "district_id", "party", "cycle", "fec_candidate_id", "committee_id",
     "coverage_start_date", "coverage_end_date", "receipts_period",
@@ -677,17 +1020,39 @@ def fetch_candidate_periodic_reports(cycle: int, api_key: str, force: bool = Fal
     )
 
 
-def consolidate_fec_files(cycle: int) -> None:
-    """Merge per-committee IE and coordinated files into single canonical files."""
+def consolidate_fec_files(cycle: int, force: bool = False, kinds: list[str] | None = None) -> None:
+    """Merge per-committee IE and coordinated files into single canonical files.
+
+    force=True re-consolidates even if the output already exists -- needed
+    when a new source label (e.g. "state_party_dem") gains data after the
+    canonical file was first built; without it, this function's normal
+    if-not-exists guard would silently keep the older, incomplete file.
+
+    kinds: restrict which canonical file(s) to touch (subset of
+    {"coordinated", "ie"}; default both, the original behavior). Added
+    2026-08 after force=True's blast radius caused a real, damaging
+    regression: adding the state-party coordinated source and calling
+    consolidate_fec_files(cycle, force=True) also silently re-ran the "ie"
+    branch, overwriting the (existing, richer) build_comprehensive_ie()
+    output -- multi-outside-group independent-expenditure data -- with a
+    much narrower DCCC/NRCC-API-only concatenation, corrupting $350M+ of
+    real spending data on the first live run. Discovered immediately via a
+    before/after d_total sanity diff (a $358M drop was not remotely
+    plausible from a $153K new source) and restored from git; kinds lets a
+    caller that only has a new SOURCE for one canonical file force-refresh
+    just that one, without touching the other."""
     import pandas as pd
 
     fec_dir = config.raw_path("fec")
-    for kind, col in [("coordinated", "coordinated_expenditures"), ("ie", "amount")]:
+    coordinated_labels = ["dccc", "nrcc", "state_party_dem"]
+    all_kinds = [("coordinated", coordinated_labels), ("ie", ["dccc", "nrcc"])]
+    selected = all_kinds if kinds is None else [(k, labels) for k, labels in all_kinds if k in kinds]
+    for kind, labels in selected:
         out = fec_dir / f"{'coordinated_expenditures' if kind == 'coordinated' else 'independent_expenditures'}_{cycle}.csv"
-        if not out.exists():
+        if not out.exists() or force:
             frames = [
                 pd.read_csv(fec_dir / f"{kind}_{label}_{cycle}.csv")
-                for label in ["dccc", "nrcc"]
+                for label in labels
                 if (fec_dir / f"{kind}_{label}_{cycle}.csv").exists()
             ]
             if frames:
@@ -895,6 +1260,70 @@ CVAP_BULK_URL = (
 )
 
 
+def _cvap_vintage_url(end_year: int) -> str:
+    """URL pattern verified live for end_year in {2014,2018,2019,2020,2024}
+    (2026-08) -- Census publishes CVAP special tabulations annually, named
+    by the LAST year of the rolling 5-year ACS span:
+    .../datasets/{end_year}/{end_year}-cvap/CVAP_{end_year-4}-{end_year}_ACS_csv_files.zip"""
+    return (
+        f"https://www2.census.gov/programs-surveys/decennial/rdo/datasets"
+        f"/{end_year}/{end_year}-cvap/CVAP_{end_year - 4}-{end_year}_ACS_csv_files.zip"
+    )
+
+
+def _parse_cvap_cd_csv(content: bytes) -> "pd.DataFrame":
+    """Shared extraction logic for a CVAP special-tabulation ZIP's CD.csv:
+    keep the "Total" row per district (lntitle has 13 race/ethnicity rows),
+    parse geoid ("5001800US{STATE_FIPS:02d}{DISTRICT:02d}") into
+    district_id. Refactored out of fetch_census_cvap() (2026-08) so
+    fetch_cvap_vintage()/build_cvap_panel() below can reuse it instead of
+    duplicating the parsing logic for each of up to 11 vintages.
+
+    Returns district_id, cvap (int) -- caller adds any vintage/cycle label."""
+    import pandas as pd
+
+    with zipfile.ZipFile(io.BytesIO(content)) as zf:
+        cd_raw = zf.read("CD.csv")
+    df = pd.read_csv(io.BytesIO(cd_raw), dtype=str)
+    # Older vintages (verified: 2016, 2017) use UPPERCASE column names
+    # (GEOID, LNTITLE, CVAP_EST); 2018+ use lowercase. Normalize so one
+    # parser handles both rather than branching on vintage year.
+    df.columns = df.columns.str.lower()
+
+    total = df[df["lntitle"] == "Total"].copy()
+    suffix = total["geoid"].str.split("US").str[-1]
+    total["fips"] = suffix.str[:2]
+    total["dist"] = suffix.str[2:].str.zfill(2)
+    total["state"] = total["fips"].map(FIPS_TO_STATE)
+    total["district_id"] = total["state"] + "-" + total["dist"]
+    total["cvap"] = pd.to_numeric(total["cvap_est"], errors="coerce")
+
+    return (
+        total.dropna(subset=["district_id", "state", "cvap"])
+        [["district_id", "cvap"]].copy()
+        .assign(cvap=lambda d: d["cvap"].astype(int))
+    )
+
+
+def _download_cvap_zip(url: str, label: str) -> bytes:
+    import requests
+
+    logger.info(f"Downloading Census CVAP bulk file ({label})…")
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, timeout=300, stream=True)
+            resp.raise_for_status()
+            break
+        except Exception as e:
+            if attempt == 2:
+                raise
+            logger.warning(f"Census download error: {e}. Retrying…")
+            time.sleep(10)
+    content = b"".join(resp.iter_content(chunk_size=1 << 20))
+    logger.info(f"  Downloaded {len(content) // 1024 // 1024} MB")
+    return content
+
+
 def fetch_census_cvap(census_api_key: str = "") -> None:
     """
     Download CVAP per congressional district from the Census CVAP Special
@@ -907,50 +1336,13 @@ def fetch_census_cvap(census_api_key: str = "") -> None:
 
     Output schema: district_id, cvap
     """
-    import requests
-    import pandas as pd
-
     out_path = config.raw_path("census") / "cvap_2022_acs5.csv"
     if out_path.exists():
         logger.info("Census CVAP: already present, skipping")
         return
 
-    logger.info(f"Downloading Census CVAP bulk file (~54 MB)…")
-    for attempt in range(3):
-        try:
-            resp = requests.get(CVAP_BULK_URL, timeout=300, stream=True)
-            resp.raise_for_status()
-            break
-        except Exception as e:
-            if attempt == 2:
-                raise
-            logger.warning(f"Census download error: {e}. Retrying…")
-            time.sleep(10)
-
-    content = b"".join(resp.iter_content(chunk_size=1 << 20))
-    logger.info(f"  Downloaded {len(content) // 1024 // 1024} MB; extracting CD.csv…")
-
-    with zipfile.ZipFile(io.BytesIO(content)) as zf:
-        cd_raw = zf.read("CD.csv")
-
-    df = pd.read_csv(io.BytesIO(cd_raw), dtype=str)
-
-    # Keep only the "Total" CVAP row per district (lntitle has 13 race/ethnicity rows)
-    total = df[df["lntitle"] == "Total"].copy()
-
-    # geoid format: "5001800US{STATE_FIPS:02d}{DISTRICT:02d}"
-    suffix         = total["geoid"].str.split("US").str[-1]
-    total["fips"]  = suffix.str[:2]
-    total["dist"]  = suffix.str[2:].str.zfill(2)
-    total["state"] = total["fips"].map(FIPS_TO_STATE)
-    total["district_id"] = total["state"] + "-" + total["dist"]
-    total["cvap"]  = pd.to_numeric(total["cvap_est"], errors="coerce")
-
-    out = (
-        total.dropna(subset=["district_id", "state", "cvap"])
-        [["district_id", "cvap"]].copy()
-    )
-    out["cvap"] = out["cvap"].astype(int)
+    content = _download_cvap_zip(CVAP_BULK_URL, "2018-2022, ~54 MB")
+    out = _parse_cvap_cd_csv(content)
     out.to_csv(out_path, index=False)
     logger.info(f"Saved {len(out)} congressional districts → {out_path}")
 
@@ -983,7 +1375,8 @@ def main() -> None:
         default=config.panel_cycles() + [2024],
     )
     parser.add_argument(
-        "--only", choices=["fec", "fec-periodic", "incumbency", "census", "all"],
+        "--only", choices=["fec", "fec-periodic", "incumbency", "census",
+                            "state-party-coordinated", "all"],
         default="all",
     )
     parser.add_argument(
@@ -1052,6 +1445,22 @@ def main() -> None:
 
     if args.only in ("census", "all"):
         fetch_census_cvap(args.census_api_key)
+
+    if args.only == "state-party-coordinated":
+        # Deliberately NOT part of "all" -- a heavy scan of local multi-GB
+        # bulk files (up to 3.3GB each), not a routine API fetch, and it
+        # re-consolidates coordinated_expenditures_{cycle}.csv with force=True
+        # (see consolidate_fec_files), overwriting any already-fetched
+        # DCCC/NRCC-only version -- an explicit, deliberate step per
+        # FINDINGS.md Section 10.7 Gap 3, not something a --only all run
+        # should trigger silently.
+        for cycle in args.cycles:
+            logger.info(f"─── State-party 24K coordinated expenditures: cycle {cycle} ───")
+            out = parse_state_party_coordinated_24k(cycle)
+            out_path = config.raw_path("fec") / f"coordinated_state_party_dem_{cycle}.csv"
+            out.to_csv(out_path, index=False)
+            logger.info(f"Saved → {out_path}")
+            consolidate_fec_files(cycle, force=True, kinds=["coordinated"])
 
     logger.info("\nFetch complete.")
     if getattr(args, "skip_party_spend", False):

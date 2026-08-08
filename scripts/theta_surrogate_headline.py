@@ -17,6 +17,19 @@ At K=2,000, N_PERIODS=7: (7+1)*2,000=16,000 surrogate calls per scenario,
 launched as independent parallel processes (not sequentially within one
 script), so wall-clock time for all three is close to the time for one.
 
+Note (2026-08): this script's result is no longer the ONLY place the
+corrected calculation lives -- solve_bellman_lsm.py's own main() was found
+to still default to the LP allocator (neither allocator flag was ever
+passed to its run_lsm() calls), silently reproducing the superseded,
+wrong-sign figure in outputs/theta_schedule.json even after this script's
+decisive re-solve had already established the corrected answer. main() now
+passes use_surrogate_allocator=True too, so outputs/theta_schedule.json
+should match this script's per-scenario output (up to RNG-seed/K
+differences from running all three scenarios in one process vs. as
+separate parallel processes here). This script remains useful as a
+standalone, single-scenario rerun and as the historical record of the
+original decisive re-solve.
+
 Output: outputs/theta_surrogate_headline_{scenario}.json
 """
 

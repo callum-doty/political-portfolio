@@ -1,0 +1,4459 @@
+{
+  "cycle": 2024,
+  "n_races": 433,
+  "party_budget_d": 465016687.01,
+  "party_budget_r": 131953282.27000001,
+  "cap_fraction_d": 0.15,
+  "cap_fraction_r": 0.15,
+  "damping_theta": 0.5,
+  "converged": true,
+  "n_iterations": 13,
+  "e_seats_d": 215.21894410219159,
+  "e_seats_r": 217.78105589780841,
+  "multi_start_agreement": {
+    "converged_all": true,
+    "agree_within_tolerance": true,
+    "max_pairwise_party_d_diff": 8565.981608700007,
+    "max_pairwise_party_r_diff": 6775.531843391713,
+    "per_start_converged": {
+      "observed": true,
+      "uniform": true,
+      "zero": true
+    },
+    "per_start_e_seats_d": {
+      "observed": 215.21894410219159,
+      "uniform": 215.21886998864198,
+      "zero": 215.2189641780629
+    },
+    "per_start_n_iterations": {
+      "observed": 13,
+      "uniform": 15,
+      "zero": 14
+    }
+  },
+  "history": [
+    {
+      "round": 0,
+      "max_delta_d": 7371936.7414755,
+      "max_delta_r": 3360339.4222059236,
+      "e_seats_d": 217.94030193971292,
+      "e_seats_r": 213.65429379752993
+    },
+    {
+      "round": 1,
+      "max_delta_d": 4351767.749172255,
+      "max_delta_r": 1604833.557138614,
+      "e_seats_d": 216.14159010185728,
+      "e_seats_r": 212.7513902658157
+    },
+    {
+      "round": 2,
+      "max_delta_d": 2693140.81313573,
+      "max_delta_r": 1273593.335535923,
+      "e_seats_d": 215.609224256214,
+      "e_seats_r": 212.64142894564412
+    },
+    {
+      "round": 3,
+      "max_delta_d": 1655658.1478590183,
+      "max_delta_r": 604450.0052047009,
+      "e_seats_d": 215.41329830817773,
+      "e_seats_r": 212.72785525719502
+    },
+    {
+      "round": 4,
+      "max_delta_d": 914105.4652661453,
+      "max_delta_r": 191482.41677988693,
+      "e_seats_d": 215.32703668787116,
+      "e_seats_r": 212.83600151165786
+    },
+    {
+      "round": 5,
+      "max_delta_d": 541159.2028923454,
+      "max_delta_r": 315691.7285992373,
+      "e_seats_d": 215.28129022358684,
+      "e_seats_r": 212.91714524396934
+    },
+    {
+      "round": 6,
+      "max_delta_d": 318728.96708591003,
+      "max_delta_r": 386746.6812841003,
+      "e_seats_d": 215.25403190290342,
+      "e_seats_r": 212.965940807316
+    },
+    {
+      "round": 7,
+      "max_delta_d": 182873.61486546788,
+      "max_delta_r": 307395.90012085484,
+      "e_seats_d": 215.23791193900726,
+      "e_seats_r": 212.99043946209054
+    },
+    {
+      "round": 8,
+      "max_delta_d": 102752.64199143648,
+      "max_delta_r": 190724.19472375745,
+      "e_seats_d": 215.22867114621968,
+      "e_seats_r": 213.00066028520524
+    },
+    {
+      "round": 9,
+      "max_delta_d": 56678.91614745185,
+      "max_delta_r": 97215.74689552141,
+      "e_seats_d": 215.22365270935043,
+      "e_seats_r": 213.00406924705655
+    },
+    {
+      "round": 10,
+      "max_delta_d": 30729.452661881223,
+      "max_delta_r": 40412.99711544067,
+      "e_seats_d": 215.22106666253646,
+      "e_seats_r": 213.00484672962497
+    },
+    {
+      "round": 11,
+      "max_delta_d": 16383.15341720637,
+      "max_delta_r": 12392.363106420264,
+      "e_seats_d": 215.219799779433,
+      "e_seats_r": 213.00485780547874
+    },
+    {
+      "round": 12,
+      "max_delta_d": 9148.041558936238,
+      "max_delta_r": 8239.677796710283,
+      "e_seats_d": 215.21921061112843,
+      "e_seats_r": 213.00476303175586
+    }
+  ],
+  "per_race": [
+    {
+      "district_id": "AL-01",
+      "cook_rating": "Safe R",
+      "party_d": 9.904965736495797e-12,
+      "party_r": 1.6300157077798558e-11,
+      "d_total_equilibrium": 16817.50000000001,
+      "r_total_equilibrium": 2631446.59,
+      "d_total_observed": 16817.5,
+      "r_total_observed": 2631446.59
+    },
+    {
+      "district_id": "AL-02",
+      "cook_rating": "Safe R",
+      "party_d": 440173.507323239,
+      "party_r": 21.21055908203535,
+      "d_total_equilibrium": 3045693.367323239,
+      "r_total_equilibrium": 3854961.240559082,
+      "d_total_observed": 2764186.1,
+      "r_total_observed": 4028696.9299999997
+    },
+    {
+      "district_id": "AL-03",
+      "cook_rating": "Safe R",
+      "party_d": 8.099424946143176e-13,
+      "party_r": 4.345301932623887e-13,
+      "d_total_equilibrium": 8.099424946143176e-13,
+      "r_total_equilibrium": 2037556.65,
+      "d_total_observed": 0.0,
+      "r_total_observed": 2037556.65
+    },
+    {
+      "district_id": "AL-04",
+      "cook_rating": "Safe R",
+      "party_d": 2.1833120682997281e-13,
+      "party_r": 2.2820493103689527e-13,
+      "d_total_equilibrium": 2.1833120682997281e-13,
+      "r_total_equilibrium": 1692460.67,
+      "d_total_observed": 0.0,
+      "r_total_observed": 1692460.67
+    },
+    {
+      "district_id": "AL-05",
+      "cook_rating": "Safe R",
+      "party_d": 9.382241988830643e-13,
+      "party_r": 5.487850232652751e-12,
+      "d_total_equilibrium": 9.382241988830643e-13,
+      "r_total_equilibrium": 691299.16,
+      "d_total_observed": 0.0,
+      "r_total_observed": 691299.16
+    },
+    {
+      "district_id": "AL-06",
+      "cook_rating": "Safe R",
+      "party_d": 2090.966619667873,
+      "party_r": 1.7842573046947197e-12,
+      "d_total_equilibrium": 175304.49661966786,
+      "r_total_equilibrium": 2021427.7,
+      "d_total_observed": 173213.53,
+      "r_total_observed": 2021427.7
+    },
+    {
+      "district_id": "AL-07",
+      "cook_rating": "Safe D",
+      "party_d": 0.8922058105468977,
+      "party_r": 9982.75554986152,
+      "d_total_equilibrium": 2462143.0122058108,
+      "r_total_equilibrium": 52617.025549861515,
+      "d_total_observed": 2469451.0700000003,
+      "r_total_observed": 42634.27
+    },
+    {
+      "district_id": "AR-01",
+      "cook_rating": "Safe R",
+      "party_d": 1290.8539614857802,
+      "party_r": 1.1707204243827072e-11,
+      "d_total_equilibrium": 95637.50396148578,
+      "r_total_equilibrium": 889704.9,
+      "d_total_observed": 94846.65,
+      "r_total_observed": 889704.9
+    },
+    {
+      "district_id": "AR-02",
+      "cook_rating": "Safe R",
+      "party_d": 360379.0190359375,
+      "party_r": 174053.15640307788,
+      "d_total_equilibrium": 833701.7090359374,
+      "r_total_equilibrium": 3480416.566403078,
+      "d_total_observed": 473322.69,
+      "r_total_observed": 3462711.99
+    },
+    {
+      "district_id": "AR-03",
+      "cook_rating": "Safe R",
+      "party_d": 14911.69090024414,
+      "party_r": 1.273123609189914e-11,
+      "d_total_equilibrium": 272882.13090024417,
+      "r_total_equilibrium": 2703359.12,
+      "d_total_observed": 257970.44,
+      "r_total_observed": 2703359.12
+    },
+    {
+      "district_id": "AR-04",
+      "cook_rating": "Safe R",
+      "party_d": 7.02105040772949e-13,
+      "party_r": 2.669558223445776e-13,
+      "d_total_equilibrium": 9156.36,
+      "r_total_equilibrium": 2821992.91,
+      "d_total_observed": 9156.36,
+      "r_total_observed": 2821992.91
+    },
+    {
+      "district_id": "AZ-01",
+      "cook_rating": "Lean R",
+      "party_d": 6333402.410470359,
+      "party_r": 245043.69661977555,
+      "d_total_equilibrium": 12585422.57047036,
+      "r_total_equilibrium": 4461651.616619775,
+      "d_total_observed": 24014148.06,
+      "r_total_observed": 7607606.08
+    },
+    {
+      "district_id": "AZ-02",
+      "cook_rating": "Likely R",
+      "party_d": 6181708.962982773,
+      "party_r": 25.49381347656968,
+      "d_total_equilibrium": 11639335.052982774,
+      "r_total_equilibrium": 8308150.603813477,
+      "d_total_observed": 5457626.09,
+      "r_total_observed": 8516970.43
+    },
+    {
+      "district_id": "AZ-03",
+      "cook_rating": "Safe D",
+      "party_d": 161.21353637695313,
+      "party_r": 2.2686721954190935e-12,
+      "d_total_equilibrium": 2866432.793536377,
+      "r_total_equilibrium": 79390.55,
+      "d_total_observed": 4186932.87,
+      "r_total_observed": 79390.55
+    },
+    {
+      "district_id": "AZ-04",
+      "cook_rating": "Lean D",
+      "party_d": 2519132.728621548,
+      "party_r": 427281.81682911084,
+      "d_total_equilibrium": 4332992.888621548,
+      "r_total_equilibrium": 1244163.026829111,
+      "d_total_observed": 1815468.16,
+      "r_total_observed": 825631.21
+    },
+    {
+      "district_id": "AZ-05",
+      "cook_rating": "Safe R",
+      "party_d": 9701.805254928107,
+      "party_r": 1.6444784121469548e-12,
+      "d_total_equilibrium": 78557.67525492811,
+      "r_total_equilibrium": 1159653.7,
+      "d_total_observed": 68855.87,
+      "r_total_observed": 1159653.7
+    },
+    {
+      "district_id": "AZ-06",
+      "cook_rating": "Likely R",
+      "party_d": 6403346.8525294475,
+      "party_r": 438.49446411133357,
+      "d_total_equilibrium": 14833352.192529447,
+      "r_total_equilibrium": 6854095.2444641115,
+      "d_total_observed": 22378622.2,
+      "r_total_observed": 10445803.4
+    },
+    {
+      "district_id": "AZ-07",
+      "cook_rating": "Safe D",
+      "party_d": 97795.92419670412,
+      "party_r": 20666.7834815377,
+      "d_total_equilibrium": 647203.3341967042,
+      "r_total_equilibrium": 98681.5434815377,
+      "d_total_observed": 549407.41,
+      "r_total_observed": 78014.76
+    },
+    {
+      "district_id": "AZ-08",
+      "cook_rating": "Safe R",
+      "party_d": 422104.5092713813,
+      "party_r": 49598.97857478119,
+      "d_total_equilibrium": 998857.2492713813,
+      "r_total_equilibrium": 4265937.49857478,
+      "d_total_observed": 576752.74,
+      "r_total_observed": 4216362.52
+    },
+    {
+      "district_id": "AZ-09",
+      "cook_rating": "Safe R",
+      "party_d": 7811432.357987771,
+      "party_r": 3147725.8209401225,
+      "d_total_equilibrium": 17083569.67798777,
+      "r_total_equilibrium": 3645196.3009401225,
+      "d_total_observed": 9272137.32,
+      "r_total_observed": 497470.48
+    },
+    {
+      "district_id": "CA-01",
+      "cook_rating": "Safe R",
+      "party_d": 24802.946145307284,
+      "party_r": 59586.5477606983,
+      "d_total_equilibrium": 104426.36614530729,
+      "r_total_equilibrium": 753836.3177606983,
+      "d_total_observed": 79623.42,
+      "r_total_observed": 694249.77
+    },
+    {
+      "district_id": "CA-02",
+      "cook_rating": "Safe D",
+      "party_d": 4058.5841194508403,
+      "party_r": 7836.585016368004,
+      "d_total_equilibrium": 962884.2141194509,
+      "r_total_equilibrium": 130895.895016368,
+      "d_total_observed": 958825.63,
+      "r_total_observed": 123059.31
+    },
+    {
+      "district_id": "CA-03",
+      "cook_rating": "Likely R",
+      "party_d": 7155176.652843835,
+      "party_r": 958203.723338549,
+      "d_total_equilibrium": 10417582.572843835,
+      "r_total_equilibrium": 4882357.543338548,
+      "d_total_observed": 3282405.92,
+      "r_total_observed": 4352725.2
+    },
+    {
+      "district_id": "CA-04",
+      "cook_rating": "Safe D",
+      "party_d": 1.8232226562499818,
+      "party_r": 2776.652478981202,
+      "d_total_equilibrium": 2852646.6932226564,
+      "r_total_equilibrium": 162582.13247898122,
+      "d_total_observed": 2867580.71,
+      "r_total_observed": 159805.48
+    },
+    {
+      "district_id": "CA-05",
+      "cook_rating": "Safe R",
+      "party_d": 33692.04449549024,
+      "party_r": 89817.0975291266,
+      "d_total_equilibrium": 115743.71449549025,
+      "r_total_equilibrium": 1250169.0675291265,
+      "d_total_observed": 82051.67,
+      "r_total_observed": 1160351.97
+    },
+    {
+      "district_id": "CA-06",
+      "cook_rating": "Likely D",
+      "party_d": 434424.7701661226,
+      "party_r": 88823.97071836935,
+      "d_total_equilibrium": 1546196.9501661225,
+      "r_total_equilibrium": 271192.3707183694,
+      "d_total_observed": 1111772.18,
+      "r_total_observed": 182368.4
+    },
+    {
+      "district_id": "CA-07",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 7070.7872268258825,
+      "d_total_equilibrium": 1113903.11,
+      "r_total_equilibrium": 18364.00722682588,
+      "d_total_observed": 1113903.11,
+      "r_total_observed": 11293.22
+    },
+    {
+      "district_id": "CA-08",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1141.286143031873,
+      "d_total_equilibrium": 969795.57,
+      "r_total_equilibrium": 22034.846143031875,
+      "d_total_observed": 969795.57,
+      "r_total_observed": 20893.56
+    },
+    {
+      "district_id": "CA-09",
+      "cook_rating": "Likely D",
+      "party_d": 2206368.502991263,
+      "party_r": 450150.44460719835,
+      "d_total_equilibrium": 7082678.072991263,
+      "r_total_equilibrium": 2704944.574607198,
+      "d_total_observed": 4939757.94,
+      "r_total_observed": 3632540.15
+    },
+    {
+      "district_id": "CA-10",
+      "cook_rating": "Safe D",
+      "party_d": 65018.93091801657,
+      "party_r": 15599.196989321808,
+      "d_total_equilibrium": 676370.7609180165,
+      "r_total_equilibrium": 98685.9569893218,
+      "d_total_observed": 611351.83,
+      "r_total_observed": 83086.76
+    },
+    {
+      "district_id": "CA-11",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 0.4272460937554375,
+      "d_total_equilibrium": 11739026.18,
+      "r_total_equilibrium": 208130.92724609375,
+      "d_total_observed": 11739026.18,
+      "r_total_observed": 211630.5
+    },
+    {
+      "district_id": "CA-12",
+      "cook_rating": "Safe D",
+      "party_d": 0.665283203125,
+      "party_r": 2.279476064651723e-12,
+      "d_total_equilibrium": 1945802.105283203,
+      "r_total_equilibrium": 4720.380000000003,
+      "d_total_observed": 1951251.44,
+      "r_total_observed": 4720.38
+    },
+    {
+      "district_id": "CA-13",
+      "cook_rating": "Lean D",
+      "party_d": 5752821.954840716,
+      "party_r": 590.1424096679863,
+      "d_total_equilibrium": 12046100.514840715,
+      "r_total_equilibrium": 4387482.902409668,
+      "d_total_observed": 23765289.9,
+      "r_total_observed": 9221339.379999999
+    },
+    {
+      "district_id": "CA-14",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1.15905276171477e-12,
+      "d_total_equilibrium": 4471680.34,
+      "r_total_equilibrium": 842783.13,
+      "d_total_observed": 4471680.34,
+      "r_total_observed": 842783.13
+    },
+    {
+      "district_id": "CA-15",
+      "cook_rating": "Safe D",
+      "party_d": 15854.061784111764,
+      "party_r": 5895.451330485546,
+      "d_total_equilibrium": 794707.8817841117,
+      "r_total_equilibrium": 164390.46133048556,
+      "d_total_observed": 778853.82,
+      "r_total_observed": 158495.01
+    },
+    {
+      "district_id": "CA-16",
+      "cook_rating": "Safe D",
+      "party_d": 476.4063549804688,
+      "party_r": 115.25088745117371,
+      "d_total_equilibrium": 6136527.71635498,
+      "r_total_equilibrium": 94020.09088745117,
+      "d_total_observed": 10038772.17,
+      "r_total_observed": 1038040.11
+    },
+    {
+      "district_id": "CA-17",
+      "cook_rating": "Safe D",
+      "party_d": 13.25021850585938,
+      "party_r": 1.6692073917930032e-12,
+      "d_total_equilibrium": 5149958.950218506,
+      "r_total_equilibrium": 72202.27,
+      "d_total_observed": 5258491.49,
+      "r_total_observed": 72202.27
+    },
+    {
+      "district_id": "CA-18",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1.3647105817574118e-12,
+      "d_total_equilibrium": 2498797.41,
+      "r_total_equilibrium": 199052.48,
+      "d_total_observed": 2498797.41,
+      "r_total_observed": 199052.48
+    },
+    {
+      "district_id": "CA-19",
+      "cook_rating": "Safe D",
+      "party_d": 1.7685119628906136,
+      "party_r": 2793.7478353030733,
+      "d_total_equilibrium": 1823328.2885119629,
+      "r_total_equilibrium": 10436.587835303073,
+      "d_total_observed": 1837814.17,
+      "r_total_observed": 7642.84
+    },
+    {
+      "district_id": "CA-20",
+      "cook_rating": "Safe R",
+      "party_d": 3252.037732805664,
+      "party_r": 2.2539279089652778e-12,
+      "d_total_equilibrium": 147335.38773280568,
+      "r_total_equilibrium": 2272655.2,
+      "d_total_observed": 144083.35,
+      "r_total_observed": 2272655.2
+    },
+    {
+      "district_id": "CA-21",
+      "cook_rating": "Safe D",
+      "party_d": 909498.1594517023,
+      "party_r": 189527.31392788765,
+      "d_total_equilibrium": 2795102.429451702,
+      "r_total_equilibrium": 943084.7239278876,
+      "d_total_observed": 1902104.27,
+      "r_total_observed": 753557.41
+    },
+    {
+      "district_id": "CA-22",
+      "cook_rating": "Lean D",
+      "party_d": 5742037.742105547,
+      "party_r": 600.268359375016,
+      "d_total_equilibrium": 12065962.952105548,
+      "r_total_equilibrium": 4916098.768359375,
+      "d_total_observed": 17402432.96,
+      "r_total_observed": 9832896.9
+    },
+    {
+      "district_id": "CA-23",
+      "cook_rating": "Safe R",
+      "party_d": 1272555.7068467778,
+      "party_r": 2598460.292703118,
+      "d_total_equilibrium": 2042882.0468467777,
+      "r_total_equilibrium": 3503680.712703118,
+      "d_total_observed": 772326.34,
+      "r_total_observed": 905220.42
+    },
+    {
+      "district_id": "CA-24",
+      "cook_rating": "Safe D",
+      "party_d": 2.4729553222656193,
+      "party_r": 26922.31547012311,
+      "d_total_equilibrium": 1497498.9729553224,
+      "r_total_equilibrium": 107143.02547012312,
+      "d_total_observed": 1517754.95,
+      "r_total_observed": 80220.71
+    },
+    {
+      "district_id": "CA-25",
+      "cook_rating": "Likely D",
+      "party_d": 2.01416015625,
+      "party_r": 76987.321813931,
+      "d_total_equilibrium": 2388853.494160156,
+      "r_total_equilibrium": 216911.91181393102,
+      "d_total_observed": 2405351.48,
+      "r_total_observed": 139924.59
+    },
+    {
+      "district_id": "CA-26",
+      "cook_rating": "Safe D",
+      "party_d": 261404.96855270717,
+      "party_r": 57878.73868998118,
+      "d_total_equilibrium": 1267963.6485527072,
+      "r_total_equilibrium": 147321.9486899812,
+      "d_total_observed": 1118233.1,
+      "r_total_observed": 89443.21
+    },
+    {
+      "district_id": "CA-27",
+      "cook_rating": "Lean D",
+      "party_d": 4665478.236018732,
+      "party_r": 580.4386816406454,
+      "d_total_equilibrium": 14952882.506018732,
+      "r_total_equilibrium": 6606503.7786816405,
+      "d_total_observed": 26299014.71,
+      "r_total_observed": 11360877.02
+    },
+    {
+      "district_id": "CA-28",
+      "cook_rating": "Safe D",
+      "party_d": 126236.04180317483,
+      "party_r": 38659.0538981415,
+      "d_total_equilibrium": 1787236.0118031749,
+      "r_total_equilibrium": 380606.3938981415,
+      "d_total_observed": 1660999.97,
+      "r_total_observed": 341947.34
+    },
+    {
+      "district_id": "CA-29",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1641.2911985574,
+      "d_total_equilibrium": 855062.42,
+      "r_total_equilibrium": 41547.121198557405,
+      "d_total_observed": 855062.42,
+      "r_total_observed": 39905.83
+    },
+    {
+      "district_id": "CA-30",
+      "cook_rating": "Safe D",
+      "party_d": 29772.836924972635,
+      "party_r": 12493.665699915135,
+      "d_total_equilibrium": 1788061.6469249728,
+      "r_total_equilibrium": 452819.9456999152,
+      "d_total_observed": 1759073.49,
+      "r_total_observed": 440326.28
+    },
+    {
+      "district_id": "CA-31",
+      "cook_rating": "Safe D",
+      "party_d": 2795600.845349972,
+      "party_r": 1101326.5551343516,
+      "d_total_equilibrium": 3622220.845349972,
+      "r_total_equilibrium": 1101676.5551343516,
+      "d_total_observed": 826620.0,
+      "r_total_observed": 350.0
+    },
+    {
+      "district_id": "CA-32",
+      "cook_rating": "Safe D",
+      "party_d": 11805.663073481412,
+      "party_r": 11954.411689610635,
+      "d_total_equilibrium": 1118220.9230734815,
+      "r_total_equilibrium": 152062.12168961062,
+      "d_total_observed": 1106415.26,
+      "r_total_observed": 140107.71
+    },
+    {
+      "district_id": "CA-33",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 4.819208264597232e-12,
+      "d_total_equilibrium": 4797056.96,
+      "r_total_equilibrium": 30977.630000000005,
+      "d_total_observed": 4797056.96,
+      "r_total_observed": 30977.63
+    },
+    {
+      "district_id": "CA-34",
+      "cook_rating": "Safe D",
+      "party_d": 291.46081787109375,
+      "party_r": 72.3161181640634,
+      "d_total_equilibrium": 2712687.940817871,
+      "r_total_equilibrium": 72.3161181640634,
+      "d_total_observed": 5100043.5,
+      "r_total_observed": 592413.64
+    },
+    {
+      "district_id": "CA-35",
+      "cook_rating": "Safe D",
+      "party_d": 120765.36705645667,
+      "party_r": 31023.235720938057,
+      "d_total_equilibrium": 1107707.3070564566,
+      "r_total_equilibrium": 173106.95572093804,
+      "d_total_observed": 986941.94,
+      "r_total_observed": 142083.72
+    },
+    {
+      "district_id": "CA-36",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 4.943583943047884e-12,
+      "d_total_equilibrium": 2707281.69,
+      "r_total_equilibrium": 45295.29000000001,
+      "d_total_observed": 2707281.69,
+      "r_total_observed": 45295.29
+    },
+    {
+      "district_id": "CA-37",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 3.145484921993488e-12,
+      "d_total_equilibrium": 1101316.72,
+      "r_total_equilibrium": 3.145484921993488e-12,
+      "d_total_observed": 1101316.72,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "CA-38",
+      "cook_rating": "Safe D",
+      "party_d": 59244.024244645945,
+      "party_r": 29042.273954152595,
+      "d_total_equilibrium": 1624892.9542446458,
+      "r_total_equilibrium": 245330.82395415258,
+      "d_total_observed": 1565648.93,
+      "r_total_observed": 236288.55
+    },
+    {
+      "district_id": "CA-39",
+      "cook_rating": "Safe D",
+      "party_d": 18.11976318359376,
+      "party_r": 23208.350713112264,
+      "d_total_equilibrium": 1511871.9197631837,
+      "r_total_equilibrium": 79357.37071311226,
+      "d_total_observed": 1660290.9000000001,
+      "r_total_observed": 56149.02
+    },
+    {
+      "district_id": "CA-40",
+      "cook_rating": "Lean R",
+      "party_d": 7106260.658216169,
+      "party_r": 297.6220651195088,
+      "d_total_equilibrium": 9187183.248216169,
+      "r_total_equilibrium": 7907033.512065119,
+      "d_total_observed": 2157503.0,
+      "r_total_observed": 10118044.16
+    },
+    {
+      "district_id": "CA-41",
+      "cook_rating": "Likely R",
+      "party_d": 3670253.360758843,
+      "party_r": 418.8915051269577,
+      "d_total_equilibrium": 16281248.410758844,
+      "r_total_equilibrium": 7864990.831505127,
+      "d_total_observed": 22672177.33,
+      "r_total_observed": 11296131.15
+    },
+    {
+      "district_id": "CA-42",
+      "cook_rating": "Safe D",
+      "party_d": 64879.95152128294,
+      "party_r": 18919.70985272638,
+      "d_total_equilibrium": 1335181.151521283,
+      "r_total_equilibrium": 372819.50985272636,
+      "d_total_observed": 1270301.2,
+      "r_total_observed": 353899.8
+    },
+    {
+      "district_id": "CA-43",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 4.565679097973058e-13,
+      "d_total_equilibrium": 1238561.44,
+      "r_total_equilibrium": 6788.280000000001,
+      "d_total_observed": 1238561.44,
+      "r_total_observed": 6788.28
+    },
+    {
+      "district_id": "CA-44",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 135.93053424968193,
+      "d_total_equilibrium": 1291497.72,
+      "r_total_equilibrium": 135.93053424968193,
+      "d_total_observed": 1291497.72,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "CA-45",
+      "cook_rating": "Lean D",
+      "party_d": 10109726.885798968,
+      "party_r": 546.3513586425833,
+      "d_total_equilibrium": 16296558.785798969,
+      "r_total_equilibrium": 10283728.901358644,
+      "d_total_observed": 23753662.75,
+      "r_total_observed": 14758892.88
+    },
+    {
+      "district_id": "CA-46",
+      "cook_rating": "Safe D",
+      "party_d": 10092.04950478842,
+      "party_r": 16451.214722419056,
+      "d_total_equilibrium": 1050417.6695047885,
+      "r_total_equilibrium": 102458.23472241906,
+      "d_total_observed": 1040325.62,
+      "r_total_observed": 86007.02
+    },
+    {
+      "district_id": "CA-47",
+      "cook_rating": "Likely D",
+      "party_d": 3589981.474272278,
+      "party_r": 622444.708274428,
+      "d_total_equilibrium": 11515872.084272278,
+      "r_total_equilibrium": 5114387.6382744275,
+      "d_total_observed": 12355930.7,
+      "r_total_observed": 8353639.76
+    },
+    {
+      "district_id": "CA-48",
+      "cook_rating": "Safe R",
+      "party_d": 90752.15011734253,
+      "party_r": 414129.46942994755,
+      "d_total_equilibrium": 226674.13011734255,
+      "r_total_equilibrium": 1169515.5394299475,
+      "d_total_observed": 135921.98,
+      "r_total_observed": 761026.37
+    },
+    {
+      "district_id": "CA-49",
+      "cook_rating": "Lean D",
+      "party_d": 5687514.852262391,
+      "party_r": 903583.7694133425,
+      "d_total_equilibrium": 11232383.88226239,
+      "r_total_equilibrium": 5825275.729413343,
+      "d_total_observed": 8501801.63,
+      "r_total_observed": 5070014.49
+    },
+    {
+      "district_id": "CA-50",
+      "cook_rating": "Safe D",
+      "party_d": 3.6653613281249875,
+      "party_r": 12425.807092850046,
+      "d_total_equilibrium": 1876075.435361328,
+      "r_total_equilibrium": 22425.997092850048,
+      "d_total_observed": 1906098.41,
+      "r_total_observed": 10000.19
+    },
+    {
+      "district_id": "CA-51",
+      "cook_rating": "Safe D",
+      "party_d": 752803.5265636495,
+      "party_r": 161289.2984267213,
+      "d_total_equilibrium": 2489992.6265636496,
+      "r_total_equilibrium": 923345.0584267213,
+      "d_total_observed": 1737189.1,
+      "r_total_observed": 762055.76
+    },
+    {
+      "district_id": "CA-52",
+      "cook_rating": "Safe D",
+      "party_d": 33401.37133058985,
+      "party_r": 13336.25760926769,
+      "d_total_equilibrium": 952729.7013305898,
+      "r_total_equilibrium": 135968.02760926768,
+      "d_total_observed": 919328.33,
+      "r_total_observed": 122631.77
+    },
+    {
+      "district_id": "CO-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 2.3808808782470587e-12,
+      "d_total_equilibrium": 1182532.98,
+      "r_total_equilibrium": 10811.990000000002,
+      "d_total_observed": 1182532.98,
+      "r_total_observed": 10811.99
+    },
+    {
+      "district_id": "CO-02",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 3210.8710354103564,
+      "d_total_equilibrium": 2303536.95,
+      "r_total_equilibrium": 18565.821035410358,
+      "d_total_observed": 2303536.95,
+      "r_total_observed": 15354.95
+    },
+    {
+      "district_id": "CO-03",
+      "cook_rating": "Likely R",
+      "party_d": 86.3098303222655,
+      "party_r": 111.02111816407108,
+      "d_total_equilibrium": 17314588.63983032,
+      "r_total_equilibrium": 2760769.321118164,
+      "d_total_observed": 18021552.459999997,
+      "r_total_observed": 3670143.3
+    },
+    {
+      "district_id": "CO-04",
+      "cook_rating": "Safe R",
+      "party_d": 2538762.9182850635,
+      "party_r": 1.9923134879593353e-12,
+      "d_total_equilibrium": 6816944.488285064,
+      "r_total_equilibrium": 5434885.03,
+      "d_total_observed": 4517611.19,
+      "r_total_observed": 5434885.03
+    },
+    {
+      "district_id": "CO-05",
+      "cook_rating": "Safe R",
+      "party_d": 120403.5776876753,
+      "party_r": 522650.68183548085,
+      "d_total_equilibrium": 283816.4976876753,
+      "r_total_equilibrium": 1584724.891835481,
+      "d_total_observed": 163412.92,
+      "r_total_observed": 1062074.21
+    },
+    {
+      "district_id": "CO-06",
+      "cook_rating": "Safe D",
+      "party_d": 325218.3133287013,
+      "party_r": 94125.88349260169,
+      "d_total_equilibrium": 2366622.2533287015,
+      "r_total_equilibrium": 376579.4634926017,
+      "d_total_observed": 2052723.02,
+      "r_total_observed": 297403.58
+    },
+    {
+      "district_id": "CO-07",
+      "cook_rating": "Lean D",
+      "party_d": 192193.81467007962,
+      "party_r": 111242.1657595421,
+      "d_total_equilibrium": 2127038.7746700794,
+      "r_total_equilibrium": 156945.9457595421,
+      "d_total_observed": 1959228.96,
+      "r_total_observed": 45703.78
+    },
+    {
+      "district_id": "CO-08",
+      "cook_rating": "Lean D",
+      "party_d": 3123208.607261004,
+      "party_r": 754471.1174851806,
+      "d_total_equilibrium": 11261198.657261003,
+      "r_total_equilibrium": 3413787.4874851806,
+      "d_total_observed": 26792739.01,
+      "r_total_observed": 8323633.24
+    },
+    {
+      "district_id": "CT-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 21801.665540490183,
+      "d_total_equilibrium": 1658028.59,
+      "r_total_equilibrium": 30971.865540490184,
+      "d_total_observed": 1658028.59,
+      "r_total_observed": 9170.2
+    },
+    {
+      "district_id": "CT-02",
+      "cook_rating": "Lean D",
+      "party_d": 2688279.316267464,
+      "party_r": 391639.7900777366,
+      "d_total_equilibrium": 3827931.9762674635,
+      "r_total_equilibrium": 1124092.9800777365,
+      "d_total_observed": 1139652.66,
+      "r_total_observed": 757453.19
+    },
+    {
+      "district_id": "CT-03",
+      "cook_rating": "Likely D",
+      "party_d": 0.0,
+      "party_r": 46352.87214320853,
+      "d_total_equilibrium": 1639641.5,
+      "r_total_equilibrium": 48448.43214320853,
+      "d_total_observed": 1639641.5,
+      "r_total_observed": 2095.56
+    },
+    {
+      "district_id": "CT-04",
+      "cook_rating": "Safe D",
+      "party_d": 192252.6507838398,
+      "party_r": 55274.97026944495,
+      "d_total_equilibrium": 1865131.1407838399,
+      "r_total_equilibrium": 343487.6502694449,
+      "d_total_observed": 1672878.49,
+      "r_total_observed": 288212.68
+    },
+    {
+      "district_id": "CT-05",
+      "cook_rating": "Lean D",
+      "party_d": 4657326.234928343,
+      "party_r": 795316.7382680222,
+      "d_total_equilibrium": 8713190.394928344,
+      "r_total_equilibrium": 3805342.718268022,
+      "d_total_observed": 6256600.0,
+      "r_total_observed": 3860179.02
+    },
+    {
+      "district_id": "DE-00",
+      "cook_rating": "Likely D",
+      "party_d": 5433124.702805853,
+      "party_r": 2734014.001064482,
+      "d_total_equilibrium": 9317641.192805853,
+      "r_total_equilibrium": 2779951.4710644823,
+      "d_total_observed": 4064458.22,
+      "r_total_observed": 45937.47
+    },
+    {
+      "district_id": "FL-01",
+      "cook_rating": "Safe R",
+      "party_d": 8655.812909822143,
+      "party_r": 1.2207031250086298,
+      "d_total_equilibrium": 1585686.952909822,
+      "r_total_equilibrium": 6824262.440703125,
+      "d_total_observed": 1577031.14,
+      "r_total_observed": 6834261.22
+    },
+    {
+      "district_id": "FL-02",
+      "cook_rating": "Likely R",
+      "party_d": 2964.1709286404175,
+      "party_r": 7.244730087241378e-12,
+      "d_total_equilibrium": 39446.12092864041,
+      "r_total_equilibrium": 1803682.97,
+      "d_total_observed": 36481.95,
+      "r_total_observed": 1803682.97
+    },
+    {
+      "district_id": "FL-03",
+      "cook_rating": "Safe R",
+      "party_d": 128.7871160690379,
+      "party_r": 3.8532943765925187e-13,
+      "d_total_equilibrium": 18509.607116069037,
+      "r_total_equilibrium": 2131667.9,
+      "d_total_observed": 18380.82,
+      "r_total_observed": 2131667.9
+    },
+    {
+      "district_id": "FL-04",
+      "cook_rating": "Likely R",
+      "party_d": 5248.4428716802095,
+      "party_r": 8.757353153915454e-12,
+      "d_total_equilibrium": 35000.59287168021,
+      "r_total_equilibrium": 1356314.59,
+      "d_total_observed": 29752.15,
+      "r_total_observed": 1356314.59
+    },
+    {
+      "district_id": "FL-05",
+      "cook_rating": "Safe R",
+      "party_d": 348.75333647979556,
+      "party_r": 2.2700634765657077,
+      "d_total_equilibrium": 18804.063336479798,
+      "r_total_equilibrium": 965254.3800634765,
+      "d_total_observed": 18455.31,
+      "r_total_observed": 983848.47
+    },
+    {
+      "district_id": "FL-06",
+      "cook_rating": "Safe R",
+      "party_d": 74.25539466556481,
+      "party_r": 2.1910999053080143e-13,
+      "d_total_equilibrium": 33561.635394665565,
+      "r_total_equilibrium": 2337500.54,
+      "d_total_observed": 33487.38,
+      "r_total_observed": 2337500.54
+    },
+    {
+      "district_id": "FL-07",
+      "cook_rating": "Likely R",
+      "party_d": 378807.16484436963,
+      "party_r": 1883377.2421093113,
+      "d_total_equilibrium": 655867.3548443697,
+      "r_total_equilibrium": 3497394.3221093114,
+      "d_total_observed": 277060.19,
+      "r_total_observed": 1614017.08
+    },
+    {
+      "district_id": "FL-08",
+      "cook_rating": "Safe R",
+      "party_d": 20284.934754905524,
+      "party_r": 39527.9672261104,
+      "d_total_equilibrium": 92844.23475490553,
+      "r_total_equilibrium": 861810.0572261104,
+      "d_total_observed": 72559.3,
+      "r_total_observed": 822282.09
+    },
+    {
+      "district_id": "FL-09",
+      "cook_rating": "Safe D",
+      "party_d": 2567383.8207605164,
+      "party_r": 402479.14012050396,
+      "d_total_equilibrium": 4776711.790760517,
+      "r_total_equilibrium": 2484063.6901205042,
+      "d_total_observed": 2224952.97,
+      "r_total_observed": 2081584.55
+    },
+    {
+      "district_id": "FL-10",
+      "cook_rating": "Safe D",
+      "party_d": 1.5869140625,
+      "party_r": 1.191975448066628e-11,
+      "d_total_equilibrium": 3308113.2469140626,
+      "r_total_equilibrium": 35753.26000000002,
+      "d_total_observed": 3321111.66,
+      "r_total_observed": 35753.26
+    },
+    {
+      "district_id": "FL-11",
+      "cook_rating": "Safe R",
+      "party_d": 26561.48693103947,
+      "party_r": 72552.04092540199,
+      "d_total_equilibrium": 94764.76693103947,
+      "r_total_equilibrium": 1220260.570925402,
+      "d_total_observed": 68203.28,
+      "r_total_observed": 1147708.53
+    },
+    {
+      "district_id": "FL-12",
+      "cook_rating": "Safe R",
+      "party_d": 286.45660854862336,
+      "party_r": 1.246492919929422,
+      "d_total_equilibrium": 57109.13660854862,
+      "r_total_equilibrium": 1826106.60649292,
+      "d_total_observed": 56822.68,
+      "r_total_observed": 1836316.6300000001
+    },
+    {
+      "district_id": "FL-13",
+      "cook_rating": "Likely R",
+      "party_d": 6049517.059215606,
+      "party_r": 1401275.4461057142,
+      "d_total_equilibrium": 8588805.479215607,
+      "r_total_equilibrium": 5012530.846105714,
+      "d_total_observed": 3461299.23,
+      "r_total_observed": 4372824.18
+    },
+    {
+      "district_id": "FL-14",
+      "cook_rating": "Safe D",
+      "party_d": 99239.74725119382,
+      "party_r": 46418.462842296896,
+      "d_total_equilibrium": 1390219.0272511938,
+      "r_total_equilibrium": 117121.4828422969,
+      "d_total_observed": 1290979.28,
+      "r_total_observed": 70703.02
+    },
+    {
+      "district_id": "FL-15",
+      "cook_rating": "Likely R",
+      "party_d": 1279527.1285627042,
+      "party_r": 3832785.756371844,
+      "d_total_equilibrium": 1822174.1585627042,
+      "r_total_equilibrium": 5647965.216371844,
+      "d_total_observed": 542647.03,
+      "r_total_observed": 1815179.46
+    },
+    {
+      "district_id": "FL-16",
+      "cook_rating": "Likely R",
+      "party_d": 19355.404794092865,
+      "party_r": 7.976807300007903e-12,
+      "d_total_equilibrium": 98454.95479409286,
+      "r_total_equilibrium": 2158676.09,
+      "d_total_observed": 79099.55,
+      "r_total_observed": 2158676.09
+    },
+    {
+      "district_id": "FL-17",
+      "cook_rating": "Safe R",
+      "party_d": 18268.655503694252,
+      "party_r": 16281.611301167697,
+      "d_total_equilibrium": 87716.66550369424,
+      "r_total_equilibrium": 1128398.1513011677,
+      "d_total_observed": 69448.01,
+      "r_total_observed": 1112116.54
+    },
+    {
+      "district_id": "FL-18",
+      "cook_rating": "Safe R",
+      "party_d": 1816.197692452087,
+      "party_r": 4.078165298794741e-12,
+      "d_total_equilibrium": 31991.027692452088,
+      "r_total_equilibrium": 686777.37,
+      "d_total_observed": 30174.83,
+      "r_total_observed": 686777.37
+    },
+    {
+      "district_id": "FL-19",
+      "cook_rating": "Safe R",
+      "party_d": 2230.464279995937,
+      "party_r": 0.0029296875035692642,
+      "d_total_equilibrium": 180776.12427999594,
+      "r_total_equilibrium": 5598912.452929688,
+      "d_total_observed": 192545.66,
+      "r_total_observed": 5598936.45
+    },
+    {
+      "district_id": "FL-20",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1845.397717519929,
+      "d_total_equilibrium": 634440.89,
+      "r_total_equilibrium": 6432.997717519929,
+      "d_total_observed": 634440.89,
+      "r_total_observed": 4587.6
+    },
+    {
+      "district_id": "FL-21",
+      "cook_rating": "Likely R",
+      "party_d": 136359.47598088862,
+      "party_r": 0.7170581054695547,
+      "d_total_equilibrium": 401770.6259808886,
+      "r_total_equilibrium": 4341120.307058105,
+      "d_total_observed": 265411.15,
+      "r_total_observed": 4346993.7299999995
+    },
+    {
+      "district_id": "FL-22",
+      "cook_rating": "Likely D",
+      "party_d": 2462087.277090757,
+      "party_r": 403336.45073289715,
+      "d_total_equilibrium": 4707643.687090757,
+      "r_total_equilibrium": 2178382.8107328974,
+      "d_total_observed": 2249966.27,
+      "r_total_observed": 1881546.36
+    },
+    {
+      "district_id": "FL-23",
+      "cook_rating": "Likely D",
+      "party_d": 1370807.2439657035,
+      "party_r": 269900.7527970209,
+      "d_total_equilibrium": 3462209.5239657033,
+      "r_total_equilibrium": 1015471.2227970208,
+      "d_total_observed": 2091402.28,
+      "r_total_observed": 745570.47
+    },
+    {
+      "district_id": "FL-24",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 2691.166190972468,
+      "d_total_equilibrium": 566479.18,
+      "r_total_equilibrium": 36502.556190972464,
+      "d_total_observed": 566479.18,
+      "r_total_observed": 33811.39
+    },
+    {
+      "district_id": "FL-25",
+      "cook_rating": "Safe D",
+      "party_d": 170797.67490345813,
+      "party_r": 72777.02552704158,
+      "d_total_equilibrium": 2792168.464903458,
+      "r_total_equilibrium": 487136.81552704156,
+      "d_total_observed": 2621370.79,
+      "r_total_observed": 783152.29
+    },
+    {
+      "district_id": "FL-26",
+      "cook_rating": "Likely R",
+      "party_d": 6585.4513635115545,
+      "party_r": 1.976352817766119e-12,
+      "d_total_equilibrium": 42881.24136351155,
+      "r_total_equilibrium": 1823215.18,
+      "d_total_observed": 36295.79,
+      "r_total_observed": 1823215.18
+    },
+    {
+      "district_id": "FL-27",
+      "cook_rating": "Toss-Up",
+      "party_d": 5282998.270938365,
+      "party_r": 5165810.795248013,
+      "d_total_equilibrium": 5924797.380938365,
+      "r_total_equilibrium": 7015327.795248013,
+      "d_total_observed": 641799.11,
+      "r_total_observed": 1849517.0
+    },
+    {
+      "district_id": "FL-28",
+      "cook_rating": "Toss-Up",
+      "party_d": 7461143.837997528,
+      "party_r": 4382744.652186706,
+      "d_total_equilibrium": 8647260.167997528,
+      "r_total_equilibrium": 5653668.592186706,
+      "d_total_observed": 1186116.33,
+      "r_total_observed": 1270923.94
+    },
+    {
+      "district_id": "GA-01",
+      "cook_rating": "Safe R",
+      "party_d": 12868.113972180254,
+      "party_r": 5.874076394674074e-12,
+      "d_total_equilibrium": 78125.87397218026,
+      "r_total_equilibrium": 1396344.13,
+      "d_total_observed": 65257.76,
+      "r_total_observed": 1396344.13
+    },
+    {
+      "district_id": "GA-02",
+      "cook_rating": "Likely D",
+      "party_d": 1613878.483813359,
+      "party_r": 297785.86212309403,
+      "d_total_equilibrium": 3399128.383813359,
+      "r_total_equilibrium": 896052.062123094,
+      "d_total_observed": 1790736.8199999998,
+      "r_total_observed": 598266.2
+    },
+    {
+      "district_id": "GA-03",
+      "cook_rating": "Safe R",
+      "party_d": 1214.9088509198996,
+      "party_r": 5.049642974450793e-13,
+      "d_total_equilibrium": 74116.4188509199,
+      "r_total_equilibrium": 2056006.77,
+      "d_total_observed": 72901.51,
+      "r_total_observed": 2056006.77
+    },
+    {
+      "district_id": "GA-04",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 3175.591594772015,
+      "d_total_equilibrium": 622047.45,
+      "r_total_equilibrium": 47405.76159477201,
+      "d_total_observed": 622047.45,
+      "r_total_observed": 44230.17
+    },
+    {
+      "district_id": "GA-05",
+      "cook_rating": "Safe D",
+      "party_d": 0.0016088867187562528,
+      "party_r": 4.39598194682318e-12,
+      "d_total_equilibrium": 994463.4216088868,
+      "r_total_equilibrium": 751.7800000000044,
+      "d_total_observed": 994476.6000000001,
+      "r_total_observed": 751.78
+    },
+    {
+      "district_id": "GA-06",
+      "cook_rating": "Safe R",
+      "party_d": 5822863.167107222,
+      "party_r": 1982589.2920306283,
+      "d_total_equilibrium": 8058195.4671072215,
+      "r_total_equilibrium": 2010688.7620306283,
+      "d_total_observed": 2240079.03,
+      "r_total_observed": 28099.47
+    },
+    {
+      "district_id": "GA-07",
+      "cook_rating": "Likely D",
+      "party_d": 34302.14512370108,
+      "party_r": 2138897.807498566,
+      "d_total_equilibrium": 53816.63512370108,
+      "r_total_equilibrium": 3823448.797498566,
+      "d_total_observed": 19514.49,
+      "r_total_observed": 1720388.99
+    },
+    {
+      "district_id": "GA-08",
+      "cook_rating": "Safe R",
+      "party_d": 21.625847526980397,
+      "party_r": 2.737214490957854e-12,
+      "d_total_equilibrium": 16313.735847526981,
+      "r_total_equilibrium": 989842.4,
+      "d_total_observed": 17678.83,
+      "r_total_observed": 989842.4
+    },
+    {
+      "district_id": "GA-09",
+      "cook_rating": "Safe R",
+      "party_d": 848.2688512238383,
+      "party_r": 0.002929687500632964,
+      "d_total_equilibrium": 61842.36885122384,
+      "r_total_equilibrium": 491877.3429296875,
+      "d_total_observed": 60994.1,
+      "r_total_observed": 491901.34
+    },
+    {
+      "district_id": "GA-10",
+      "cook_rating": "Safe R",
+      "party_d": 53515.344234491204,
+      "party_r": 607.0225950326821,
+      "d_total_equilibrium": 281167.9542344912,
+      "r_total_equilibrium": 1313895.1725950325,
+      "d_total_observed": 227652.61,
+      "r_total_observed": 1313288.15
+    },
+    {
+      "district_id": "GA-11",
+      "cook_rating": "Safe R",
+      "party_d": 3391.94084395887,
+      "party_r": 1.1435164962544914e-12,
+      "d_total_equilibrium": 46322.310843958876,
+      "r_total_equilibrium": 958238.61,
+      "d_total_observed": 42930.37,
+      "r_total_observed": 958238.61
+    },
+    {
+      "district_id": "GA-12",
+      "cook_rating": "Likely R",
+      "party_d": 638.7227944843612,
+      "party_r": 3.921693315861737e-12,
+      "d_total_equilibrium": 13596.032794484361,
+      "r_total_equilibrium": 908308.25,
+      "d_total_observed": 12957.31,
+      "r_total_observed": 908308.25
+    },
+    {
+      "district_id": "GA-13",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1.0527735460411449e-12,
+      "d_total_equilibrium": 1675775.09,
+      "r_total_equilibrium": 5772.630000000001,
+      "d_total_observed": 1675775.09,
+      "r_total_observed": 5772.63
+    },
+    {
+      "district_id": "GA-14",
+      "cook_rating": "Safe R",
+      "party_d": 0.091552734375,
+      "party_r": 4.023358566941473e-12,
+      "d_total_equilibrium": 3534244.431552734,
+      "r_total_equilibrium": 10062930.19,
+      "d_total_observed": 3534994.34,
+      "r_total_observed": 10062930.19
+    },
+    {
+      "district_id": "HI-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 11847.71109247606,
+      "d_total_equilibrium": 891335.38,
+      "r_total_equilibrium": 11847.71109247606,
+      "d_total_observed": 891335.38,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "HI-02",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 10965.53989103558,
+      "d_total_equilibrium": 706756.02,
+      "r_total_equilibrium": 10975.53989103558,
+      "d_total_observed": 706756.02,
+      "r_total_observed": 10.0
+    },
+    {
+      "district_id": "IA-01",
+      "cook_rating": "Likely R",
+      "party_d": 6731595.122487816,
+      "party_r": 421.2259313965042,
+      "d_total_equilibrium": 13555098.852487817,
+      "r_total_equilibrium": 5755769.9859313965,
+      "d_total_observed": 16089170.85,
+      "r_total_observed": 9206031.59
+    },
+    {
+      "district_id": "IA-02",
+      "cook_rating": "Likely R",
+      "party_d": 901818.6990780092,
+      "party_r": 1964158.0998758413,
+      "d_total_equilibrium": 1403299.8790780092,
+      "r_total_equilibrium": 5705064.509875841,
+      "d_total_observed": 501481.18,
+      "r_total_observed": 3828581.41
+    },
+    {
+      "district_id": "IA-03",
+      "cook_rating": "Lean R",
+      "party_d": 7720928.07833517,
+      "party_r": 465.80892822267754,
+      "d_total_equilibrium": 13305987.34833517,
+      "r_total_equilibrium": 5857816.008928223,
+      "d_total_observed": 14249664.049999999,
+      "r_total_observed": 9673256.940000001
+    },
+    {
+      "district_id": "IA-04",
+      "cook_rating": "Safe R",
+      "party_d": 958.507170642187,
+      "party_r": 9.246755398888438e-13,
+      "d_total_equilibrium": 156153.54717064218,
+      "r_total_equilibrium": 4154572.67,
+      "d_total_observed": 155195.04,
+      "r_total_observed": 4154572.67
+    },
+    {
+      "district_id": "ID-01",
+      "cook_rating": "Safe R",
+      "party_d": 12744.958764048573,
+      "party_r": 1.2263848275254485e-11,
+      "d_total_equilibrium": 200385.50876404857,
+      "r_total_equilibrium": 626902.72,
+      "d_total_observed": 187640.55,
+      "r_total_observed": 626902.72
+    },
+    {
+      "district_id": "ID-02",
+      "cook_rating": "Safe R",
+      "party_d": 4511.574539546025,
+      "party_r": 1.1008385694451936e-12,
+      "d_total_equilibrium": 105092.62453954603,
+      "r_total_equilibrium": 1589029.24,
+      "d_total_observed": 100581.05,
+      "r_total_observed": 1589029.24
+    },
+    {
+      "district_id": "IL-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 3707.9049568368546,
+      "d_total_equilibrium": 601509.69,
+      "r_total_equilibrium": 3707.9049568368546,
+      "d_total_observed": 601509.69,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "IL-02",
+      "cook_rating": "Safe D",
+      "party_d": 0.3060034179687534,
+      "party_r": 4117.6189016392145,
+      "d_total_equilibrium": 1355796.036003418,
+      "r_total_equilibrium": 4117.6189016392145,
+      "d_total_observed": 1358302.51,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "IL-03",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 6519.569410298051,
+      "d_total_equilibrium": 782619.54,
+      "r_total_equilibrium": 46011.85941029805,
+      "d_total_observed": 782619.54,
+      "r_total_observed": 39492.29
+    },
+    {
+      "district_id": "IL-04",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 2400.022518665237,
+      "d_total_equilibrium": 852232.18,
+      "r_total_equilibrium": 2400.022518665237,
+      "d_total_observed": 852232.18,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "IL-05",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 6008.72862797131,
+      "d_total_equilibrium": 1097958.34,
+      "r_total_equilibrium": 10963.618627971311,
+      "d_total_observed": 1097958.34,
+      "r_total_observed": 4954.89
+    },
+    {
+      "district_id": "IL-06",
+      "cook_rating": "Likely D",
+      "party_d": 296548.03082017583,
+      "party_r": 136595.90951428624,
+      "d_total_equilibrium": 2785446.750820176,
+      "r_total_equilibrium": 287102.96951428626,
+      "d_total_observed": 2553421.2600000002,
+      "r_total_observed": 150507.06
+    },
+    {
+      "district_id": "IL-07",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1.300122651200645e-12,
+      "d_total_equilibrium": 978044.57,
+      "r_total_equilibrium": 1.300122651200645e-12,
+      "d_total_observed": 978044.57,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "IL-08",
+      "cook_rating": "Likely D",
+      "party_d": 0.0,
+      "party_r": 47856.39654953689,
+      "d_total_equilibrium": 4973013.29,
+      "r_total_equilibrium": 227706.7165495369,
+      "d_total_observed": 4973013.29,
+      "r_total_observed": 179850.32
+    },
+    {
+      "district_id": "IL-09",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 2560.803042860891,
+      "d_total_equilibrium": 1610398.83,
+      "r_total_equilibrium": 10461.20304286089,
+      "d_total_observed": 1610398.83,
+      "r_total_observed": 7900.4
+    },
+    {
+      "district_id": "IL-10",
+      "cook_rating": "Safe D",
+      "party_d": 313418.262975705,
+      "party_r": 96177.44677668458,
+      "d_total_equilibrium": 3307014.502975705,
+      "r_total_equilibrium": 776956.7467766847,
+      "d_total_observed": 2993596.24,
+      "r_total_observed": 719632.88
+    },
+    {
+      "district_id": "IL-11",
+      "cook_rating": "Likely D",
+      "party_d": 1025726.9161083117,
+      "party_r": 228637.6204459507,
+      "d_total_equilibrium": 3562743.8061083117,
+      "r_total_equilibrium": 864830.6204459507,
+      "d_total_observed": 2599322.24,
+      "r_total_observed": 664293.0
+    },
+    {
+      "district_id": "IL-12",
+      "cook_rating": "Safe R",
+      "party_d": 0.0,
+      "party_r": 0.3208618164076119,
+      "d_total_equilibrium": 116245.74,
+      "r_total_equilibrium": 3195231.2408618163,
+      "d_total_observed": 116245.74,
+      "r_total_observed": 3197859.42
+    },
+    {
+      "district_id": "IL-13",
+      "cook_rating": "Likely D",
+      "party_d": 77.54931640625,
+      "party_r": 115530.3013456247,
+      "d_total_equilibrium": 2594341.3793164063,
+      "r_total_equilibrium": 204416.3913456247,
+      "d_total_observed": 3229547.83,
+      "r_total_observed": 88886.09
+    },
+    {
+      "district_id": "IL-14",
+      "cook_rating": "Likely D",
+      "party_d": 105666.8502646728,
+      "party_r": 161724.1287040867,
+      "d_total_equilibrium": 3996209.7702646726,
+      "r_total_equilibrium": 484674.1787040867,
+      "d_total_observed": 3991392.92,
+      "r_total_observed": 322950.05
+    },
+    {
+      "district_id": "IL-15",
+      "cook_rating": "Safe R",
+      "party_d": 1.580576928118406e-12,
+      "party_r": 2.2226708984411436,
+      "d_total_equilibrium": 1.580576928118406e-12,
+      "r_total_equilibrium": 1259726.5326708986,
+      "d_total_observed": 0.0,
+      "r_total_observed": 1277932.4300000002
+    },
+    {
+      "district_id": "IL-17",
+      "cook_rating": "Lean D",
+      "party_d": 1942596.0028740978,
+      "party_r": 453635.439605918,
+      "d_total_equilibrium": 6917231.002874098,
+      "r_total_equilibrium": 1962591.469605918,
+      "d_total_observed": 6180311.83,
+      "r_total_observed": 2036188.9
+    },
+    {
+      "district_id": "IN-01",
+      "cook_rating": "Likely D",
+      "party_d": 1779517.5217876565,
+      "party_r": 371254.10238330555,
+      "d_total_equilibrium": 4941623.671787657,
+      "r_total_equilibrium": 1452297.8823833056,
+      "d_total_observed": 3431626.03,
+      "r_total_observed": 1191043.78
+    },
+    {
+      "district_id": "IN-02",
+      "cook_rating": "Safe R",
+      "party_d": 2273.3681887367193,
+      "party_r": 9.603447484074574e-12,
+      "d_total_equilibrium": 133605.11818873673,
+      "r_total_equilibrium": 3265287.94,
+      "d_total_observed": 131331.75,
+      "r_total_observed": 3265287.94
+    },
+    {
+      "district_id": "IN-03",
+      "cook_rating": "Safe R",
+      "party_d": 3274.232880956436,
+      "party_r": 1.2207031250051352,
+      "d_total_equilibrium": 260041.82288095643,
+      "r_total_equilibrium": 6010628.900703125,
+      "d_total_observed": 256767.59,
+      "r_total_observed": 6020627.68
+    },
+    {
+      "district_id": "IN-04",
+      "cook_rating": "Safe R",
+      "party_d": 555.7028130609151,
+      "party_r": 1.0723814973892948e-12,
+      "d_total_equilibrium": 42164.03281306092,
+      "r_total_equilibrium": 745075.16,
+      "d_total_observed": 41608.33,
+      "r_total_observed": 745075.16
+    },
+    {
+      "district_id": "IN-05",
+      "cook_rating": "Safe R",
+      "party_d": 790.7568079391291,
+      "party_r": 1.2207031250005467,
+      "d_total_equilibrium": 111388.75680793913,
+      "r_total_equilibrium": 5473302.250703125,
+      "d_total_observed": 110598.0,
+      "r_total_observed": 5483301.03
+    },
+    {
+      "district_id": "IN-06",
+      "cook_rating": "Safe R",
+      "party_d": 3.468336728928989e-13,
+      "party_r": 2.6197061055583832e-12,
+      "d_total_equilibrium": 21644.66,
+      "r_total_equilibrium": 6109921.87,
+      "d_total_observed": 21644.66,
+      "r_total_observed": 6109921.87
+    },
+    {
+      "district_id": "IN-07",
+      "cook_rating": "Safe D",
+      "party_d": 114703.67429013022,
+      "party_r": 30182.190058811317,
+      "d_total_equilibrium": 1210820.0242901302,
+      "r_total_equilibrium": 292867.6600588113,
+      "d_total_observed": 1096116.35,
+      "r_total_observed": 262685.47
+    },
+    {
+      "district_id": "IN-08",
+      "cook_rating": "Safe R",
+      "party_d": 81.18979190069675,
+      "party_r": 8.027992838454912e-14,
+      "d_total_equilibrium": 22800.239791900694,
+      "r_total_equilibrium": 1338177.97,
+      "d_total_observed": 22719.05,
+      "r_total_observed": 1338177.97
+    },
+    {
+      "district_id": "IN-09",
+      "cook_rating": "Safe R",
+      "party_d": 92091.64246159284,
+      "party_r": 6313.040070645702,
+      "d_total_equilibrium": 438846.9224615929,
+      "r_total_equilibrium": 1400259.5100706457,
+      "d_total_observed": 346755.28,
+      "r_total_observed": 1393946.47
+    },
+    {
+      "district_id": "KS-01",
+      "cook_rating": "Safe R",
+      "party_d": 1290.2399799210068,
+      "party_r": 1.5415127265632014e-12,
+      "d_total_equilibrium": 64125.569979921005,
+      "r_total_equilibrium": 867436.85,
+      "d_total_observed": 62835.33,
+      "r_total_observed": 867436.85
+    },
+    {
+      "district_id": "KS-02",
+      "cook_rating": "Safe R",
+      "party_d": 162835.22836613713,
+      "party_r": 389099.5237097258,
+      "d_total_equilibrium": 407943.5783661371,
+      "r_total_equilibrium": 1617226.5537097258,
+      "d_total_observed": 245108.35,
+      "r_total_observed": 1291877.03
+    },
+    {
+      "district_id": "KS-03",
+      "cook_rating": "Toss-Up",
+      "party_d": 3853212.2077505523,
+      "party_r": 869842.3190107732,
+      "d_total_equilibrium": 9491450.577750552,
+      "r_total_equilibrium": 2728274.009010773,
+      "d_total_observed": 6155956.92,
+      "r_total_observed": 1887081.29
+    },
+    {
+      "district_id": "KS-04",
+      "cook_rating": "Safe R",
+      "party_d": 2676.48998481893,
+      "party_r": 9.095005530292132e-13,
+      "d_total_equilibrium": 101473.05998481893,
+      "r_total_equilibrium": 2033296.41,
+      "d_total_observed": 98796.57,
+      "r_total_observed": 2033296.41
+    },
+    {
+      "district_id": "KY-01",
+      "cook_rating": "Safe R",
+      "party_d": 0.28564453125,
+      "party_r": 8.393083248828183e-12,
+      "d_total_equilibrium": 248478.61564453124,
+      "r_total_equilibrium": 5518741.17,
+      "d_total_observed": 250818.33,
+      "r_total_observed": 5518741.17
+    },
+    {
+      "district_id": "KY-02",
+      "cook_rating": "Safe R",
+      "party_d": 4.720668300706166e-13,
+      "party_r": 1.6165121248835965e-12,
+      "d_total_equilibrium": 27762.33,
+      "r_total_equilibrium": 5461907.55,
+      "d_total_observed": 27762.33,
+      "r_total_observed": 5461907.55
+    },
+    {
+      "district_id": "KY-03",
+      "cook_rating": "Safe D",
+      "party_d": 0.01629638671875,
+      "party_r": 34569.26653194857,
+      "d_total_equilibrium": 1141875.0362963867,
+      "r_total_equilibrium": 36302.01653194857,
+      "d_total_observed": 1142008.52,
+      "r_total_observed": 1732.75
+    },
+    {
+      "district_id": "KY-04",
+      "cook_rating": "Safe R",
+      "party_d": 21.34520278702279,
+      "party_r": 1.2236328125026157,
+      "d_total_equilibrium": 8848.695202787023,
+      "r_total_equilibrium": 690224.2436328125,
+      "d_total_observed": 175837.35,
+      "r_total_observed": 700247.02
+    },
+    {
+      "district_id": "KY-06",
+      "cook_rating": "Safe R",
+      "party_d": 1037.1830957205316,
+      "party_r": 13.025878906262312,
+      "d_total_equilibrium": 52416.593095720535,
+      "r_total_equilibrium": 3320914.0458789063,
+      "d_total_observed": 51379.41,
+      "r_total_observed": 3427609.02
+    },
+    {
+      "district_id": "LA-01",
+      "cook_rating": "Safe R",
+      "party_d": 7.105427357601002e-15,
+      "party_r": 6.25803908260445e-12,
+      "d_total_equilibrium": 74538.51,
+      "r_total_equilibrium": 15253286.22,
+      "d_total_observed": 74538.51,
+      "r_total_observed": 15253286.22
+    },
+    {
+      "district_id": "LA-02",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1.4023540098240221e-12,
+      "d_total_equilibrium": 1898973.77,
+      "r_total_equilibrium": 41221.17,
+      "d_total_observed": 1898973.77,
+      "r_total_observed": 41221.17
+    },
+    {
+      "district_id": "LA-03",
+      "cook_rating": "Safe R",
+      "party_d": 3.4380064556043317,
+      "party_r": 5.713049209645297e-12,
+      "d_total_equilibrium": 15068.658006455604,
+      "r_total_equilibrium": 732895.62,
+      "d_total_observed": 15065.22,
+      "r_total_observed": 732895.62
+    },
+    {
+      "district_id": "LA-04",
+      "cook_rating": "Safe R",
+      "party_d": 0.18310546875063652,
+      "party_r": 9.87373265552719e-13,
+      "d_total_equilibrium": 0.18310546875063652,
+      "r_total_equilibrium": 19499271.29,
+      "d_total_observed": 1500.0,
+      "r_total_observed": 19499271.29
+    },
+    {
+      "district_id": "LA-06",
+      "cook_rating": "Safe R",
+      "party_d": 319451.30134788295,
+      "party_r": 2.5238977050853775,
+      "d_total_equilibrium": 1527935.9413478829,
+      "r_total_equilibrium": 1803723.963897705,
+      "d_total_observed": 1508484.64,
+      "r_total_observed": 1824397.21
+    },
+    {
+      "district_id": "MA-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 32387.382899937587,
+      "d_total_equilibrium": 2881822.83,
+      "r_total_equilibrium": 32648.632899937587,
+      "d_total_observed": 2881822.83,
+      "r_total_observed": 261.25
+    },
+    {
+      "district_id": "MA-02",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 17463.439760621797,
+      "d_total_equilibrium": 1070531.65,
+      "r_total_equilibrium": 25234.789760621796,
+      "d_total_observed": 1070531.65,
+      "r_total_observed": 7771.35
+    },
+    {
+      "district_id": "MA-03",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 21655.58413199405,
+      "d_total_equilibrium": 1178827.41,
+      "r_total_equilibrium": 21655.58413199405,
+      "d_total_observed": 1178827.41,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "MA-04",
+      "cook_rating": "Safe D",
+      "party_d": 1.7431298828124966,
+      "party_r": 20176.733372603987,
+      "d_total_equilibrium": 988224.8131298828,
+      "r_total_equilibrium": 28476.893372603987,
+      "d_total_observed": 1002502.7899999999,
+      "r_total_observed": 8300.16
+    },
+    {
+      "district_id": "MA-05",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 5.638975161483824e-13,
+      "d_total_equilibrium": 4766147.78,
+      "r_total_equilibrium": 2462.6800000000003,
+      "d_total_observed": 4766147.78,
+      "r_total_observed": 2462.68
+    },
+    {
+      "district_id": "MA-06",
+      "cook_rating": "Safe D",
+      "party_d": 1.5829150390624989,
+      "party_r": 27870.00676543681,
+      "d_total_equilibrium": 1827203.032915039,
+      "r_total_equilibrium": 41109.456765436815,
+      "d_total_observed": 1840168.69,
+      "r_total_observed": 13239.45
+    },
+    {
+      "district_id": "MA-07",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 2.8691406250111697,
+      "d_total_equilibrium": 1636120.86,
+      "r_total_equilibrium": 2.8691406250111697,
+      "d_total_observed": 1636120.86,
+      "r_total_observed": 23504.0
+    },
+    {
+      "district_id": "MA-08",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 13800.686545191671,
+      "d_total_equilibrium": 976310.31,
+      "r_total_equilibrium": 34639.51654519167,
+      "d_total_observed": 976310.31,
+      "r_total_observed": 20838.83
+    },
+    {
+      "district_id": "MA-09",
+      "cook_rating": "Likely D",
+      "party_d": 224180.2167322666,
+      "party_r": 54681.71656701649,
+      "d_total_equilibrium": 1101523.2667322666,
+      "r_total_equilibrium": 74749.17656701649,
+      "d_total_observed": 877343.05,
+      "r_total_observed": 20067.46
+    },
+    {
+      "district_id": "MD-02",
+      "cook_rating": "Likely D",
+      "party_d": 6739928.646972123,
+      "party_r": 3044998.4911732306,
+      "d_total_equilibrium": 8144333.966972123,
+      "r_total_equilibrium": 3370168.6511732307,
+      "d_total_observed": 1406530.32,
+      "r_total_observed": 325170.16
+    },
+    {
+      "district_id": "MD-03",
+      "cook_rating": "Likely D",
+      "party_d": 5543784.976009434,
+      "party_r": 2464453.746542964,
+      "d_total_equilibrium": 7789119.226009434,
+      "r_total_equilibrium": 2517564.206542964,
+      "d_total_observed": 2251855.96,
+      "r_total_observed": 53110.46
+    },
+    {
+      "district_id": "MD-05",
+      "cook_rating": "Safe D",
+      "party_d": 0.26130981445311363,
+      "party_r": 13659.724666031583,
+      "d_total_equilibrium": 1860120.4013098143,
+      "r_total_equilibrium": 32730.264666031584,
+      "d_total_observed": 1862260.7899999998,
+      "r_total_observed": 19070.54
+    },
+    {
+      "district_id": "MD-06",
+      "cook_rating": "Lean D",
+      "party_d": 1129993.7323520202,
+      "party_r": 377418.38346007734,
+      "d_total_equilibrium": 7060642.41235202,
+      "r_total_equilibrium": 1494682.6734600775,
+      "d_total_observed": 6181071.449999999,
+      "r_total_observed": 1367517.78
+    },
+    {
+      "district_id": "MD-07",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 954.150614743103,
+      "d_total_equilibrium": 431365.07,
+      "r_total_equilibrium": 954.150614743103,
+      "d_total_observed": 431365.07,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "MD-08",
+      "cook_rating": "Safe D",
+      "party_d": 0.4445056152343909,
+      "party_r": 3.2434568633539624e-12,
+      "d_total_equilibrium": 2999507.234505615,
+      "r_total_equilibrium": 13283.270000000004,
+      "d_total_observed": 3003148.18,
+      "r_total_observed": 13283.27
+    },
+    {
+      "district_id": "ME-01",
+      "cook_rating": "Safe D",
+      "party_d": 468502.08826678316,
+      "party_r": 83546.14985062357,
+      "d_total_equilibrium": 1128058.2182667833,
+      "r_total_equilibrium": 244933.29985062356,
+      "d_total_observed": 659556.13,
+      "r_total_observed": 161387.15
+    },
+    {
+      "district_id": "ME-02",
+      "cook_rating": "Lean R",
+      "party_d": 7360953.223531976,
+      "party_r": 1743272.3902139757,
+      "d_total_equilibrium": 15212751.873531977,
+      "r_total_equilibrium": 5354867.250213975,
+      "d_total_observed": 23915941.54,
+      "r_total_observed": 10703133.72
+    },
+    {
+      "district_id": "MI-01",
+      "cook_rating": "Safe R",
+      "party_d": 876373.7183508393,
+      "party_r": 536510.2818571443,
+      "d_total_equilibrium": 1880655.7283508393,
+      "r_total_equilibrium": 2452020.0118571445,
+      "d_total_observed": 1016282.01,
+      "r_total_observed": 1917998.41
+    },
+    {
+      "district_id": "MI-02",
+      "cook_rating": "Safe R",
+      "party_d": 11.79939987989324,
+      "party_r": 0.24999267578556872,
+      "d_total_equilibrium": 18418.129399879894,
+      "r_total_equilibrium": 1359471.6299926757,
+      "d_total_observed": 18406.33,
+      "r_total_observed": 1361519.3199999998
+    },
+    {
+      "district_id": "MI-03",
+      "cook_rating": "Lean D",
+      "party_d": 1917788.1550461347,
+      "party_r": 475826.19319869287,
+      "d_total_equilibrium": 6864294.485046135,
+      "r_total_equilibrium": 1677811.593198693,
+      "d_total_observed": 5334354.79,
+      "r_total_observed": 1292985.4
+    },
+    {
+      "district_id": "MI-04",
+      "cook_rating": "Likely R",
+      "party_d": 2467796.4569670763,
+      "party_r": 2750069.876953249,
+      "d_total_equilibrium": 3518846.1969670765,
+      "r_total_equilibrium": 5871324.2669532485,
+      "d_total_observed": 1054256.94,
+      "r_total_observed": 3229965.39
+    },
+    {
+      "district_id": "MI-05",
+      "cook_rating": "Safe R",
+      "party_d": 6498.78817470785,
+      "party_r": 0.22811035156908832,
+      "d_total_equilibrium": 125060.64817470785,
+      "r_total_equilibrium": 1751815.2481103516,
+      "d_total_observed": 118561.86,
+      "r_total_observed": 1753683.7
+    },
+    {
+      "district_id": "MI-06",
+      "cook_rating": "Safe D",
+      "party_d": 0.1633264160156216,
+      "party_r": 25716.719984294366,
+      "d_total_equilibrium": 1655632.5933264159,
+      "r_total_equilibrium": 32091.279984294368,
+      "d_total_observed": 1656970.4,
+      "r_total_observed": 6374.56
+    },
+    {
+      "district_id": "MI-07",
+      "cook_rating": "Toss-Up",
+      "party_d": 5582001.385559728,
+      "party_r": 434.4401440429728,
+      "d_total_equilibrium": 13234533.115559729,
+      "r_total_equilibrium": 5091236.930144044,
+      "d_total_observed": 25729979.080000002,
+      "r_total_observed": 8649736.15
+    },
+    {
+      "district_id": "MI-08",
+      "cook_rating": "Toss-Up",
+      "party_d": 7249645.5853181835,
+      "party_r": 152.62802734375927,
+      "d_total_equilibrium": 13299646.755318183,
+      "r_total_equilibrium": 5636971.008027344,
+      "d_total_observed": 14631698.16,
+      "r_total_observed": 6887147.18
+    },
+    {
+      "district_id": "MI-09",
+      "cook_rating": "Safe R",
+      "party_d": 656.1474308559908,
+      "party_r": 0.24966186523579187,
+      "d_total_equilibrium": 110872.45743085598,
+      "r_total_equilibrium": 2278334.9096618653,
+      "d_total_observed": 110216.31,
+      "r_total_observed": 2280379.89
+    },
+    {
+      "district_id": "MI-10",
+      "cook_rating": "Likely R",
+      "party_d": 7265004.768927461,
+      "party_r": 133.82798583985976,
+      "d_total_equilibrium": 10190346.58892746,
+      "r_total_equilibrium": 9607097.69798584,
+      "d_total_observed": 15053776.83,
+      "r_total_observed": 10703282.729999999
+    },
+    {
+      "district_id": "MI-11",
+      "cook_rating": "Likely D",
+      "party_d": 10097.719237181738,
+      "party_r": 65800.65409444389,
+      "d_total_equilibrium": 1925814.5192371819,
+      "r_total_equilibrium": 154818.1540944439,
+      "d_total_observed": 1920823.0,
+      "r_total_observed": 89017.5
+    },
+    {
+      "district_id": "MI-12",
+      "cook_rating": "Safe D",
+      "party_d": 0.5548303222656159,
+      "party_r": 1.4345703125012086,
+      "d_total_equilibrium": 4446846.864830322,
+      "r_total_equilibrium": 681029.4345703125,
+      "d_total_observed": 4451391.4799999995,
+      "r_total_observed": 692780.0
+    },
+    {
+      "district_id": "MI-13",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 4.197337289776623e-12,
+      "d_total_equilibrium": 2873299.51,
+      "r_total_equilibrium": 51759.30000000001,
+      "d_total_observed": 2873299.51,
+      "r_total_observed": 51759.3
+    },
+    {
+      "district_id": "MN-01",
+      "cook_rating": "Likely R",
+      "party_d": 2349606.2343373685,
+      "party_r": 2598155.2984214583,
+      "d_total_equilibrium": 3550121.144337368,
+      "r_total_equilibrium": 4512253.448421458,
+      "d_total_observed": 1252229.5,
+      "r_total_observed": 1914098.15
+    },
+    {
+      "district_id": "MN-02",
+      "cook_rating": "Lean D",
+      "party_d": 3390309.843156711,
+      "party_r": 733283.6147493675,
+      "d_total_equilibrium": 11685665.36315671,
+      "r_total_equilibrium": 4018264.6347493674,
+      "d_total_observed": 10533982.24,
+      "r_total_observed": 3302472.56
+    },
+    {
+      "district_id": "MN-03",
+      "cook_rating": "Likely D",
+      "party_d": 6503657.334819759,
+      "party_r": 2738344.5187496394,
+      "d_total_equilibrium": 8741922.44481976,
+      "r_total_equilibrium": 3111323.088749639,
+      "d_total_observed": 2239575.9099999997,
+      "r_total_observed": 372978.57
+    },
+    {
+      "district_id": "MN-04",
+      "cook_rating": "Safe D",
+      "party_d": 1.8142810058593852,
+      "party_r": 14166.376160983666,
+      "d_total_equilibrium": 1542551.2442810058,
+      "r_total_equilibrium": 109304.96616098366,
+      "d_total_observed": 1557412.02,
+      "r_total_observed": 95138.59
+    },
+    {
+      "district_id": "MN-05",
+      "cook_rating": "Safe D",
+      "party_d": 0.16000732421878183,
+      "party_r": 2.8691406250098166,
+      "d_total_equilibrium": 8063370.760007324,
+      "r_total_equilibrium": 2232002.489140625,
+      "d_total_observed": 8064681.38,
+      "r_total_observed": 2255503.62
+    },
+    {
+      "district_id": "MN-06",
+      "cook_rating": "Safe R",
+      "party_d": 43.552409559579054,
+      "party_r": 1.4014323838982389e-11,
+      "d_total_equilibrium": 81075.99240955958,
+      "r_total_equilibrium": 7115860.66,
+      "d_total_observed": 82343.22,
+      "r_total_observed": 7115860.66
+    },
+    {
+      "district_id": "MN-07",
+      "cook_rating": "Safe R",
+      "party_d": 1.5898393712632242e-13,
+      "party_r": 3.6649575310704175e-12,
+      "d_total_equilibrium": 9938.94,
+      "r_total_equilibrium": 1615955.09,
+      "d_total_observed": 9938.94,
+      "r_total_observed": 1615955.09
+    },
+    {
+      "district_id": "MN-08",
+      "cook_rating": "Safe R",
+      "party_d": 2213214.7303891107,
+      "party_r": 2081436.442554879,
+      "d_total_equilibrium": 3444346.580389111,
+      "r_total_equilibrium": 4257660.6725548785,
+      "d_total_observed": 1298479.4200000002,
+      "r_total_observed": 2176224.23
+    },
+    {
+      "district_id": "MO-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.341796875,
+      "party_r": 1.1176482238872347e-11,
+      "d_total_equilibrium": 4952277.051796875,
+      "r_total_equilibrium": 16076.14000000001,
+      "d_total_observed": 4955076.71,
+      "r_total_observed": 16076.14
+    },
+    {
+      "district_id": "MO-02",
+      "cook_rating": "Likely R",
+      "party_d": 882566.4120249813,
+      "party_r": 1264229.199584212,
+      "d_total_equilibrium": 1560802.1420249813,
+      "r_total_equilibrium": 3938856.459584212,
+      "d_total_observed": 678235.73,
+      "r_total_observed": 2697843.76
+    },
+    {
+      "district_id": "MO-03",
+      "cook_rating": "Safe R",
+      "party_d": 28.31884614477587,
+      "party_r": 1.1155014584322279e-11,
+      "d_total_equilibrium": 47715.018846144776,
+      "r_total_equilibrium": 2693424.04,
+      "d_total_observed": 47686.7,
+      "r_total_observed": 2693424.04
+    },
+    {
+      "district_id": "MO-04",
+      "cook_rating": "Safe R",
+      "party_d": 2.3381296898605797e-13,
+      "party_r": 2.99889979513539e-12,
+      "d_total_equilibrium": 11249.59,
+      "r_total_equilibrium": 1140337.86,
+      "d_total_observed": 11249.59,
+      "r_total_observed": 1140337.86
+    },
+    {
+      "district_id": "MO-05",
+      "cook_rating": "Safe D",
+      "party_d": 177556.3659317177,
+      "party_r": 53512.091655107884,
+      "d_total_equilibrium": 1634762.9559317178,
+      "r_total_equilibrium": 219034.2616551079,
+      "d_total_observed": 1457206.59,
+      "r_total_observed": 165522.17
+    },
+    {
+      "district_id": "MO-06",
+      "cook_rating": "Safe R",
+      "party_d": 4.884981308350689e-13,
+      "party_r": 1.4364277782230742e-12,
+      "d_total_equilibrium": 18529.03,
+      "r_total_equilibrium": 1752968.85,
+      "d_total_observed": 18529.03,
+      "r_total_observed": 1752968.85
+    },
+    {
+      "district_id": "MO-07",
+      "cook_rating": "Safe R",
+      "party_d": 106.97467209613461,
+      "party_r": 1.2526693001770628e-12,
+      "d_total_equilibrium": 37621.57467209613,
+      "r_total_equilibrium": 503233.8,
+      "d_total_observed": 37514.6,
+      "r_total_observed": 503233.8
+    },
+    {
+      "district_id": "MO-08",
+      "cook_rating": "Safe R",
+      "party_d": 9.103828801926284e-13,
+      "party_r": 1.3766964528161007e-11,
+      "d_total_equilibrium": 60932.29,
+      "r_total_equilibrium": 4020602.59,
+      "d_total_observed": 60932.29,
+      "r_total_observed": 4020602.59
+    },
+    {
+      "district_id": "MS-01",
+      "cook_rating": "Safe R",
+      "party_d": 16.33752481339447,
+      "party_r": 1.4629912892295013e-12,
+      "d_total_equilibrium": 19837.667524813398,
+      "r_total_equilibrium": 998727.89,
+      "d_total_observed": 19821.33,
+      "r_total_observed": 998727.89
+    },
+    {
+      "district_id": "MS-02",
+      "cook_rating": "Safe D",
+      "party_d": 99948.97478411779,
+      "party_r": 39679.33815821694,
+      "d_total_equilibrium": 1449895.284784118,
+      "r_total_equilibrium": 163205.00815821695,
+      "d_total_observed": 1349946.31,
+      "r_total_observed": 123525.67
+    },
+    {
+      "district_id": "MS-03",
+      "cook_rating": "Safe R",
+      "party_d": 1.9385187899345624e-13,
+      "party_r": 3.833103361129201e-12,
+      "d_total_equilibrium": 222.5900000000002,
+      "r_total_equilibrium": 439640.66,
+      "d_total_observed": 222.59,
+      "r_total_observed": 439640.66
+    },
+    {
+      "district_id": "MS-04",
+      "cook_rating": "Safe R",
+      "party_d": 1.8939884383062378e-13,
+      "party_r": 4.516601562506381,
+      "d_total_equilibrium": 10.62000000000019,
+      "r_total_equilibrium": 1084771.1366015626,
+      "d_total_observed": 10.62,
+      "r_total_observed": 1121766.62
+    },
+    {
+      "district_id": "MT-01",
+      "cook_rating": "Likely R",
+      "party_d": 5981963.867693089,
+      "party_r": 13.303344726562893,
+      "d_total_equilibrium": 12187209.727693088,
+      "r_total_equilibrium": 9546750.943344727,
+      "d_total_observed": 6300245.86,
+      "r_total_observed": 9655718.64
+    },
+    {
+      "district_id": "MT-02",
+      "cook_rating": "Safe R",
+      "party_d": 2169.256317894829,
+      "party_r": 1.1485271488847436e-12,
+      "d_total_equilibrium": 98373.25631789483,
+      "r_total_equilibrium": 2832044.58,
+      "d_total_observed": 96204.0,
+      "r_total_observed": 2832044.58
+    },
+    {
+      "district_id": "NC-01",
+      "cook_rating": "Lean D",
+      "party_d": 5373573.1285954,
+      "party_r": 867137.8024472428,
+      "d_total_equilibrium": 11181969.6485954,
+      "r_total_equilibrium": 5636455.762447243,
+      "d_total_observed": 25873360.41,
+      "r_total_observed": 6569419.3
+    },
+    {
+      "district_id": "NC-02",
+      "cook_rating": "Safe D",
+      "party_d": 0.11261474609375455,
+      "party_r": 25073.47883878035,
+      "d_total_equilibrium": 1662060.1526147462,
+      "r_total_equilibrium": 59180.72883878035,
+      "d_total_observed": 1662982.58,
+      "r_total_observed": 34107.25
+    },
+    {
+      "district_id": "NC-03",
+      "cook_rating": "Safe R",
+      "party_d": 1.1046719095020308e-13,
+      "party_r": 6.758805240559425e-12,
+      "d_total_equilibrium": 640.0000000000001,
+      "r_total_equilibrium": 1165664.54,
+      "d_total_observed": 640.0,
+      "r_total_observed": 1165664.54
+    },
+    {
+      "district_id": "NC-04",
+      "cook_rating": "Safe D",
+      "party_d": 0.20000488281249318,
+      "party_r": 10185.78373570514,
+      "d_total_equilibrium": 737113.7300048828,
+      "r_total_equilibrium": 22580.86373570514,
+      "d_total_observed": 738751.97,
+      "r_total_observed": 12395.08
+    },
+    {
+      "district_id": "NC-05",
+      "cook_rating": "Safe R",
+      "party_d": 187736.84587064735,
+      "party_r": 74336.49379001457,
+      "d_total_equilibrium": 596991.1758706474,
+      "r_total_equilibrium": 2052354.4037900146,
+      "d_total_observed": 409254.33,
+      "r_total_observed": 1978017.91
+    },
+    {
+      "district_id": "NC-06",
+      "cook_rating": "Likely D",
+      "party_d": 3400380.776569185,
+      "party_r": 592212.62348353,
+      "d_total_equilibrium": 4388456.856569185,
+      "r_total_equilibrium": 2072707.56348353,
+      "d_total_observed": 988076.08,
+      "r_total_observed": 1480494.94
+    },
+    {
+      "district_id": "NC-07",
+      "cook_rating": "Safe R",
+      "party_d": 36.294298611211765,
+      "party_r": 6.216484653436938e-12,
+      "d_total_equilibrium": 10496.294298611212,
+      "r_total_equilibrium": 1965223.57,
+      "d_total_observed": 13221.0,
+      "r_total_observed": 1965223.57
+    },
+    {
+      "district_id": "NC-08",
+      "cook_rating": "Safe R",
+      "party_d": 0.03992309570318518,
+      "party_r": 8.258585136733493e-12,
+      "d_total_equilibrium": 510.92992309570315,
+      "r_total_equilibrium": 2046259.12,
+      "d_total_observed": 837.94,
+      "r_total_observed": 2046259.12
+    },
+    {
+      "district_id": "NC-09",
+      "cook_rating": "Likely R",
+      "party_d": 400.60781731516937,
+      "party_r": 5.160785990838003e-12,
+      "d_total_equilibrium": 31456.68781731517,
+      "r_total_equilibrium": 4757025.68,
+      "d_total_observed": 31056.08,
+      "r_total_observed": 4757025.68
+    },
+    {
+      "district_id": "NC-10",
+      "cook_rating": "Safe R",
+      "party_d": 1.6830981053317373e-13,
+      "party_r": 10.968139648447567,
+      "d_total_equilibrium": 2273.64,
+      "r_total_equilibrium": 2519841.4081396484,
+      "d_total_observed": 2273.64,
+      "r_total_observed": 2609681.44
+    },
+    {
+      "district_id": "NC-11",
+      "cook_rating": "Safe R",
+      "party_d": 872214.9434355973,
+      "party_r": 1928248.074957089,
+      "d_total_equilibrium": 1493110.4534355975,
+      "r_total_equilibrium": 3360270.284957089,
+      "d_total_observed": 620895.51,
+      "r_total_observed": 1432022.21
+    },
+    {
+      "district_id": "NC-12",
+      "cook_rating": "Safe D",
+      "party_d": 100112.0282101885,
+      "party_r": 24131.804752345015,
+      "d_total_equilibrium": 785643.1582101885,
+      "r_total_equilibrium": 73049.37475234501,
+      "d_total_observed": 685531.13,
+      "r_total_observed": 48917.57
+    },
+    {
+      "district_id": "NC-13",
+      "cook_rating": "Toss-Up",
+      "party_d": 615023.0405947109,
+      "party_r": 3636442.1158884363,
+      "d_total_equilibrium": 2346125.520594711,
+      "r_total_equilibrium": 8143744.545888436,
+      "d_total_observed": 1731102.48,
+      "r_total_observed": 4512302.43
+    },
+    {
+      "district_id": "NC-14",
+      "cook_rating": "Likely D",
+      "party_d": 3324795.281549137,
+      "party_r": 535104.3492629544,
+      "d_total_equilibrium": 4296700.191549137,
+      "r_total_equilibrium": 2010793.0592629544,
+      "d_total_observed": 972231.9600000001,
+      "r_total_observed": 1475688.71
+    },
+    {
+      "district_id": "ND-00",
+      "cook_rating": "Safe R",
+      "party_d": 243444.08198148388,
+      "party_r": 0.15011718750117212,
+      "d_total_equilibrium": 1407683.0819814838,
+      "r_total_equilibrium": 3614113.2901171874,
+      "d_total_observed": 1164239.0,
+      "r_total_observed": 3615342.9
+    },
+    {
+      "district_id": "NE-01",
+      "cook_rating": "Safe R",
+      "party_d": 44348.763038263256,
+      "party_r": 5743.456010549451,
+      "d_total_equilibrium": 171931.92303826325,
+      "r_total_equilibrium": 1797223.8960105495,
+      "d_total_observed": 127583.16,
+      "r_total_observed": 1794766.76
+    },
+    {
+      "district_id": "NE-02",
+      "cook_rating": "Toss-Up",
+      "party_d": 7152213.484115694,
+      "party_r": 690.5462426757888,
+      "d_total_equilibrium": 14640048.784115694,
+      "r_total_equilibrium": 6175231.7662426755,
+      "d_total_observed": 17682471.669999998,
+      "r_total_observed": 11831496.04
+    },
+    {
+      "district_id": "NH-01",
+      "cook_rating": "Lean D",
+      "party_d": 3174480.61689403,
+      "party_r": 650223.1408672207,
+      "d_total_equilibrium": 6949223.0968940295,
+      "r_total_equilibrium": 1956487.4008672207,
+      "d_total_observed": 4050929.83,
+      "r_total_observed": 1454683.06
+    },
+    {
+      "district_id": "NH-02",
+      "cook_rating": "Lean D",
+      "party_d": 6826954.739044754,
+      "party_r": 2873435.681858637,
+      "d_total_equilibrium": 11127935.349044755,
+      "r_total_equilibrium": 3722732.0218586368,
+      "d_total_observed": 4301568.36,
+      "r_total_observed": 896786.34
+    },
+    {
+      "district_id": "NJ-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.30517578125,
+      "party_r": 27413.047243944035,
+      "d_total_equilibrium": 1049735.9451757811,
+      "r_total_equilibrium": 53580.49724394403,
+      "d_total_observed": 1052235.64,
+      "r_total_observed": 26167.45
+    },
+    {
+      "district_id": "NJ-02",
+      "cook_rating": "Likely R",
+      "party_d": 5002702.497569583,
+      "party_r": 2708068.7433309546,
+      "d_total_equilibrium": 6708356.877569583,
+      "r_total_equilibrium": 5658327.113330955,
+      "d_total_observed": 1709554.38,
+      "r_total_observed": 2950258.37
+    },
+    {
+      "district_id": "NJ-03",
+      "cook_rating": "Likely D",
+      "party_d": 1242467.8436527993,
+      "party_r": 221586.19206292392,
+      "d_total_equilibrium": 2558301.413652799,
+      "r_total_equilibrium": 644324.532062924,
+      "d_total_observed": 1315833.57,
+      "r_total_observed": 422738.34
+    },
+    {
+      "district_id": "NJ-04",
+      "cook_rating": "Safe R",
+      "party_d": 4181.5497968626705,
+      "party_r": 3.8658325195349046,
+      "d_total_equilibrium": 54492.019796862674,
+      "r_total_equilibrium": 701108.7758325195,
+      "d_total_observed": 50310.47,
+      "r_total_observed": 732773.81
+    },
+    {
+      "district_id": "NJ-05",
+      "cook_rating": "Likely D",
+      "party_d": 575404.6020998982,
+      "party_r": 180167.17494609678,
+      "d_total_equilibrium": 3455283.712099898,
+      "r_total_equilibrium": 508373.5449460968,
+      "d_total_observed": 2879879.11,
+      "r_total_observed": 329876.73
+    },
+    {
+      "district_id": "NJ-06",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 48649.047787120086,
+      "d_total_equilibrium": 3077719.91,
+      "r_total_equilibrium": 157672.49778712008,
+      "d_total_observed": 3077719.91,
+      "r_total_observed": 109023.45
+    },
+    {
+      "district_id": "NJ-07",
+      "cook_rating": "Lean R",
+      "party_d": 7608314.847426627,
+      "party_r": 73.15206542969577,
+      "d_total_equilibrium": 13849816.177426627,
+      "r_total_equilibrium": 6068998.2920654295,
+      "d_total_observed": 10847366.99,
+      "r_total_observed": 6668186.859999999
+    },
+    {
+      "district_id": "NJ-08",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1.4276029561260376e-12,
+      "d_total_equilibrium": 2463492.82,
+      "r_total_equilibrium": 7559.580000000002,
+      "d_total_observed": 2463492.82,
+      "r_total_observed": 7559.58
+    },
+    {
+      "district_id": "NJ-09",
+      "cook_rating": "Safe D",
+      "party_d": 29122.68216978936,
+      "party_r": 48170.093982898434,
+      "d_total_equilibrium": 1672934.4821697895,
+      "r_total_equilibrium": 145545.46398289842,
+      "d_total_observed": 1643811.8,
+      "r_total_observed": 99045.73
+    },
+    {
+      "district_id": "NJ-10",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 459.1614527221944,
+      "d_total_equilibrium": 484650.82,
+      "r_total_equilibrium": 21276.231452722193,
+      "d_total_observed": 484650.82,
+      "r_total_observed": 22487.43
+    },
+    {
+      "district_id": "NJ-11",
+      "cook_rating": "Likely D",
+      "party_d": 22.18603515625,
+      "party_r": 73782.48139028481,
+      "d_total_equilibrium": 4991693.076035156,
+      "r_total_equilibrium": 309058.28139028477,
+      "d_total_observed": 5173418.89,
+      "r_total_observed": 235275.8
+    },
+    {
+      "district_id": "NJ-12",
+      "cook_rating": "Safe D",
+      "party_d": 31315.381579329467,
+      "party_r": 19548.77792503334,
+      "d_total_equilibrium": 1016319.0715793294,
+      "r_total_equilibrium": 97144.34792503335,
+      "d_total_observed": 985003.69,
+      "r_total_observed": 77595.57
+    },
+    {
+      "district_id": "NM-01",
+      "cook_rating": "Lean D",
+      "party_d": 7633483.569052361,
+      "party_r": 3523682.3432066087,
+      "d_total_equilibrium": 8852396.42905236,
+      "r_total_equilibrium": 3715098.4532066085,
+      "d_total_observed": 1269482.6800000002,
+      "r_total_observed": 191416.11
+    },
+    {
+      "district_id": "NM-02",
+      "cook_rating": "Lean D",
+      "party_d": 4885600.319513494,
+      "party_r": 841279.2629435901,
+      "d_total_equilibrium": 11909917.919513494,
+      "r_total_equilibrium": 5404429.55294359,
+      "d_total_observed": 18148542.95,
+      "r_total_observed": 8327388.2
+    },
+    {
+      "district_id": "NM-03",
+      "cook_rating": "Likely D",
+      "party_d": 317472.5124465877,
+      "party_r": 104968.2155894032,
+      "d_total_equilibrium": 2065974.5124465877,
+      "r_total_equilibrium": 192366.26558940322,
+      "d_total_observed": 1748502.0,
+      "r_total_observed": 87398.05
+    },
+    {
+      "district_id": "NV-01",
+      "cook_rating": "Likely D",
+      "party_d": 3774340.0574979596,
+      "party_r": 606456.648413603,
+      "d_total_equilibrium": 6228727.45749796,
+      "r_total_equilibrium": 2509471.598413603,
+      "d_total_observed": 3053534.9899999998,
+      "r_total_observed": 1905075.67
+    },
+    {
+      "district_id": "NV-02",
+      "cook_rating": "Safe R",
+      "party_d": 5.462474886082818,
+      "party_r": 0.23797729492272118,
+      "d_total_equilibrium": 3605.462474886083,
+      "r_total_equilibrium": 1216445.337977295,
+      "d_total_observed": 19689.24,
+      "r_total_observed": 1218394.61
+    },
+    {
+      "district_id": "NV-03",
+      "cook_rating": "Lean D",
+      "party_d": 1676206.1270705357,
+      "party_r": 432232.75673269323,
+      "d_total_equilibrium": 7318877.557070536,
+      "r_total_equilibrium": 1923647.926732693,
+      "d_total_observed": 7128240.4399999995,
+      "r_total_observed": 2003557.18
+    },
+    {
+      "district_id": "NV-04",
+      "cook_rating": "Likely D",
+      "party_d": 1632247.883054382,
+      "party_r": 398023.223749539,
+      "d_total_equilibrium": 7129472.483054382,
+      "r_total_equilibrium": 2074870.843749539,
+      "d_total_observed": 8240656.9799999995,
+      "r_total_observed": 1864973.37
+    },
+    {
+      "district_id": "NY-01",
+      "cook_rating": "Likely R",
+      "party_d": 6517729.028792361,
+      "party_r": 661716.5652857968,
+      "d_total_equilibrium": 11815724.28879236,
+      "r_total_equilibrium": 4335373.125285797,
+      "d_total_observed": 7599753.04,
+      "r_total_observed": 3911486.56
+    },
+    {
+      "district_id": "NY-02",
+      "cook_rating": "Likely R",
+      "party_d": 3074420.5969417826,
+      "party_r": 3772555.275584085,
+      "d_total_equilibrium": 4099452.9969417825,
+      "r_total_equilibrium": 6387232.615584085,
+      "d_total_observed": 1025032.4,
+      "r_total_observed": 2757786.53
+    },
+    {
+      "district_id": "NY-03",
+      "cook_rating": "Lean D",
+      "party_d": 2616746.8919113227,
+      "party_r": 571794.5937325797,
+      "d_total_equilibrium": 10292524.891911322,
+      "r_total_equilibrium": 3551581.8837325796,
+      "d_total_observed": 9459261.73,
+      "r_total_observed": 3180710.67
+    },
+    {
+      "district_id": "NY-04",
+      "cook_rating": "Lean D",
+      "party_d": 295218.4016298959,
+      "party_r": 3109580.5852620057,
+      "d_total_equilibrium": 405365.5216298959,
+      "r_total_equilibrium": 7730717.345262006,
+      "d_total_observed": 14033455.239999998,
+      "r_total_observed": 4899502.899999999
+    },
+    {
+      "district_id": "NY-05",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 7.770952747958229e-13,
+      "d_total_equilibrium": 2548056.09,
+      "r_total_equilibrium": 46250.86,
+      "d_total_observed": 2548056.09,
+      "r_total_observed": 46250.86
+    },
+    {
+      "district_id": "NY-06",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 11395.596556166838,
+      "d_total_equilibrium": 1836399.64,
+      "r_total_equilibrium": 101876.68655616684,
+      "d_total_observed": 1836399.64,
+      "r_total_observed": 90481.09
+    },
+    {
+      "district_id": "NY-07",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 558.9861277786389,
+      "d_total_equilibrium": 616271.72,
+      "r_total_equilibrium": 18781.25612777864,
+      "d_total_observed": 616271.72,
+      "r_total_observed": 18222.27
+    },
+    {
+      "district_id": "NY-08",
+      "cook_rating": "Safe D",
+      "party_d": 0.689697265625,
+      "party_r": 4.0923443521021406e-12,
+      "d_total_equilibrium": 20238858.489697266,
+      "r_total_equilibrium": 4.0923443521021406e-12,
+      "d_total_observed": 20244507.8,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "NY-09",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 595.3391528601551,
+      "d_total_equilibrium": 1061633.75,
+      "r_total_equilibrium": 595.3391528601551,
+      "d_total_observed": 1061633.75,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "NY-10",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 5.5372056570414754e-12,
+      "d_total_equilibrium": 2764329.95,
+      "r_total_equilibrium": 4457.980000000005,
+      "d_total_observed": 2764329.95,
+      "r_total_observed": 4457.98
+    },
+    {
+      "district_id": "NY-11",
+      "cook_rating": "Likely R",
+      "party_d": 329912.2060475176,
+      "party_r": 1293114.2378154937,
+      "d_total_equilibrium": 603780.3260475176,
+      "r_total_equilibrium": 3368910.7078154935,
+      "d_total_observed": 273868.12,
+      "r_total_observed": 2075796.47
+    },
+    {
+      "district_id": "NY-12",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 3.475793241571268e-12,
+      "d_total_equilibrium": 1009847.3,
+      "r_total_equilibrium": 3.475793241571268e-12,
+      "d_total_observed": 1009847.3,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "NY-13",
+      "cook_rating": "Safe D",
+      "party_d": 7.16180419921875,
+      "party_r": 1.9191393639142505e-12,
+      "d_total_equilibrium": 1075327.1818041992,
+      "r_total_equilibrium": 1.9191393639142505e-12,
+      "d_total_observed": 1133989.52,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "NY-14",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1.8506127929812846,
+      "d_total_equilibrium": 16716492.89,
+      "r_total_equilibrium": 1845356.0306127928,
+      "d_total_observed": 16716492.89,
+      "r_total_observed": 1860514.4
+    },
+    {
+      "district_id": "NY-15",
+      "cook_rating": "Safe D",
+      "party_d": 41.17210693359374,
+      "party_r": 3.768019708094668e-12,
+      "d_total_equilibrium": 1674842.8821069335,
+      "r_total_equilibrium": 3.768019708094668e-12,
+      "d_total_observed": 2012083.6099999999,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "NY-16",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1.3167837801773656e-12,
+      "d_total_equilibrium": 6486537.83,
+      "r_total_equilibrium": 31799.04,
+      "d_total_observed": 6486537.83,
+      "r_total_observed": 31799.04
+    },
+    {
+      "district_id": "NY-17",
+      "cook_rating": "Toss-Up",
+      "party_d": 6468661.825702071,
+      "party_r": 215.00369873048032,
+      "d_total_equilibrium": 16458824.625702072,
+      "r_total_equilibrium": 8257110.053698731,
+      "d_total_observed": 21967927.54,
+      "r_total_observed": 10018205.35
+    },
+    {
+      "district_id": "NY-18",
+      "cook_rating": "Lean D",
+      "party_d": 2118758.764438307,
+      "party_r": 545858.321351794,
+      "d_total_equilibrium": 10130404.064438306,
+      "r_total_equilibrium": 2967665.221351794,
+      "d_total_observed": 13517575.93,
+      "r_total_observed": 3266747.58
+    },
+    {
+      "district_id": "NY-19",
+      "cook_rating": "Toss-Up",
+      "party_d": 4815062.70730567,
+      "party_r": 613.1189868164207,
+      "d_total_equilibrium": 14612545.73730567,
+      "r_total_equilibrium": 5580974.868986816,
+      "d_total_observed": 28201664.159999996,
+      "r_total_observed": 10603032.49
+    },
+    {
+      "district_id": "NY-20",
+      "cook_rating": "Likely D",
+      "party_d": 0.0,
+      "party_r": 55683.15847398469,
+      "d_total_equilibrium": 1673736.28,
+      "r_total_equilibrium": 78841.2584739847,
+      "d_total_observed": 1673736.28,
+      "r_total_observed": 23158.1
+    },
+    {
+      "district_id": "NY-21",
+      "cook_rating": "Safe R",
+      "party_d": 729.0246629820202,
+      "party_r": 1.0763783298247595e-12,
+      "d_total_equilibrium": 92556.82466298202,
+      "r_total_equilibrium": 7636448.94,
+      "d_total_observed": 91827.8,
+      "r_total_observed": 7636448.94
+    },
+    {
+      "district_id": "NY-22",
+      "cook_rating": "Toss-Up",
+      "party_d": 8312969.081860822,
+      "party_r": 610129.5783033763,
+      "d_total_equilibrium": 12346585.251860822,
+      "r_total_equilibrium": 4818465.088303376,
+      "d_total_observed": 13107599.27,
+      "r_total_observed": 5694164.58
+    },
+    {
+      "district_id": "NY-23",
+      "cook_rating": "Safe R",
+      "party_d": 1401.6143731106492,
+      "party_r": 2.2004953828882535e-12,
+      "d_total_equilibrium": 33788.344373110645,
+      "r_total_equilibrium": 927737.09,
+      "d_total_observed": 32386.73,
+      "r_total_observed": 927737.09
+    },
+    {
+      "district_id": "NY-24",
+      "cook_rating": "Safe R",
+      "party_d": 3653.1265392555033,
+      "party_r": 1.3164582507957668e-12,
+      "d_total_equilibrium": 99086.14653925551,
+      "r_total_equilibrium": 2701849.55,
+      "d_total_observed": 95433.02,
+      "r_total_observed": 2701849.55
+    },
+    {
+      "district_id": "NY-25",
+      "cook_rating": "Likely D",
+      "party_d": 981372.9182525151,
+      "party_r": 199760.20894804498,
+      "d_total_equilibrium": 2808108.698252515,
+      "r_total_equilibrium": 803311.5889480449,
+      "d_total_observed": 1826735.78,
+      "r_total_observed": 603551.38
+    },
+    {
+      "district_id": "NY-26",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 45366.54801869091,
+      "d_total_equilibrium": 2325249.7,
+      "r_total_equilibrium": 108215.90801869091,
+      "d_total_observed": 2325249.7,
+      "r_total_observed": 62849.36
+    },
+    {
+      "district_id": "OH-01",
+      "cook_rating": "Lean D",
+      "party_d": 86.1355171260355,
+      "party_r": 142488.09686566365,
+      "d_total_equilibrium": 3607995.105517126,
+      "r_total_equilibrium": 181486.05686566365,
+      "d_total_observed": 3825796.8800000004,
+      "r_total_observed": 538752.98
+    },
+    {
+      "district_id": "OH-02",
+      "cook_rating": "Safe R",
+      "party_d": 1972.4657016444385,
+      "party_r": 0.4932202148446281,
+      "d_total_equilibrium": 162255.06570164443,
+      "r_total_equilibrium": 2171684.0032202145,
+      "d_total_observed": 160282.6,
+      "r_total_observed": 2175723.9699999997
+    },
+    {
+      "district_id": "OH-03",
+      "cook_rating": "Safe D",
+      "party_d": 0.1611328125,
+      "party_r": 4440.393720560789,
+      "d_total_equilibrium": 1265490.1211328125,
+      "r_total_equilibrium": 4440.393720560789,
+      "d_total_observed": 1266809.96,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "OH-04",
+      "cook_rating": "Safe R",
+      "party_d": 0.5462646484375,
+      "party_r": 0.5298522949241703,
+      "d_total_equilibrium": 2248714.0962646483,
+      "r_total_equilibrium": 13625785.189852295,
+      "d_total_observed": 2253188.55,
+      "r_total_observed": 13630125.21
+    },
+    {
+      "district_id": "OH-05",
+      "cook_rating": "Safe R",
+      "party_d": 0.2878008717449547,
+      "party_r": 0.5021105957086287,
+      "d_total_equilibrium": 15089.047800871745,
+      "r_total_equilibrium": 2325878.4021105957,
+      "d_total_observed": 15088.76,
+      "r_total_observed": 2329991.19
+    },
+    {
+      "district_id": "OH-06",
+      "cook_rating": "Safe R",
+      "party_d": 27983.998593416974,
+      "party_r": 29994.1657727521,
+      "d_total_equilibrium": 139499.75859341698,
+      "r_total_equilibrium": 1114308.9457727522,
+      "d_total_observed": 111515.76,
+      "r_total_observed": 1088345.94
+    },
+    {
+      "district_id": "OH-07",
+      "cook_rating": "Likely R",
+      "party_d": 32557.899536086472,
+      "party_r": 4471.800541150362,
+      "d_total_equilibrium": 117788.53953608646,
+      "r_total_equilibrium": 1892162.9205411505,
+      "d_total_observed": 104480.64,
+      "r_total_observed": 2000462.78
+    },
+    {
+      "district_id": "OH-08",
+      "cook_rating": "Safe R",
+      "party_d": 267.0436957673727,
+      "party_r": 0.47205810547269134,
+      "d_total_equilibrium": 26620.173695767375,
+      "r_total_equilibrium": 1095556.2420581055,
+      "d_total_observed": 26353.13,
+      "r_total_observed": 1099422.87
+    },
+    {
+      "district_id": "OH-09",
+      "cook_rating": "Toss-Up",
+      "party_d": 4205074.814905757,
+      "party_r": 936310.4161752409,
+      "d_total_equilibrium": 9200927.724905757,
+      "r_total_equilibrium": 2582463.486175241,
+      "d_total_observed": 15426405.14,
+      "r_total_observed": 5149137.17
+    },
+    {
+      "district_id": "OH-10",
+      "cook_rating": "Likely R",
+      "party_d": 278780.84390435054,
+      "party_r": 1944282.3755409117,
+      "d_total_equilibrium": 483834.74390435056,
+      "r_total_equilibrium": 3337539.475540912,
+      "d_total_observed": 205053.9,
+      "r_total_observed": 1395565.12
+    },
+    {
+      "district_id": "OH-11",
+      "cook_rating": "Safe D",
+      "party_d": 0.3497314453125,
+      "party_r": 2071.766510782628,
+      "d_total_equilibrium": 926301.4197314453,
+      "r_total_equilibrium": 86837.88651078263,
+      "d_total_observed": 929166.07,
+      "r_total_observed": 84766.12
+    },
+    {
+      "district_id": "OH-12",
+      "cook_rating": "Safe R",
+      "party_d": 240742.67020612757,
+      "party_r": 209750.8329524077,
+      "d_total_equilibrium": 713354.3202061276,
+      "r_total_equilibrium": 1734411.8929524077,
+      "d_total_observed": 472611.65,
+      "r_total_observed": 1527551.22
+    },
+    {
+      "district_id": "OH-13",
+      "cook_rating": "Lean D",
+      "party_d": 2804851.0985161713,
+      "party_r": 638433.1563981473,
+      "d_total_equilibrium": 8065140.858516172,
+      "r_total_equilibrium": 2244422.1963981474,
+      "d_total_observed": 17139805.16,
+      "r_total_observed": 4083294.27
+    },
+    {
+      "district_id": "OH-15",
+      "cook_rating": "Likely R",
+      "party_d": 666199.6945841981,
+      "party_r": 1584644.1236170135,
+      "d_total_equilibrium": 1138811.3445841982,
+      "r_total_equilibrium": 4201167.203617014,
+      "d_total_observed": 472611.65,
+      "r_total_observed": 2620026.0300000003
+    },
+    {
+      "district_id": "OK-01",
+      "cook_rating": "Safe R",
+      "party_d": 62092.337198241854,
+      "party_r": 1.491752778504544e-12,
+      "d_total_equilibrium": 403553.19719824183,
+      "r_total_equilibrium": 2253473.86,
+      "d_total_observed": 341460.86,
+      "r_total_observed": 2253473.86
+    },
+    {
+      "district_id": "OK-02",
+      "cook_rating": "Safe R",
+      "party_d": 5.684341886080802e-14,
+      "party_r": 3.509487547200568e-12,
+      "d_total_equilibrium": 64650.65,
+      "r_total_equilibrium": 1531778.02,
+      "d_total_observed": 64650.65,
+      "r_total_observed": 1531778.02
+    },
+    {
+      "district_id": "OK-04",
+      "cook_rating": "Safe R",
+      "party_d": 1.3660184094987926e-12,
+      "party_r": 4.256979312553841e-13,
+      "d_total_equilibrium": 27833.46,
+      "r_total_equilibrium": 5631744.57,
+      "d_total_observed": 27833.46,
+      "r_total_observed": 5631744.57
+    },
+    {
+      "district_id": "OK-05",
+      "cook_rating": "Safe R",
+      "party_d": 419336.1684636408,
+      "party_r": 427919.279121261,
+      "d_total_equilibrium": 994783.3384636408,
+      "r_total_equilibrium": 2076431.219121261,
+      "d_total_observed": 575447.17,
+      "r_total_observed": 1648511.94
+    },
+    {
+      "district_id": "OR-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 7200.653338442442,
+      "d_total_equilibrium": 1016577.72,
+      "r_total_equilibrium": 7200.653338442442,
+      "d_total_observed": 1016577.72,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "OR-02",
+      "cook_rating": "Safe R",
+      "party_d": 376.3722568012473,
+      "party_r": 1.874787226606749e-12,
+      "d_total_equilibrium": 26883.37225680125,
+      "r_total_equilibrium": 749404.44,
+      "d_total_observed": 26507.0,
+      "r_total_observed": 749404.44
+    },
+    {
+      "district_id": "OR-03",
+      "cook_rating": "Safe D",
+      "party_d": 333837.99792757037,
+      "party_r": 340571.79191702267,
+      "d_total_equilibrium": 2129596.1779275704,
+      "r_total_equilibrium": 369319.33191702265,
+      "d_total_observed": 1795758.18,
+      "r_total_observed": 28747.54
+    },
+    {
+      "district_id": "OR-04",
+      "cook_rating": "Likely D",
+      "party_d": 1688784.2877251543,
+      "party_r": 339393.35216608515,
+      "d_total_equilibrium": 4304459.197725154,
+      "r_total_equilibrium": 1245037.0321660852,
+      "d_total_observed": 2941401.6,
+      "r_total_observed": 1358091.48
+    },
+    {
+      "district_id": "OR-05",
+      "cook_rating": "Toss-Up",
+      "party_d": 6778189.141962386,
+      "party_r": 641.046478271514,
+      "d_total_equilibrium": 14257688.231962387,
+      "r_total_equilibrium": 5749427.146478271,
+      "d_total_observed": 22452287.28,
+      "r_total_observed": 11000238.85
+    },
+    {
+      "district_id": "OR-06",
+      "cook_rating": "Likely D",
+      "party_d": 971096.5930965169,
+      "party_r": 294501.14585711143,
+      "d_total_equilibrium": 6311226.173096517,
+      "r_total_equilibrium": 1488868.0458571115,
+      "d_total_observed": 5986712.92,
+      "r_total_observed": 1295150.5
+    },
+    {
+      "district_id": "PA-01",
+      "cook_rating": "Toss-Up",
+      "party_d": 8208977.380533708,
+      "party_r": 1217842.5296124248,
+      "d_total_equilibrium": 12171951.110533709,
+      "r_total_equilibrium": 4694747.2496124245,
+      "d_total_observed": 3979242.47,
+      "r_total_observed": 3794856.72
+    },
+    {
+      "district_id": "PA-02",
+      "cook_rating": "Safe D",
+      "party_d": 0.35357543945312386,
+      "party_r": 4597.809710667805,
+      "d_total_equilibrium": 843874.5935754394,
+      "r_total_equilibrium": 28295.659710667802,
+      "d_total_observed": 846770.73,
+      "r_total_observed": 23697.85
+    },
+    {
+      "district_id": "PA-03",
+      "cook_rating": "Safe D",
+      "party_d": 2.3581701660156256,
+      "party_r": 1.2612231002711455e-12,
+      "d_total_equilibrium": 1033568.5181701661,
+      "r_total_equilibrium": 1.2612231002711455e-12,
+      "d_total_observed": 1052884.29,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "PA-04",
+      "cook_rating": "Likely D",
+      "party_d": 506634.1507042727,
+      "party_r": 111105.97575870887,
+      "d_total_equilibrium": 1995311.5807042727,
+      "r_total_equilibrium": 349813.37575870886,
+      "d_total_observed": 1488677.43,
+      "r_total_observed": 238707.4
+    },
+    {
+      "district_id": "PA-05",
+      "cook_rating": "Safe D",
+      "party_d": 0.06776000976563523,
+      "party_r": 14584.129416443098,
+      "d_total_equilibrium": 1517047.1177600098,
+      "r_total_equilibrium": 29863.4394164431,
+      "d_total_observed": 1517602.1400000001,
+      "r_total_observed": 15279.31
+    },
+    {
+      "district_id": "PA-06",
+      "cook_rating": "Likely D",
+      "party_d": 26.845831298828102,
+      "party_r": 85052.74466242765,
+      "d_total_equilibrium": 2054796.2458312986,
+      "r_total_equilibrium": 126307.48466242765,
+      "d_total_observed": 2274690.4499999997,
+      "r_total_observed": 41254.74
+    },
+    {
+      "district_id": "PA-07",
+      "cook_rating": "Toss-Up",
+      "party_d": 1920482.5277991658,
+      "party_r": 704721.2070035997,
+      "d_total_equilibrium": 10866712.527799167,
+      "r_total_equilibrium": 2419888.4070035997,
+      "d_total_observed": 27178562.88,
+      "r_total_observed": 3753903.05
+    },
+    {
+      "district_id": "PA-08",
+      "cook_rating": "Toss-Up",
+      "party_d": 7269916.797865542,
+      "party_r": 1584602.629676865,
+      "d_total_equilibrium": 15884420.227865541,
+      "r_total_equilibrium": 6071616.429676864,
+      "d_total_observed": 22971819.95,
+      "r_total_observed": 6957377.05
+    },
+    {
+      "district_id": "PA-09",
+      "cook_rating": "Safe R",
+      "party_d": 7.394085344003543e-14,
+      "party_r": 0.6691650390684543,
+      "d_total_equilibrium": 9300.82,
+      "r_total_equilibrium": 1886701.669165039,
+      "d_total_observed": 9300.82,
+      "r_total_observed": 1892182.8
+    },
+    {
+      "district_id": "PA-10",
+      "cook_rating": "Likely R",
+      "party_d": 5371407.558459338,
+      "party_r": 619.7773767089908,
+      "d_total_equilibrium": 11877996.258459337,
+      "r_total_equilibrium": 4620480.157376708,
+      "d_total_observed": 14503386.4,
+      "r_total_observed": 9697076.65
+    },
+    {
+      "district_id": "PA-11",
+      "cook_rating": "Safe R",
+      "party_d": 23.227982767773156,
+      "party_r": 0.4718920898453339,
+      "d_total_equilibrium": 19502.437982767773,
+      "r_total_equilibrium": 1803649.9318920898,
+      "d_total_observed": 19479.21,
+      "r_total_observed": 1807515.2
+    },
+    {
+      "district_id": "PA-12",
+      "cook_rating": "Likely D",
+      "party_d": 76257.19540030316,
+      "party_r": 66196.99873677286,
+      "d_total_equilibrium": 2048076.0654003033,
+      "r_total_equilibrium": 201756.23873677285,
+      "d_total_observed": 2034245.1900000002,
+      "r_total_observed": 135559.24
+    },
+    {
+      "district_id": "PA-13",
+      "cook_rating": "Safe R",
+      "party_d": 0.0,
+      "party_r": 1.2888061523463443,
+      "d_total_equilibrium": 64813.59,
+      "r_total_equilibrium": 1470450.3088061523,
+      "d_total_observed": 64813.59,
+      "r_total_observed": 1481006.92
+    },
+    {
+      "district_id": "PA-14",
+      "cook_rating": "Safe R",
+      "party_d": 1717.8048221151967,
+      "party_r": 0.5687084960951904,
+      "d_total_equilibrium": 284992.8148221152,
+      "r_total_equilibrium": 4312668.548708497,
+      "d_total_observed": 283275.01,
+      "r_total_observed": 4317326.840000001
+    },
+    {
+      "district_id": "PA-15",
+      "cook_rating": "Safe R",
+      "party_d": 211.65071898356638,
+      "party_r": 0.676186523438289,
+      "d_total_equilibrium": 133093.63071898356,
+      "r_total_equilibrium": 2419749.936186523,
+      "d_total_observed": 132903.98,
+      "r_total_observed": 2425288.5799999996
+    },
+    {
+      "district_id": "PA-16",
+      "cook_rating": "Safe R",
+      "party_d": 677848.9795572562,
+      "party_r": 659318.088363653,
+      "d_total_equilibrium": 1449483.3095572563,
+      "r_total_equilibrium": 2186752.468363653,
+      "d_total_observed": 771634.33,
+      "r_total_observed": 1531454.18
+    },
+    {
+      "district_id": "PA-17",
+      "cook_rating": "Lean D",
+      "party_d": 3151153.0604539625,
+      "party_r": 658086.3963527972,
+      "d_total_equilibrium": 7884494.920453963,
+      "r_total_equilibrium": 2431291.286352797,
+      "d_total_observed": 5637586.140000001,
+      "r_total_observed": 2181815.6999999997
+    },
+    {
+      "district_id": "RI-01",
+      "cook_rating": "Safe D",
+      "party_d": 2879021.014806019,
+      "party_r": 1066429.776318105,
+      "d_total_equilibrium": 4520085.3748060195,
+      "r_total_equilibrium": 1369726.066318105,
+      "d_total_observed": 1642364.36,
+      "r_total_observed": 303296.29
+    },
+    {
+      "district_id": "RI-02",
+      "cook_rating": "Likely D",
+      "party_d": 150290.9775359105,
+      "party_r": 70529.09160241051,
+      "d_total_equilibrium": 1354340.0975359106,
+      "r_total_equilibrium": 73755.8216024105,
+      "d_total_observed": 1205349.12,
+      "r_total_observed": 3226.73
+    },
+    {
+      "district_id": "SC-01",
+      "cook_rating": "Likely R",
+      "party_d": 1793155.56271544,
+      "party_r": 1587860.2575926818,
+      "d_total_equilibrium": 2886939.12271544,
+      "r_total_equilibrium": 4616096.717592682,
+      "d_total_observed": 1093783.56,
+      "r_total_observed": 3053336.46
+    },
+    {
+      "district_id": "SC-02",
+      "cook_rating": "Safe R",
+      "party_d": 155.47619475145783,
+      "party_r": 3.5465600132794095e-12,
+      "d_total_equilibrium": 11335.456194751458,
+      "r_total_equilibrium": 1100949.7,
+      "d_total_observed": 11179.98,
+      "r_total_observed": 1100949.7
+    },
+    {
+      "district_id": "SC-03",
+      "cook_rating": "Safe R",
+      "party_d": 746.7724327592276,
+      "party_r": 8.846275694837396e-13,
+      "d_total_equilibrium": 43602.00243275923,
+      "r_total_equilibrium": 972710.35,
+      "d_total_observed": 42855.23,
+      "r_total_observed": 972710.35
+    },
+    {
+      "district_id": "SC-04",
+      "cook_rating": "Safe R",
+      "party_d": 261051.74483659642,
+      "party_r": 68240.46554557991,
+      "d_total_equilibrium": 775006.8948365964,
+      "r_total_equilibrium": 2373023.68554558,
+      "d_total_observed": 513955.15,
+      "r_total_observed": 2304783.22
+    },
+    {
+      "district_id": "SC-05",
+      "cook_rating": "Safe R",
+      "party_d": 8647.12027390891,
+      "party_r": 44414.473113543805,
+      "d_total_equilibrium": 37703.50027390891,
+      "r_total_equilibrium": 378868.17311354383,
+      "d_total_observed": 29056.38,
+      "r_total_observed": 334453.7
+    },
+    {
+      "district_id": "SC-06",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 18025.20158054147,
+      "d_total_equilibrium": 2678076.19,
+      "r_total_equilibrium": 252269.35158054146,
+      "d_total_observed": 2678076.19,
+      "r_total_observed": 234244.15
+    },
+    {
+      "district_id": "SC-07",
+      "cook_rating": "Safe R",
+      "party_d": 21606.987401479735,
+      "party_r": 8150.361731653278,
+      "d_total_equilibrium": 111162.06740147974,
+      "r_total_equilibrium": 1168415.8117316533,
+      "d_total_observed": 89555.08,
+      "r_total_observed": 1160265.45
+    },
+    {
+      "district_id": "SD-00",
+      "cook_rating": "Safe R",
+      "party_d": 28173.857209390044,
+      "party_r": 1.491884469925031e-12,
+      "d_total_equilibrium": 254068.83720939007,
+      "r_total_equilibrium": 1454148.22,
+      "d_total_observed": 225894.98,
+      "r_total_observed": 1454148.22
+    },
+    {
+      "district_id": "TN-01",
+      "cook_rating": "Safe R",
+      "party_d": 5.513588486347805e-13,
+      "party_r": 4.183418739520203e-12,
+      "d_total_equilibrium": 5.513588486347805e-13,
+      "r_total_equilibrium": 1415175.06,
+      "d_total_observed": 0.0,
+      "r_total_observed": 1415175.06
+    },
+    {
+      "district_id": "TN-02",
+      "cook_rating": "Safe R",
+      "party_d": 23171.1613301971,
+      "party_r": 6.033803816633509e-12,
+      "d_total_equilibrium": 280606.8413301971,
+      "r_total_equilibrium": 1336137.46,
+      "d_total_observed": 257435.68,
+      "r_total_observed": 1336137.46
+    },
+    {
+      "district_id": "TN-03",
+      "cook_rating": "Safe R",
+      "party_d": 35055.338286300575,
+      "party_r": 17487.86485972624,
+      "d_total_equilibrium": 228677.13828630056,
+      "r_total_equilibrium": 671596.7748597263,
+      "d_total_observed": 193621.8,
+      "r_total_observed": 654108.91
+    },
+    {
+      "district_id": "TN-04",
+      "cook_rating": "Safe R",
+      "party_d": 16360.871037363242,
+      "party_r": 15618.650193396415,
+      "d_total_equilibrium": 120651.07103736323,
+      "r_total_equilibrium": 271568.3001933964,
+      "d_total_observed": 104290.2,
+      "r_total_observed": 255949.65
+    },
+    {
+      "district_id": "TN-05",
+      "cook_rating": "Safe R",
+      "party_d": 487605.2901076932,
+      "party_r": 1460893.4046468898,
+      "d_total_equilibrium": 916133.1801076932,
+      "r_total_equilibrium": 2509917.8246468897,
+      "d_total_observed": 428527.89,
+      "r_total_observed": 1054347.42
+    },
+    {
+      "district_id": "TN-06",
+      "cook_rating": "Safe R",
+      "party_d": 0.0,
+      "party_r": 7.349755319090443e-12,
+      "d_total_equilibrium": 89193.15,
+      "r_total_equilibrium": 1710030.03,
+      "d_total_observed": 89193.15,
+      "r_total_observed": 1710030.03
+    },
+    {
+      "district_id": "TN-07",
+      "cook_rating": "Safe R",
+      "party_d": 1901881.7505857754,
+      "party_r": 1711099.034094429,
+      "d_total_equilibrium": 3148061.3005857756,
+      "r_total_equilibrium": 3965471.0240944293,
+      "d_total_observed": 1250056.05,
+      "r_total_observed": 2254371.99
+    },
+    {
+      "district_id": "TN-08",
+      "cook_rating": "Safe R",
+      "party_d": 0.0,
+      "party_r": 3.87940659215216e-12,
+      "d_total_equilibrium": 35672.33,
+      "r_total_equilibrium": 1599321.82,
+      "d_total_observed": 35672.33,
+      "r_total_observed": 1599321.82
+    },
+    {
+      "district_id": "TN-09",
+      "cook_rating": "Safe D",
+      "party_d": 23958.5614946254,
+      "party_r": 6468.515610497887,
+      "d_total_equilibrium": 456259.5814946254,
+      "r_total_equilibrium": 53930.645610497886,
+      "d_total_observed": 432301.02,
+      "r_total_observed": 47462.13
+    },
+    {
+      "district_id": "TX-01",
+      "cook_rating": "Safe R",
+      "party_d": 1.4979424253259495e-13,
+      "party_r": 0.22136718750511508,
+      "d_total_equilibrium": 1.4979424253259495e-13,
+      "r_total_equilibrium": 822175.2713671875,
+      "d_total_observed": 0.0,
+      "r_total_observed": 823988.49
+    },
+    {
+      "district_id": "TX-02",
+      "cook_rating": "Safe R",
+      "party_d": 9.734435479913373e-13,
+      "party_r": 0.13185058594053398,
+      "d_total_equilibrium": 52835.1,
+      "r_total_equilibrium": 4806581.301850586,
+      "d_total_observed": 52835.1,
+      "r_total_observed": 4807661.29
+    },
+    {
+      "district_id": "TX-03",
+      "cook_rating": "Safe R",
+      "party_d": 425501.8700170495,
+      "party_r": 1374566.2022841405,
+      "d_total_equilibrium": 854478.8800170495,
+      "r_total_equilibrium": 1493977.5022841406,
+      "d_total_observed": 428977.01,
+      "r_total_observed": 119411.3
+    },
+    {
+      "district_id": "TX-04",
+      "cook_rating": "Safe R",
+      "party_d": 203.9462057385104,
+      "party_r": 0.16212646484908014,
+      "d_total_equilibrium": 16337.14620573851,
+      "r_total_equilibrium": 397232.4621264648,
+      "d_total_observed": 16133.2,
+      "r_total_observed": 398560.44
+    },
+    {
+      "district_id": "TX-05",
+      "cook_rating": "Safe R",
+      "party_d": 1091.7321597947318,
+      "party_r": 0.1361486816409305,
+      "d_total_equilibrium": 40082.43215979473,
+      "r_total_equilibrium": 889505.3061486817,
+      "d_total_observed": 38990.7,
+      "r_total_observed": 890620.5
+    },
+    {
+      "district_id": "TX-06",
+      "cook_rating": "Safe R",
+      "party_d": 0.06276338254156144,
+      "party_r": 0.13257324219216055,
+      "d_total_equilibrium": 123995.14276338254,
+      "r_total_equilibrium": 6401941.762573242,
+      "d_total_observed": 123995.08,
+      "r_total_observed": 6403027.67
+    },
+    {
+      "district_id": "TX-07",
+      "cook_rating": "Safe D",
+      "party_d": 0.36767578125,
+      "party_r": 30599.595770622098,
+      "d_total_equilibrium": 2445442.477675781,
+      "r_total_equilibrium": 298728.07577062206,
+      "d_total_observed": 2448454.11,
+      "r_total_observed": 268128.48
+    },
+    {
+      "district_id": "TX-08",
+      "cook_rating": "Safe R",
+      "party_d": 254.13765627918787,
+      "party_r": 0.8614367675786958,
+      "d_total_equilibrium": 47692.037656279186,
+      "r_total_equilibrium": 1429651.8814367675,
+      "d_total_observed": 47437.9,
+      "r_total_observed": 1436707.91
+    },
+    {
+      "district_id": "TX-09",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 1676.459135709399,
+      "d_total_equilibrium": 439824.17,
+      "r_total_equilibrium": 1676.459135709399,
+      "d_total_observed": 439824.17,
+      "r_total_observed": 0.0
+    },
+    {
+      "district_id": "TX-10",
+      "cook_rating": "Safe R",
+      "party_d": 1808.0118284694283,
+      "party_r": 1.9846618652383035,
+      "d_total_equilibrium": 112237.73182846943,
+      "r_total_equilibrium": 3260805.324661865,
+      "d_total_observed": 110429.72,
+      "r_total_observed": 3277061.69
+    },
+    {
+      "district_id": "TX-12",
+      "cook_rating": "Safe R",
+      "party_d": 181.9690264033094,
+      "party_r": 0.1446508789077028,
+      "d_total_equilibrium": 28798.82902640331,
+      "r_total_equilibrium": 2660901.604650879,
+      "d_total_observed": 28616.86,
+      "r_total_observed": 2662086.44
+    },
+    {
+      "district_id": "TX-14",
+      "cook_rating": "Safe R",
+      "party_d": 0.12793687970575152,
+      "party_r": 0.19357421875467754,
+      "d_total_equilibrium": 5600.7779368797055,
+      "r_total_equilibrium": 1015634.8135742188,
+      "d_total_observed": 5600.65,
+      "r_total_observed": 1017220.38
+    },
+    {
+      "district_id": "TX-15",
+      "cook_rating": "Toss-Up",
+      "party_d": 9585769.399541223,
+      "party_r": 132.88538227232098,
+      "d_total_equilibrium": 11968572.139541224,
+      "r_total_equilibrium": 7375160.855382272,
+      "d_total_observed": 4433511.16,
+      "r_total_observed": 8267123.069999999
+    },
+    {
+      "district_id": "TX-16",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 8086.680996703772,
+      "d_total_equilibrium": 1474082.52,
+      "r_total_equilibrium": 73134.87099670377,
+      "d_total_observed": 1474082.52,
+      "r_total_observed": 65048.19
+    },
+    {
+      "district_id": "TX-17",
+      "cook_rating": "Safe R",
+      "party_d": 855.0153831791845,
+      "party_r": 0.16637451172168166,
+      "d_total_equilibrium": 36689.39538317918,
+      "r_total_equilibrium": 890481.8663745116,
+      "d_total_observed": 35834.38,
+      "r_total_observed": 891844.6399999999
+    },
+    {
+      "district_id": "TX-18",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 9.037077696025285e-13,
+      "d_total_equilibrium": 1681201.37,
+      "r_total_equilibrium": 69381.33,
+      "d_total_observed": 1681201.37,
+      "r_total_observed": 69381.33
+    },
+    {
+      "district_id": "TX-20",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 10215.114566504886,
+      "d_total_equilibrium": 713892.74,
+      "r_total_equilibrium": 11754.194566504886,
+      "d_total_observed": 713892.74,
+      "r_total_observed": 1539.08
+    },
+    {
+      "district_id": "TX-21",
+      "cook_rating": "Safe R",
+      "party_d": 234251.0856689179,
+      "party_r": 84126.60596152622,
+      "d_total_equilibrium": 743899.2656689179,
+      "r_total_equilibrium": 1955082.5259615262,
+      "d_total_observed": 509648.18,
+      "r_total_observed": 1883035.8599999999
+    },
+    {
+      "district_id": "TX-22",
+      "cook_rating": "Safe R",
+      "party_d": 10325.708195924915,
+      "party_r": 6.375485839846407,
+      "d_total_equilibrium": 77132.84819592492,
+      "r_total_equilibrium": 999396.4654858399,
+      "d_total_observed": 66807.14,
+      "r_total_observed": 1051618.07
+    },
+    {
+      "district_id": "TX-23",
+      "cook_rating": "Likely R",
+      "party_d": 26362.709246416227,
+      "party_r": 7.92960802211503e-13,
+      "d_total_equilibrium": 138090.04924641622,
+      "r_total_equilibrium": 4844992.33,
+      "d_total_observed": 111727.34,
+      "r_total_observed": 4844992.33
+    },
+    {
+      "district_id": "TX-24",
+      "cook_rating": "Safe R",
+      "party_d": 1317955.6336544114,
+      "party_r": 860803.6003386255,
+      "d_total_equilibrium": 2479826.7736544115,
+      "r_total_equilibrium": 3125787.3103386257,
+      "d_total_observed": 1234611.14,
+      "r_total_observed": 2266135.28
+    },
+    {
+      "district_id": "TX-25",
+      "cook_rating": "Safe R",
+      "party_d": 1.4096189493439937e-13,
+      "party_r": 0.18482788086724694,
+      "d_total_equilibrium": 71.04000000000015,
+      "r_total_equilibrium": 1715061.484827881,
+      "d_total_observed": 71.04,
+      "r_total_observed": 1716575.4100000001
+    },
+    {
+      "district_id": "TX-26",
+      "cook_rating": "Safe R",
+      "party_d": 15178.478277150114,
+      "party_r": 0.16098388672142727,
+      "d_total_equilibrium": 121829.08827715012,
+      "r_total_equilibrium": 1651519.260983887,
+      "d_total_observed": 106650.61,
+      "r_total_observed": 1652837.8800000001
+    },
+    {
+      "district_id": "TX-27",
+      "cook_rating": "Safe R",
+      "party_d": 6294.738375634698,
+      "party_r": 0.1460021972665965,
+      "d_total_equilibrium": 66139.4883756347,
+      "r_total_equilibrium": 943006.6260021973,
+      "d_total_observed": 59844.75,
+      "r_total_observed": 944202.53
+    },
+    {
+      "district_id": "TX-28",
+      "cook_rating": "Likely D",
+      "party_d": 1273301.5610831417,
+      "party_r": 267410.9284223337,
+      "d_total_equilibrium": 3762976.6110831415,
+      "r_total_equilibrium": 1043192.6184223336,
+      "d_total_observed": 2489675.05,
+      "r_total_observed": 794116.6
+    },
+    {
+      "district_id": "TX-29",
+      "cook_rating": "Safe D",
+      "party_d": 0.002685546875,
+      "party_r": 5968.3673683825,
+      "d_total_equilibrium": 950725.1526855469,
+      "r_total_equilibrium": 40137.5473683825,
+      "d_total_observed": 950747.15,
+      "r_total_observed": 34169.18
+    },
+    {
+      "district_id": "TX-30",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 4.9791389404586145e-12,
+      "d_total_equilibrium": 1656565.9,
+      "r_total_equilibrium": 7.070000000004979,
+      "d_total_observed": 1656565.9,
+      "r_total_observed": 7.07
+    },
+    {
+      "district_id": "TX-31",
+      "cook_rating": "Safe R",
+      "party_d": 84286.51092762653,
+      "party_r": 0.18697265625037973,
+      "d_total_equilibrium": 392472.5709276265,
+      "r_total_equilibrium": 1587960.9369726563,
+      "d_total_observed": 308186.06,
+      "r_total_observed": 1589492.43
+    },
+    {
+      "district_id": "TX-32",
+      "cook_rating": "Safe D",
+      "party_d": 23.772519531249998,
+      "party_r": 18426.275089616654,
+      "d_total_equilibrium": 2587051.7625195314,
+      "r_total_equilibrium": 167463.16508961667,
+      "d_total_observed": 2781772.47,
+      "r_total_observed": 149036.89
+    },
+    {
+      "district_id": "TX-33",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 6.952209720074165e-13,
+      "d_total_equilibrium": 1678553.32,
+      "r_total_equilibrium": 13949.49,
+      "d_total_observed": 1678553.32,
+      "r_total_observed": 13949.49
+    },
+    {
+      "district_id": "TX-34",
+      "cook_rating": "Safe D",
+      "party_d": 5562697.736043736,
+      "party_r": 835936.7724694044,
+      "d_total_equilibrium": 8694059.806043737,
+      "r_total_equilibrium": 7785441.342469404,
+      "d_total_observed": 7341989.64,
+      "r_total_observed": 8373571.430000001
+    },
+    {
+      "district_id": "TX-35",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 4672.670637930081,
+      "d_total_equilibrium": 908128.59,
+      "r_total_equilibrium": 23464.34063793008,
+      "d_total_observed": 908128.59,
+      "r_total_observed": 18791.67
+    },
+    {
+      "district_id": "TX-37",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 2535.8164154512597,
+      "d_total_equilibrium": 625765.33,
+      "r_total_equilibrium": 3047.4364154512596,
+      "d_total_observed": 625765.33,
+      "r_total_observed": 511.62
+    },
+    {
+      "district_id": "TX-38",
+      "cook_rating": "Safe R",
+      "party_d": 19628.679044420678,
+      "party_r": 0.13572875976809548,
+      "d_total_equilibrium": 191713.50904442067,
+      "r_total_equilibrium": 2065226.9757287598,
+      "d_total_observed": 172084.83,
+      "r_total_observed": 2066338.73
+    },
+    {
+      "district_id": "UT-01",
+      "cook_rating": "Safe R",
+      "party_d": 19305.435385400946,
+      "party_r": 3.8992968314530496e-12,
+      "d_total_equilibrium": 138169.46538540095,
+      "r_total_equilibrium": 1565444.38,
+      "d_total_observed": 118864.03,
+      "r_total_observed": 1565444.38
+    },
+    {
+      "district_id": "UT-02",
+      "cook_rating": "Safe R",
+      "party_d": 271794.67011401,
+      "party_r": 564457.7391127701,
+      "d_total_equilibrium": 618014.84011401,
+      "r_total_equilibrium": 2380120.27911277,
+      "d_total_observed": 346220.17,
+      "r_total_observed": 1815662.54
+    },
+    {
+      "district_id": "UT-03",
+      "cook_rating": "Safe R",
+      "party_d": 729.3650756460155,
+      "party_r": 0.0029296875074521817,
+      "d_total_equilibrium": 84266.02507564602,
+      "r_total_equilibrium": 5239012.322929688,
+      "d_total_observed": 83536.66,
+      "r_total_observed": 5239036.32
+    },
+    {
+      "district_id": "UT-04",
+      "cook_rating": "Safe R",
+      "party_d": 30.1368066021738,
+      "party_r": 7.440670144725463e-12,
+      "d_total_equilibrium": 25201.426806602176,
+      "r_total_equilibrium": 1545329.57,
+      "d_total_observed": 25171.29,
+      "r_total_observed": 1545329.57
+    },
+    {
+      "district_id": "VA-01",
+      "cook_rating": "Likely R",
+      "party_d": 1213811.2049165019,
+      "party_r": 2297308.600009565,
+      "d_total_equilibrium": 1936257.6949165019,
+      "r_total_equilibrium": 4302836.310009565,
+      "d_total_observed": 723189.15,
+      "r_total_observed": 2005527.71
+    },
+    {
+      "district_id": "VA-02",
+      "cook_rating": "Lean R",
+      "party_d": 8304322.577689134,
+      "party_r": 193.98022216797736,
+      "d_total_equilibrium": 11542138.617689133,
+      "r_total_equilibrium": 6461544.730222168,
+      "d_total_observed": 9194976.14,
+      "r_total_observed": 8050436.73
+    },
+    {
+      "district_id": "VA-03",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 8602.474240781998,
+      "d_total_equilibrium": 899213.42,
+      "r_total_equilibrium": 14373.684240781997,
+      "d_total_observed": 899213.42,
+      "r_total_observed": 5771.21
+    },
+    {
+      "district_id": "VA-04",
+      "cook_rating": "Safe D",
+      "party_d": 669355.1087154166,
+      "party_r": 437692.4367476499,
+      "d_total_equilibrium": 3383048.3787154164,
+      "r_total_equilibrium": 851511.7067476499,
+      "d_total_observed": 2714959.09,
+      "r_total_observed": 413819.27
+    },
+    {
+      "district_id": "VA-05",
+      "cook_rating": "Likely R",
+      "party_d": 454146.5579770084,
+      "party_r": 1743095.7676330812,
+      "d_total_equilibrium": 807676.6179770085,
+      "r_total_equilibrium": 3174160.3476330815,
+      "d_total_observed": 353802.56,
+      "r_total_observed": 1431064.58
+    },
+    {
+      "district_id": "VA-06",
+      "cook_rating": "Safe R",
+      "party_d": 70237.45763141569,
+      "party_r": 95968.91792396299,
+      "d_total_equilibrium": 258995.50763141568,
+      "r_total_equilibrium": 1065454.817923963,
+      "d_total_observed": 189895.43,
+      "r_total_observed": 969485.9
+    },
+    {
+      "district_id": "VA-07",
+      "cook_rating": "Toss-Up",
+      "party_d": 866.955460205078,
+      "party_r": 354.1310266113494,
+      "d_total_equilibrium": 17962122.725460205,
+      "r_total_equilibrium": 3356059.091026611,
+      "d_total_observed": 25063354.9,
+      "r_total_observed": 6256746.33
+    },
+    {
+      "district_id": "VA-08",
+      "cook_rating": "Safe D",
+      "party_d": 183467.11550997407,
+      "party_r": 44848.684938792285,
+      "d_total_equilibrium": 2171512.0555099742,
+      "r_total_equilibrium": 1183028.3849387923,
+      "d_total_observed": 1988044.94,
+      "r_total_observed": 1175679.7
+    },
+    {
+      "district_id": "VA-09",
+      "cook_rating": "Safe R",
+      "party_d": 4798.534772000351,
+      "party_r": 1.1919096324796378e-13,
+      "d_total_equilibrium": 235499.01477200037,
+      "r_total_equilibrium": 1130384.19,
+      "d_total_observed": 230700.48,
+      "r_total_observed": 1130384.19
+    },
+    {
+      "district_id": "VA-10",
+      "cook_rating": "Lean D",
+      "party_d": 9507513.555176402,
+      "party_r": 1.6914608863337873e-14,
+      "d_total_equilibrium": 12346071.3351764,
+      "r_total_equilibrium": 9517135.17,
+      "d_total_observed": 2945644.78,
+      "r_total_observed": 9517135.17
+    },
+    {
+      "district_id": "VA-11",
+      "cook_rating": "Safe D",
+      "party_d": 0.01708984375,
+      "party_r": 3821.8138754950596,
+      "d_total_equilibrium": 2190524.2670898438,
+      "r_total_equilibrium": 67997.72387549507,
+      "d_total_observed": 2190664.25,
+      "r_total_observed": 64175.91
+    },
+    {
+      "district_id": "VT-00",
+      "cook_rating": "Safe D",
+      "party_d": 90623.35698122988,
+      "party_r": 30272.030319896352,
+      "d_total_equilibrium": 1371282.19698123,
+      "r_total_equilibrium": 207860.93031989635,
+      "d_total_observed": 1437977.9400000002,
+      "r_total_observed": 177588.9
+    },
+    {
+      "district_id": "WA-01",
+      "cook_rating": "Safe D",
+      "party_d": 0.03152954101562955,
+      "party_r": 2148.898678017822,
+      "d_total_equilibrium": 3466395.561529541,
+      "r_total_equilibrium": 15068.988678017822,
+      "d_total_observed": 3466653.82,
+      "r_total_observed": 12920.09
+    },
+    {
+      "district_id": "WA-02",
+      "cook_rating": "Safe D",
+      "party_d": 0.03152954101562955,
+      "party_r": 32226.727131271524,
+      "d_total_equilibrium": 2462884.661529541,
+      "r_total_equilibrium": 41501.50713127152,
+      "d_total_observed": 2463142.92,
+      "r_total_observed": 12774.78
+    },
+    {
+      "district_id": "WA-03",
+      "cook_rating": "Toss-Up",
+      "party_d": 3281132.271812518,
+      "party_r": 1122864.898753726,
+      "d_total_equilibrium": 15176986.751812518,
+      "r_total_equilibrium": 3831222.938753726,
+      "d_total_observed": 27458718.07,
+      "r_total_observed": 8932437.489999998
+    },
+    {
+      "district_id": "WA-04",
+      "cook_rating": "Safe R",
+      "party_d": 273.91437010676475,
+      "party_r": 109.85359661704987,
+      "d_total_equilibrium": 23920.974370106767,
+      "r_total_equilibrium": 2422642.453596617,
+      "d_total_observed": 1848736.11,
+      "r_total_observed": 3208041.87
+    },
+    {
+      "district_id": "WA-05",
+      "cook_rating": "Safe R",
+      "party_d": 491774.1022945022,
+      "party_r": 1.0709476751389777e-12,
+      "d_total_equilibrium": 1083228.4322945022,
+      "r_total_equilibrium": 4670284.61,
+      "d_total_observed": 652387.08,
+      "r_total_observed": 4670284.61
+    },
+    {
+      "district_id": "WA-06",
+      "cook_rating": "Likely D",
+      "party_d": 6796665.671240499,
+      "party_r": 2999275.871341707,
+      "d_total_equilibrium": 8747736.8012405,
+      "r_total_equilibrium": 3254855.771341707,
+      "d_total_observed": 2225201.7399999998,
+      "r_total_observed": 255579.9
+    },
+    {
+      "district_id": "WA-07",
+      "cook_rating": "Safe D",
+      "party_d": 0.025223388671861358,
+      "party_r": 1.0727430168194994e-12,
+      "d_total_equilibrium": 3181301.9052233887,
+      "r_total_equilibrium": 6022.030000000001,
+      "d_total_observed": 3181508.51,
+      "r_total_observed": 6022.03
+    },
+    {
+      "district_id": "WA-08",
+      "cook_rating": "Lean D",
+      "party_d": 71.33257080078124,
+      "party_r": 208860.891118511,
+      "d_total_equilibrium": 5059216.8925708,
+      "r_total_equilibrium": 467356.561118511,
+      "d_total_observed": 5643501.9799999995,
+      "r_total_observed": 258495.67
+    },
+    {
+      "district_id": "WA-09",
+      "cook_rating": "Safe D",
+      "party_d": 0.054650878906244316,
+      "party_r": 630.103234761119,
+      "d_total_equilibrium": 1701113.884650879,
+      "r_total_equilibrium": 1790.903234761119,
+      "d_total_observed": 1701561.53,
+      "r_total_observed": 1160.8
+    },
+    {
+      "district_id": "WA-10",
+      "cook_rating": "Likely D",
+      "party_d": 0.02732543945313637,
+      "party_r": 57719.90131794533,
+      "d_total_equilibrium": 1944672.7673254395,
+      "r_total_equilibrium": 88120.94131794534,
+      "d_total_observed": 1944896.59,
+      "r_total_observed": 30401.04
+    },
+    {
+      "district_id": "WI-01",
+      "cook_rating": "Lean R",
+      "party_d": 7416181.42740764,
+      "party_r": 1126569.796165567,
+      "d_total_equilibrium": 9711846.53740764,
+      "r_total_equilibrium": 6037162.306165567,
+      "d_total_observed": 2545311.6399999997,
+      "r_total_observed": 5885714.89
+    },
+    {
+      "district_id": "WI-02",
+      "cook_rating": "Safe D",
+      "party_d": 53943.56145859536,
+      "party_r": 18302.568105723014,
+      "d_total_equilibrium": 1114897.2814585953,
+      "r_total_equilibrium": 184059.528105723,
+      "d_total_observed": 1060953.72,
+      "r_total_observed": 165756.96
+    },
+    {
+      "district_id": "WI-03",
+      "cook_rating": "Likely R",
+      "party_d": 7399628.658658983,
+      "party_r": 105.59205688477573,
+      "d_total_equilibrium": 13747547.788658984,
+      "r_total_equilibrium": 7319491.022056884,
+      "d_total_observed": 15803687.18,
+      "r_total_observed": 8184395.56
+    },
+    {
+      "district_id": "WI-04",
+      "cook_rating": "Safe D",
+      "party_d": 0.0,
+      "party_r": 287.14240303829854,
+      "d_total_equilibrium": 1356652.33,
+      "r_total_equilibrium": 9339.792403038298,
+      "d_total_observed": 1356652.33,
+      "r_total_observed": 9052.65
+    },
+    {
+      "district_id": "WI-05",
+      "cook_rating": "Safe R",
+      "party_d": 12892.960740740938,
+      "party_r": 0.7167687988311375,
+      "d_total_equilibrium": 105042.04074074094,
+      "r_total_equilibrium": 884683.5767687989,
+      "d_total_observed": 106349.29000000001,
+      "r_total_observed": 890554.63
+    },
+    {
+      "district_id": "WI-06",
+      "cook_rating": "Safe R",
+      "party_d": 34800.95447701109,
+      "party_r": 86305.08419070028,
+      "d_total_equilibrium": 125332.96447701109,
+      "r_total_equilibrium": 1099755.9941907004,
+      "d_total_observed": 90532.01,
+      "r_total_observed": 1019224.8300000001
+    },
+    {
+      "district_id": "WI-07",
+      "cook_rating": "Safe R",
+      "party_d": 93622.41568007614,
+      "party_r": 108397.74609309857,
+      "d_total_equilibrium": 311677.6056800762,
+      "r_total_equilibrium": 1520377.7160930985,
+      "d_total_observed": 240468.61,
+      "r_total_observed": 1418299.18
+    },
+    {
+      "district_id": "WI-08",
+      "cook_rating": "Safe R",
+      "party_d": 4060905.369300667,
+      "party_r": 1707030.7336870886,
+      "d_total_equilibrium": 6837497.609300667,
+      "r_total_equilibrium": 3259072.3336870885,
+      "d_total_observed": 2829027.8400000003,
+      "r_total_observed": 1557633.01
+    },
+    {
+      "district_id": "WV-01",
+      "cook_rating": "Safe R",
+      "party_d": 0.0,
+      "party_r": 0.1997363281271631,
+      "d_total_equilibrium": 72347.75,
+      "r_total_equilibrium": 1725385.099736328,
+      "d_total_observed": 72347.75,
+      "r_total_observed": 1727021.14
+    },
+    {
+      "district_id": "WV-02",
+      "cook_rating": "Safe R",
+      "party_d": 77.45012338978968,
+      "party_r": 0.29592285156879294,
+      "d_total_equilibrium": 31741.43012338979,
+      "r_total_equilibrium": 1454397.2059228516,
+      "d_total_observed": 31663.98,
+      "r_total_observed": 1456821.1099999999
+    },
+    {
+      "district_id": "WY-00",
+      "cook_rating": "Safe R",
+      "party_d": 2.7045032879868813e-13,
+      "party_r": 1.2236328125048672,
+      "d_total_equilibrium": 16215.56,
+      "r_total_equilibrium": 2461852.0736328126,
+      "d_total_observed": 16215.56,
+      "r_total_observed": 2471874.85
+    },
+    {
+      "district_id": "IL-16",
+      "cook_rating": "Safe R",
+      "party_d": 5.122679896943491e-13,
+      "party_r": 2.3310754394577105,
+      "d_total_equilibrium": 5.122679896943491e-13,
+      "r_total_equilibrium": 2196439.691075439,
+      "d_total_observed": 0.0,
+      "r_total_observed": 2215533.53
+    },
+    {
+      "district_id": "KY-05",
+      "cook_rating": "Safe R",
+      "party_d": 2.297327178257751e-13,
+      "party_r": 1.722393128999766e-11,
+      "d_total_equilibrium": 2.297327178257751e-13,
+      "r_total_equilibrium": 805640.28,
+      "d_total_observed": 0.0,
+      "r_total_observed": 805640.28
+    },
+    {
+      "district_id": "LA-05",
+      "cook_rating": "Safe R",
+      "party_d": 1.3203912109648139e-13,
+      "party_r": 1.6384744825516796e-13,
+      "d_total_equilibrium": 1.3203912109648139e-13,
+      "r_total_equilibrium": 2054171.08,
+      "d_total_observed": 0.0,
+      "r_total_observed": 2054171.08
+    },
+    {
+      "district_id": "MD-01",
+      "cook_rating": "Safe R",
+      "party_d": 3.0734705113684667e-13,
+      "party_r": 3.974639246795337e-12,
+      "d_total_equilibrium": 3.0734705113684667e-13,
+      "r_total_equilibrium": 1419584.92,
+      "d_total_observed": 0.0,
+      "r_total_observed": 1419584.92
+    },
+    {
+      "district_id": "NE-03",
+      "cook_rating": "Safe R",
+      "party_d": 1.120241220554078e-13,
+      "party_r": 0.4011621093755189,
+      "d_total_equilibrium": 1.120241220554078e-13,
+      "r_total_equilibrium": 1982984.8611621093,
+      "d_total_observed": 0.0,
+      "r_total_observed": 1986270.78
+    },
+    {
+      "district_id": "OH-14",
+      "cook_rating": "Likely R",
+      "party_d": 1.9307366695833608e-13,
+      "party_r": 8.030764160159555,
+      "d_total_equilibrium": 1.9307366695833608e-13,
+      "r_total_equilibrium": 1592577.2907641602,
+      "d_total_observed": 0.0,
+      "r_total_observed": 1658357.28
+    },
+    {
+      "district_id": "OK-03",
+      "cook_rating": "Safe R",
+      "party_d": 1.434321701127036e-13,
+      "party_r": 3.041271949415888e-12,
+      "d_total_equilibrium": 1.434321701127036e-13,
+      "r_total_equilibrium": 1287072.88,
+      "d_total_observed": 0.0,
+      "r_total_observed": 1287072.88
+    },
+    {
+      "district_id": "TX-11",
+      "cook_rating": "Safe R",
+      "party_d": 4.597622128128419e-13,
+      "party_r": 0.1667297363284967,
+      "d_total_equilibrium": 4.597622128128419e-13,
+      "r_total_equilibrium": 2764557.046729736,
+      "d_total_observed": 0.0,
+      "r_total_observed": 2765922.73
+    },
+    {
+      "district_id": "TX-13",
+      "cook_rating": "Safe R",
+      "party_d": 3.778625911505358e-13,
+      "party_r": 0.19056396485112795,
+      "d_total_equilibrium": 3.778625911505358e-13,
+      "r_total_equilibrium": 3934218.4705639645,
+      "d_total_observed": 0.0,
+      "r_total_observed": 3935779.38
+    },
+    {
+      "district_id": "TX-19",
+      "cook_rating": "Safe R",
+      "party_d": 1.4256430641762445e-13,
+      "party_r": 0.14880004882844775,
+      "d_total_equilibrium": 1.4256430641762445e-13,
+      "r_total_equilibrium": 2706336.438800049,
+      "d_total_observed": 0.0,
+      "r_total_observed": 2707555.2600000002
+    },
+    {
+      "district_id": "TX-36",
+      "cook_rating": "Safe R",
+      "party_d": 1.0543636649833662e-13,
+      "party_r": 0.1609545898478391,
+      "d_total_equilibrium": 1.0543636649833662e-13,
+      "r_total_equilibrium": 1471175.16095459,
+      "d_total_observed": 0.0,
+      "r_total_observed": 1472493.54
+    }
+  ]
+}

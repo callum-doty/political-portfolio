@@ -15,6 +15,9 @@ paths:
     ie_comprehensive: data/raw/independent_expenditure
     generic_ballot:   data/raw/generic_ballot
     candidate_committee_linkage: data/raw/candidate_committee_linkage
+    committee_master: data/raw/committee_master
+    candidate_master: data/raw/candidate_master
+    all_committee_transactions: data/raw/all_committee_transactions
   processed:      data/processed
   outputs:        outputs
 

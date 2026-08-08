@@ -240,9 +240,23 @@ def build_total_spend(cycle: int) -> pd.DataFrame:
             cand[cand["party"] == party]
             .set_index("district_id")["candidate_disbursements"]
         )
+        # groupby-sum, not set_index: coord can legitimately carry more than
+        # one row per (district_id, party) once more than one coordinating
+        # source exists for the same party -- e.g. DCCC's own coordinated
+        # spend (coordinated_dccc_{cycle}.csv) AND a state party's 24K
+        # coordinated spend into the same district
+        # (coordinated_state_party_dem_{cycle}.csv) are both party="D".
+        # set_index() alone would leave duplicate district_id index labels,
+        # which crashes the pd.concat([d, r], axis=1) below with
+        # "cannot reindex on an axis with duplicate labels" -- found via a
+        # real 2024 run once the state-party source was added (Gap 3).
+        # cand/ie don't need this: load_candidate_disbursements() already
+        # collapses to one row per (district_id, party) via its own
+        # groupby(...).first(), and load_independent_expenditures() via its
+        # own groupby(...).sum().
         co = (
             coord[coord["party"] == party]
-            .set_index("district_id")["coordinated_expenditures"]
+            .groupby("district_id")["coordinated_expenditures"].sum()
         )
         i = (
             ie[ie["party"] == party]

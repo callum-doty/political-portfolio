@@ -1,0 +1,83 @@
+{
+  "eta_hierarchical_bayesian": {
+    "label": "eta_hierarchical_bayesian",
+    "allocator": "surrogate",
+    "eta_summary": {
+      "mu_global": 0.3060283438275518,
+      "tier_var": 2.5162307851385975e-05,
+      "cycle_var": 0.00020986060779965495,
+      "resid_var": 0.07703730523504666
+    },
+    "n_periods": 7,
+    "k_paths": 100,
+    "theta_by_period": [
+      {
+        "period": 0,
+        "days_remaining": 98,
+        "mean_theta": 0.13340431375260095,
+        "frac_deploy_now": 0.44,
+        "basis_r2": 2.220446049250313e-16,
+        "g_t_coef": 0.0,
+        "g_t_pvalue": NaN
+      },
+      {
+        "period": 1,
+        "days_remaining": 84,
+        "mean_theta": -0.24453632189420488,
+        "frac_deploy_now": 0.52,
+        "basis_r2": 0.06087282797080351,
+        "g_t_coef": -0.18430728575292576,
+        "g_t_pvalue": 0.31862145711388057
+      },
+      {
+        "period": 2,
+        "days_remaining": 70,
+        "mean_theta": -0.6165047784911483,
+        "frac_deploy_now": 0.62,
+        "basis_r2": 0.0918501981494243,
+        "g_t_coef": -0.2620502009989423,
+        "g_t_pvalue": 0.06438545106659477
+      },
+      {
+        "period": 3,
+        "days_remaining": 56,
+        "mean_theta": -0.916816038903251,
+        "frac_deploy_now": 0.64,
+        "basis_r2": 0.06629341476066719,
+        "g_t_coef": -0.24711254043305786,
+        "g_t_pvalue": 0.06661596550943889
+      },
+      {
+        "period": 4,
+        "days_remaining": 42,
+        "mean_theta": -1.272880442488779,
+        "frac_deploy_now": 0.77,
+        "basis_r2": 0.14046723531376593,
+        "g_t_coef": -0.19605528985277143,
+        "g_t_pvalue": 0.10919352581308728
+      },
+      {
+        "period": 5,
+        "days_remaining": 28,
+        "mean_theta": -1.8915780276484029,
+        "frac_deploy_now": 0.9,
+        "basis_r2": 0.16800529210301585,
+        "g_t_coef": -0.257981868267386,
+        "g_t_pvalue": 0.021684386138550227
+      },
+      {
+        "period": 6,
+        "days_remaining": 14,
+        "mean_theta": -3.1530246378077096,
+        "frac_deploy_now": 0.99,
+        "basis_r2": 0.1711404427634512,
+        "g_t_coef": -0.2541921194629033,
+        "g_t_pvalue": 0.09733049725710845
+      }
+    ]
+  },
+  "eta_bootstrap_all_cycles_robust_allocator": {
+    "status": "monotonicity_check_failed",
+    "error": "optimize_nonlinear_robust: monotonicity assumption violated for 8 race(s) (first indices: [7, 94, 116, 122, 177]) -- MSG at eta_high exceeds MSG at eta=0 where the reaction is active. The max_D min_eta -> single-call-at-eta_high reduction this module relies on does not hold for this coefficient set; a genuine iterative minimax (alternating projected gradient on eta within the box, D re-optimizing against it) would be needed instead, which this module does NOT implement -- do not trust this result."
+  }
+}

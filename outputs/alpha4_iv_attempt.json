@@ -1,0 +1,23 @@
+{
+  "status": "ok",
+  "method": "within_district_fixed_effects",
+  "note": "This is a fixed-effects estimate, NOT an instrumental-variable estimate -- the redistricting-jump instrument requires a GIS crosswalk not built in this pass. See src/backtest/estimation/cvap_iv.py's module docstring for the full scope boundary.",
+  "result": {
+    "status": "ok",
+    "alpha4_fe": -0.7916453548820984,
+    "se": 0.7902120347703747,
+    "pvalue": 0.3165533814464361,
+    "n_obs": 2452,
+    "n_districts": 427,
+    "cycles_used": [
+      2012,
+      2014,
+      2016,
+      2018,
+      2020,
+      2022
+    ],
+    "r_squared_within": 0.21271483040236483
+  },
+  "recommendation": "alpha4 remains 0.0 in production (data/processed/margin_model_coef.json unchanged) -- this result is reported for the record, not auto-adopted. Any adoption requires a manual OOS Brier re-check, per this project's standing practice for consequential coefficient changes."
+}

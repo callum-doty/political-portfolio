@@ -403,3 +403,34 @@ class TestBuildTotalSpend:
         row = result[result.district_id == "PA-07"].iloc[0]
         assert row["d_total"] == pytest.approx(500_000)
         assert not pd.isna(row["d_total"])
+
+    def test_two_coordinated_rows_for_the_same_district_and_party_are_summed_not_overwritten(
+        self, tmp_path, monkeypatch
+    ):
+        """Regression guard, found via a real 2024 run once a state party's
+        24K coordinated spend (Gap 3, coordinated_state_party_dem_{cycle}.csv)
+        was added alongside DCCC's own coordinated spend
+        (coordinated_dccc_{cycle}.csv) -- both are party="D", so a district
+        receiving coordinated money from BOTH sources gets two rows in the
+        consolidated coordinated_expenditures_{cycle}.csv for the same
+        (district_id, party). Before this fix, build_total_spend() used
+        set_index("district_id") directly, leaving duplicate index labels
+        that crashed the final pd.concat([d, r], axis=1) with "cannot
+        reindex on an axis with duplicate labels" -- this asserts the sum
+        is taken instead, not just that it no longer crashes."""
+        monkeypatch.setattr(config, "raw_path", lambda source: tmp_path)
+        _write_candidate_disbursements(tmp_path, 2024, [
+            dict(district_id="NY-22", fec_candidate_id="D1", candidate_name="A, B", party="D",
+                 cycle=2024, candidate_disbursements=1_000_000, incumbent_challenge_full="Open seat",
+                 ttl_receipts=1_100_000, ttl_indiv_contrib=500_000, indiv_share=0.45),
+        ])
+        pd.DataFrame([
+            dict(district_id="NY-22", party="D", cycle=2024, coordinated_expenditures=190_000),  # DCCC
+            dict(district_id="NY-22", party="D", cycle=2024, coordinated_expenditures=8_500),     # state party
+        ]).to_csv(tmp_path / "coordinated_expenditures_2024.csv", index=False)
+        pd.DataFrame(columns=["district_id", "party", "cycle", "amount"]).to_csv(
+            tmp_path / "independent_expenditures_2024.csv", index=False)
+
+        result = fec.build_total_spend(2024)
+        row = result[result.district_id == "NY-22"].iloc[0]
+        assert row["d_total"] == pytest.approx(1_000_000 + 190_000 + 8_500)

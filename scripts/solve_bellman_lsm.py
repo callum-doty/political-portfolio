@@ -12,12 +12,25 @@ R_i,t reacts to that trickle via eta on top of residual noise), K paths,
 biweekly periods from today to Election Day 2026-11-03.
 
 Per (path, period), two values are compared:
-  - "Deploy now": close the discretionary reserve immediately via the fast
-    LP allocator (optimize(), ~11ms/call -- the full nonlinear optimizer
-    was benchmarked and is computationally infeasible at Monte Carlo path
-    counts), apply the resulting Delta_mu_i via Paper I's chain-rule
-    gradient, then apply the closed-form "let remaining drift resolve"
-    widening: Phi((mu_i,t + Delta_mu_i) / sqrt(sigma_i^2 + V_i(t))).
+  - "Deploy now": close the discretionary reserve immediately, apply the
+    resulting Delta_mu_i, then apply the closed-form "let remaining drift
+    resolve" widening: Phi((mu_i,t + Delta_mu_i) / sqrt(sigma_i^2 + V_i(t))).
+    Three interchangeable allocator branches exist for the deploy step
+    (see deploy_value(), below): the original fast LP allocator (optimize(),
+    ~11ms/call), the exact nonlinear allocator (optimize_nonlinear(), far
+    slower -- 40s to over an hour per call, infeasible at Monte Carlo path
+    counts), and a validated concave-envelope surrogate (~0.03s/call) that
+    tracks the nonlinear allocator's value within 0.11-0.19 seats while
+    staying LP-speed. paper/paper3_final.md's "Allocator-Robustness
+    Finding" documents that the LP branch's own knapsack-style degeneracy
+    manufactures artificial option value for "wait" and FLIPS THE SIGN of
+    the headline Theta(0) result relative to the nonlinear/surrogate
+    branches. main() below therefore uses the surrogate allocator by
+    default (fixed 2026-08 after this was found to still be silently
+    computing the superseded, wrong-sign LP calculation) -- the LP branch
+    remains available via use_nonlinear_allocator=False,
+    use_surrogate_allocator=False for side-by-side comparison scripts
+    (e.g. theta_nonlinear_multiseed.py), not as this module's own default.
     sigma_i (Paper I's static residual) and V_i(t) (Paper III's remaining-
     drift variance, Section 7.1) are ADDITIVE, not substitutive: mu_i,T =
     mu_i,t + Delta_mu_i + xi, xi ~ N(0, V_i(t)), and
@@ -52,6 +65,7 @@ Output: outputs/theta_schedule.json
 
 from __future__ import annotations
 import dataclasses
+import functools
 import json
 import sys
 from datetime import date
@@ -72,6 +86,8 @@ from backtest.model.win_prob import compute_outputs_batch
 from backtest.optimizer.allocator import (
     optimize, optimize_nonlinear, _precompute_race_arrays, _reactive_r, _apply_ceiling,
 )
+from backtest.optimizer.robust import optimize_nonlinear_robust
+from backtest.estimation import eta_hierarchical
 from backtest.types import SigmaModel, ModelOutputs
 
 from estimate_eta_reaction import build_period_panel, build_delta_panel, TIERS
@@ -247,11 +263,227 @@ def margin_gradient(coef, pvi, incumb_status, d_total, r_total, eta: float = 0.0
     return c * (1.0 / d - (1.0 + eta) / t)
 
 
+def mu_struct_at(coef, pvi_arr, is_incumb_arr, gb_national, d_arr, r_arr, is_open_arr=None):
+    """Recompute the structural mu (no epsilon) at an arbitrary (d, r) pair.
+
+    Module-level twin of solve_bellman_lsm_continuous_phi.py's _mu_struct()
+    (that file's own docstring calls the two "identical"; TestMuStructConsistency
+    in tests/test_bellman_lsm.py checks this against the real code, not just
+    the comment). Kept as an intentionally separate copy rather than an
+    import, since solve_bellman_lsm_continuous_phi.py already imports this
+    module as `lsm` -- importing back would be circular. One real, pre-existing
+    numerical difference between the two copies: this version floors t_arr at
+    1.0 (np.maximum(d_arr + r_arr, 1.0)), inherited unchanged from this
+    module's own former closure, while the cphi copy does not -- immaterial at
+    real 2026 dollar spend levels (d+r is never remotely close to $1), so
+    preserved as-is here rather than silently "fixed" as part of an unrelated
+    refactor.
+
+    Extracted (2026-08) from run_lsm()'s former closure, where it was
+    `_mu_struct_at(d, r)`, capturing coef/pvi_arr/is_incumb_arr/gb_national
+    from the enclosing scope -- this module-level version takes them as
+    explicit arguments so deploy_value() below can be unit-tested directly.
+    """
+    if is_open_arr is not None and coef.beta1_open is not None:
+        beta1_eff = np.where(np.asarray(is_open_arr) > 0, coef.beta1_open, coef.beta1)
+    else:
+        beta1_eff = coef.beta1
+    t_arr = np.maximum(d_arr + r_arr, 1.0)
+    ratio = np.clip(d_arr / t_arr, 1e-6, 1 - 1e-6)
+    log_ratio = np.log(ratio)
+    c_arr = beta1_eff + coef.beta2 * np.abs(pvi_arr) + coef.beta3 * is_incumb_arr
+    return (coef.alpha0 + coef.alpha1 * pvi_arr + coef.alpha2 * is_incumb_arr
+            + coef.alpha3 * gb_national + c_arr * log_ratio)
+
+
+def deploy_value(mu_t, r_t, widened_sigma, eta_arr_k, d_t, d_terminal, *,
+                  races, coef, sigma_model, F0, n,
+                  is_open_arr, pvi_arr, incumb_arr, is_incumb_arr, sigma_arr, gb_national,
+                  use_nonlinear_allocator: bool = False, use_surrogate_allocator: bool = False,
+                  use_robust_allocator: bool = False, eta_uncertainty_by_tier: dict | None = None):
+    """Close the reserve now via one of four allocator branches, apply the
+    resulting Delta_mu, then evaluate expected seats against widened_sigma
+    (sigma_i, or sqrt(sigma_i^2+V_i(t)) if time remains). Shared by the
+    terminal condition and every backward step so both use identical
+    mechanics -- this is the fix for a bug this session found via a smoke
+    test: the terminal value must ALSO deploy, or it is not a valid anchor
+    for the recursion.
+
+    grad (LP branch only) uses eta_arr_k (Section 0.1.2), the (n,) eta slice
+    for THIS path k -- previously a single shared eta_arr, now indexed per
+    path so a bootstrap-drawn per-path eta (Section 6) discounts the LP's
+    linearized gradient exactly like a single-cycle bracket's shared value
+    did, just varying path to path instead of being identical across all K
+    paths.
+
+    d_t is the CURRENT (trickled) candidate floor at this period/path
+    (Section 0.1.1's fix), not the period-0 floor_arr unconditionally --
+    deploying at period t adds discretionary spend on top of however much
+    the candidate's own committee has already spent by t, consistent with
+    mu_t (passed in) already reflecting that same trickled d_t structurally.
+
+    d_terminal / trickle-drift correction (found and fixed the same session
+    the trickle mechanism was added, before trusting any reported Theta):
+    the widened_sigma convolution
+    (E[Phi((mu+xi)/sigma)]=Phi(mu/sqrt(sigma^2+V)) for xi~N(0,V)) is only
+    valid when the future movement being integrated over is MEAN-ZERO --
+    true of idiosyncratic epsilon (by construction) and, pre-fix, true of D
+    itself (D_i,t was perfectly fixed, so there was no future D movement to
+    have a mean at all). Now that D grows via a real, deterministic
+    (non-zero-mean) trickle, evaluating the deploy branch at mu_t (today's
+    mu) plus only the DCCC's own delta_mu, widened by idiosyncratic sigma
+    alone, silently omits the DETERMINISTIC mu appreciation the candidate's
+    own future organic spending will produce between now and Election Day
+    regardless of today's decision -- while the recursion's "wait"
+    alternative automatically picks this up, because it is fit against real
+    future mu_paths that already reflect the grown D. Leaving this
+    uncorrected would have made "wait" look favored for a reason having
+    nothing to do with genuine option value (it would just be capturing
+    organic growth the deploy branch's shortcut failed to credit itself
+    with). The fix: recompute the structural mu at the fully-trickled
+    terminal floor d_terminal (known in advance -- trickle is deterministic)
+    and an expected terminal R (r_t plus eta's deterministic reaction to the
+    D_terminal-D_t gap; the mean-zero residual noise component is correctly
+    left to widened_sigma, unchanged), and add the resulting shift on top of
+    mu_t + delta_mu before convolving.
+
+    Extracted (2026-08) from run_lsm()'s former closure -- see
+    tests/test_bellman_lsm.py's TestDeployValueBranches, which previously
+    could only exercise this indirectly through a full run_lsm() run
+    (the test file's own scope note called this out as a known gap)."""
+    r_terminal_expected = np.maximum(r_t + eta_arr_k * (d_terminal - d_t), 1.0)
+    trickle_drift = (
+        mu_struct_at(coef, pvi_arr, is_incumb_arr, gb_national, d_terminal, r_terminal_expected, is_open_arr)
+        - mu_struct_at(coef, pvi_arr, is_incumb_arr, gb_national, d_t, r_t, is_open_arr)
+    )
+
+    if use_surrogate_allocator:
+        # Item (5) of Section 8.9's investigation plan: a validated,
+        # LP-speed (~0.025s/call vs. optimize_nonlinear()'s 40s-3,600s)
+        # surrogate that still respects diminishing returns, unlike the
+        # LP allocator. Validated (scripts/theta_concave_surrogate.py)
+        # against optimize_nonlinear() at 4 representative states before
+        # being used here: within 0.11-0.19 expected seats of the true
+        # optimum out of ~235-240 (i.e. >99.9% of optimal value
+        # captured), at roughly 2,000-2,700x the speed. Exploits
+        # _reactive_r()'s separability (R_i depends only on race i's
+        # own party spend) to solve the piecewise-linear-concave
+        # relaxation EXACTLY via a greedy water-filling sort, not an
+        # iterative solve -- this is what makes it fast.
+        races_t = [dataclasses.replace(r, cand_d_total=float(d_t[i]), r_total=float(r_t[i]),
+                                        d_total=float(d_t[i]))
+                   for i, r in enumerate(races)]
+        party, arrays = surrogate_allocate(races_t, coef, sigma_model, F0, 0.15, eta_arr_k)
+        d = np.maximum(arrays["floors"] + party, 1.0)
+        r = _reactive_r(party, arrays)
+        t_ = d + r
+        ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
+        log_ratio = np.log(ratio)
+        log_total_pv = np.log(t_ / arrays["cvap"])
+        mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+        mu_capped, _ = _apply_ceiling(mu_raw, arrays)
+        deployed_mu = mu_capped + trickle_drift
+    elif use_nonlinear_allocator:
+        # Option B: the allocation AND the resulting mu both come from
+        # the true, diminishing-returns-respecting objective -- reusing
+        # the allocator's own internal ceiling math directly (rather
+        # than re-deriving it) is what Option A's smoke test showed is
+        # required; a naive margin_gradient()-based delta_mu, applied to
+        # this allocator's (much larger, since it isn't knapsack-
+        # constrained by a linear objective) chosen allocations, bypasses
+        # the persuasion ceiling and inflates deploy value enormously.
+        #
+        # races carries each race's ORIGINAL, t=0 cand_d_total/r_total --
+        # optimize_nonlinear() reads its per-race floor and R directly
+        # from those fields (it takes no separate floor argument), so at
+        # any period after t=0, d_t/r_t (this period's TRICKLED,
+        # simulated state) must be baked into fresh RaceRecord copies
+        # first, exactly the established pattern dynamic/ledger.py's
+        # apply_to_races() already uses for the same reason -- passing
+        # the stale, unmodified `races` here would optimize against the
+        # wrong (t=0) state for every period but the first.
+        # d_total is ALSO overridden (equal to cand_d_total=d_t), not just
+        # r_total/cand_d_total: _precompute_race_arrays derives party_obs
+        # (the "already observed" party-spend baseline _reactive_r's eta
+        # threshold is measured against) from race.d_total. Leaving it at
+        # its real, historical 2026 value -- unrelated to the simulated
+        # d_t -- would give _reactive_r a stale, wrong threshold; setting
+        # d_total=d_t makes party_obs=0, matching the LP branch's own
+        # d_total_obs=d_t (zero party spend "already observed" relative
+        # to this period's own trickled baseline).
+        races_t = [dataclasses.replace(r, cand_d_total=float(d_t[i]), r_total=float(r_t[i]),
+                                        d_total=float(d_t[i]))
+                   for i, r in enumerate(races)]
+        res = optimize_nonlinear(races_t, coef, sigma_model, budget=F0, cov_matrix=np.eye(n) * 1e-6,
+                                  gamma=0.0, cap_fraction=0.15, party_budget=F0, eta=eta_arr_k)
+        arrays = _precompute_race_arrays(races_t, coef, sigma_model, eta=eta_arr_k)
+        party = np.maximum(res.allocations - d_t, 0.0)
+        d = np.maximum(arrays["floors"] + party, 1.0)
+        r = _reactive_r(party, arrays)
+        t_ = d + r
+        ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
+        log_ratio = np.log(ratio)
+        log_total_pv = np.log(t_ / arrays["cvap"])
+        mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+        mu_capped, _ = _apply_ceiling(mu_raw, arrays)
+        deployed_mu = mu_capped + trickle_drift
+    elif use_robust_allocator:
+        # docs/theta_followup_plan.md Section 6's robust/max-min-over-eta
+        # optimization: the ALLOCATION is chosen to hedge against each
+        # race's own worst-case eta (per-tier p95, robust.py's monotonicity
+        # reduction -- max_D min_eta collapses to a single optimize_nonlinear
+        # call at eta_high, verified post-hoc, not just assumed), but the
+        # resulting mu is then EVALUATED at eta_arr_k, this path's own
+        # actually-realized eta -- the Bellman recursion needs "what
+        # happens on this simulated path given the chosen action," not the
+        # hypothetical worst case the allocation was chosen to hedge
+        # against. Same races_t construction as the nonlinear branch, for
+        # the same reason (this period's trickled state must be baked in).
+        if eta_uncertainty_by_tier is None:
+            raise ValueError("eta_uncertainty_by_tier is required when use_robust_allocator=True")
+        races_t = [dataclasses.replace(r, cand_d_total=float(d_t[i]), r_total=float(r_t[i]),
+                                        d_total=float(d_t[i]))
+                   for i, r in enumerate(races)]
+        res = optimize_nonlinear_robust(races_t, coef, sigma_model, budget=F0,
+                                         cov_matrix=np.eye(n) * 1e-6, gamma=0.0, cap_fraction=0.15,
+                                         eta_uncertainty_by_tier=eta_uncertainty_by_tier, party_budget=F0)
+        arrays = _precompute_race_arrays(races_t, coef, sigma_model, eta=eta_arr_k)
+        party = np.maximum(res.allocations - d_t, 0.0)
+        d = np.maximum(arrays["floors"] + party, 1.0)
+        r = _reactive_r(party, arrays)
+        t_ = d + r
+        ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
+        log_ratio = np.log(ratio)
+        log_total_pv = np.log(t_ / arrays["cvap"])
+        mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+        mu_capped, _ = _apply_ceiling(mu_raw, arrays)
+        deployed_mu = mu_capped + trickle_drift
+    else:
+        p_win0 = norm.cdf(mu_t / sigma_arr)
+        phi0 = norm.pdf(mu_t / sigma_arr)
+        grad = np.array([margin_gradient(coef, pvi_arr[i], incumb_arr[i], d_t[i], r_t[i], eta_arr_k[i])
+                          for i in range(n)])
+        msg = phi0 / sigma_arr * grad
+        outs = [ModelOutputs(district_id=races[i].district_id, ratio=d_t[i] / (d_t[i] + r_t[i]),
+                              mu_hat=mu_t[i], sigma_i=sigma_arr[i], p_win=p_win0[i], msg_i=msg[i])
+                for i in range(n)]
+        res = optimize(outs, budget=F0, cov_matrix=np.eye(n) * 1e-6,
+                        gamma=0.0, cap_fraction=0.15, floor_allocations=d_t, party_budget=F0,
+                        d_total_obs=d_t)
+        delta_s = np.maximum(res.allocations - d_t, 0.0)
+        delta_mu = grad * delta_s
+        deployed_mu = mu_t + delta_mu + trickle_drift
+
+    return norm.cdf(deployed_mu / widened_sigma).sum()
+
+
 def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, label: str,
             eta_summary: dict | None = None, enable_trickle: bool = True,
             enable_stochastic: bool = True, enable_opponent_reaction: bool = True,
             held_out_frac: float = 0.0, use_nonlinear_allocator: bool = False,
-            use_surrogate_allocator: bool = False, return_period0_action: bool = False) -> dict:
+            use_surrogate_allocator: bool = False, use_robust_allocator: bool = False,
+            eta_uncertainty_by_tier: dict | None = None,
+            return_period0_action: bool = False) -> dict:
     """eta_arr_by_path / resid_std_arr_by_path: shape (K_PATHS, n) -- either
     a single cycle's fit tiled identically across every path (tile_single_cycle,
     the original eta_fit_2022/eta_fit_2024 brackets) or a genuine per-path
@@ -314,8 +546,13 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
     # Open-seat race used a different elasticity than the GRADIENT
     # margin_gradient() computed for that same race (found while writing
     # tests/test_bellman_lsm.py; fixed here).
+    # is_open_arr is hoisted out of the branch below (unlike before the
+    # deploy_value() extraction) so it's always defined for the module-level
+    # mu_struct_at()/deploy_value() calls further down, not just when
+    # coef.beta1_open is set -- mu_struct_at() itself no-ops on it when
+    # coef.beta1_open is None, so this changes no behavior.
+    is_open_arr = np.array([1.0 if s == "Open" else 0.0 for s in incumb_arr])
     if coef.beta1_open is not None:
-        is_open_arr = np.array([1.0 if s == "Open" else 0.0 for s in incumb_arr])
         beta1_eff_arr = np.where(is_open_arr > 0, coef.beta1_open, coef.beta1)
     else:
         beta1_eff_arr = np.full(n, coef.beta1)
@@ -399,155 +636,25 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
                      + coef.alpha3 * gb_national + c_arr * log_ratio)
         mu_paths[:, tstep, :] = mu_struct + eps_cum[:, tstep, :]
 
-    def _mu_struct_at(d, r):
-        """Recompute the structural mu (no epsilon) at an arbitrary (d, r)
-        pair, using the same formula as the mu_paths loop above. Shared
-        helper for _deploy_value's trickle-drift correction below."""
-        t_ = np.maximum(d + r, 1.0)
-        ratio = np.clip(d / t_, 1e-6, 1 - 1e-6)
-        c_arr = beta1_eff_arr + coef.beta2 * np.abs(pvi_arr) + coef.beta3 * is_incumb_arr
-        return coef.alpha0 + coef.alpha1 * pvi_arr + coef.alpha2 * is_incumb_arr + coef.alpha3 * gb_national + c_arr * np.log(ratio)
-
-    def _deploy_value(mu_t, r_t, widened_sigma, eta_arr_k, d_t, d_terminal):
-        """Close the reserve now via the LP allocator, apply the resulting
-        Delta_mu via the chain-rule gradient, then evaluate expected seats
-        against widened_sigma (sigma_i, or sqrt(sigma_i^2+V_i(t)) if time
-        remains). Shared by the terminal condition and every backward step
-        so both use identical mechanics -- this is the fix for a bug this
-        session found via a smoke test: the terminal value must ALSO
-        deploy, or it is not a valid anchor for the recursion.
-
-        grad uses eta_arr_k (Section 0.1.2), the (n,) eta slice for THIS
-        path k -- previously a single shared eta_arr, now indexed per path
-        so a bootstrap-drawn per-path eta (Section 6) discounts the LP's
-        linearized gradient exactly like a single-cycle bracket's shared
-        value did, just varying path to path instead of being identical
-        across all K paths.
-
-        d_t is the CURRENT (trickled) candidate floor at this period/path
-        (Section 0.1.1's fix), not the period-0 floor_arr unconditionally --
-        deploying at period t adds discretionary spend on top of however much
-        the candidate's own committee has already spent by t, consistent with
-        mu_t (passed in) already reflecting that same trickled d_t
-        structurally.
-
-        d_terminal / trickle-drift correction (found and fixed the same
-        session the trickle mechanism was added, before trusting any
-        reported Theta): the widened_sigma convolution
-        (E[Phi((mu+xi)/sigma)]=Phi(mu/sqrt(sigma^2+V)) for xi~N(0,V)) is
-        only valid when the future movement being integrated over is
-        MEAN-ZERO -- true of idiosyncratic epsilon (by construction) and,
-        pre-fix, true of D itself (D_i,t was perfectly fixed, so there was
-        no future D movement to have a mean at all). Now that D grows via a
-        real, deterministic (non-zero-mean) trickle, evaluating the deploy
-        branch at mu_t (today's mu) plus only the DCCC's own delta_mu,
-        widened by idiosyncratic sigma alone, silently omits the DETERMINISTIC
-        mu appreciation the candidate's own future organic spending will
-        produce between now and Election Day regardless of today's decision --
-        while the recursion's "wait" alternative automatically picks this up,
-        because it is fit against real future mu_paths that already reflect
-        the grown D. Leaving this uncorrected would have made "wait" look
-        favored for a reason having nothing to do with genuine option value
-        (it would just be capturing organic growth the deploy branch's
-        shortcut failed to credit itself with). The fix: recompute the
-        structural mu at the fully-trickled terminal floor d_terminal (known
-        in advance -- trickle is deterministic) and an expected terminal R
-        (r_t plus eta's deterministic reaction to the D_terminal-D_t gap;
-        the mean-zero residual noise component is correctly left to
-        widened_sigma, unchanged), and add the resulting shift on top of
-        mu_t + delta_mu before convolving."""
-        r_terminal_expected = np.maximum(r_t + eta_arr_k * (d_terminal - d_t), 1.0)
-        trickle_drift = _mu_struct_at(d_terminal, r_terminal_expected) - _mu_struct_at(d_t, r_t)
-
-        if use_surrogate_allocator:
-            # Item (5) of Section 8.9's investigation plan: a validated,
-            # LP-speed (~0.025s/call vs. optimize_nonlinear()'s 40s-3,600s)
-            # surrogate that still respects diminishing returns, unlike the
-            # LP allocator. Validated (scripts/theta_concave_surrogate.py)
-            # against optimize_nonlinear() at 4 representative states before
-            # being used here: within 0.11-0.19 expected seats of the true
-            # optimum out of ~235-240 (i.e. >99.9% of optimal value
-            # captured), at roughly 2,000-2,700x the speed. Exploits
-            # _reactive_r()'s separability (R_i depends only on race i's
-            # own party spend) to solve the piecewise-linear-concave
-            # relaxation EXACTLY via a greedy water-filling sort, not an
-            # iterative solve -- this is what makes it fast.
-            races_t = [dataclasses.replace(r, cand_d_total=float(d_t[i]), r_total=float(r_t[i]),
-                                            d_total=float(d_t[i]))
-                       for i, r in enumerate(races)]
-            party, arrays = surrogate_allocate(races_t, coef, sigma_model, F0, 0.15, eta_arr_k)
-            d = np.maximum(arrays["floors"] + party, 1.0)
-            r = _reactive_r(party, arrays)
-            t_ = d + r
-            ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
-            log_ratio = np.log(ratio)
-            log_total_pv = np.log(t_ / arrays["cvap"])
-            mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
-            mu_capped, _ = _apply_ceiling(mu_raw, arrays)
-            deployed_mu = mu_capped + trickle_drift
-        elif use_nonlinear_allocator:
-            # Option B: the allocation AND the resulting mu both come from
-            # the true, diminishing-returns-respecting objective -- reusing
-            # the allocator's own internal ceiling math directly (rather
-            # than re-deriving it) is what Option A's smoke test showed is
-            # required; a naive margin_gradient()-based delta_mu, applied to
-            # this allocator's (much larger, since it isn't knapsack-
-            # constrained by a linear objective) chosen allocations, bypasses
-            # the persuasion ceiling and inflates deploy value enormously.
-            #
-            # races (module-level 2026 universe, built once at the top of
-            # run_lsm()) carries each race's ORIGINAL, t=0 cand_d_total/
-            # r_total -- optimize_nonlinear() reads its per-race floor and R
-            # directly from those fields (it takes no separate floor
-            # argument), so at any period after t=0, d_t/r_t (this period's
-            # TRICKLED, simulated state) must be baked into fresh RaceRecord
-            # copies first, exactly the established pattern
-            # dynamic/ledger.py's apply_to_races() already uses for the same
-            # reason -- passing the stale, unmodified `races` here would
-            # optimize against the wrong (t=0) state for every period but
-            # the first.
-            # d_total is ALSO overridden (equal to cand_d_total=d_t), not just
-            # r_total/cand_d_total: _precompute_race_arrays derives party_obs
-            # (the "already observed" party-spend baseline _reactive_r's η
-            # threshold is measured against) from race.d_total. Leaving it at
-            # its real, historical 2026 value -- unrelated to the simulated
-            # d_t -- would give _reactive_r a stale, wrong threshold; setting
-            # d_total=d_t makes party_obs=0, matching the LP branch's own
-            # d_total_obs=d_t (zero party spend "already observed" relative
-            # to this period's own trickled baseline).
-            races_t = [dataclasses.replace(r, cand_d_total=float(d_t[i]), r_total=float(r_t[i]),
-                                            d_total=float(d_t[i]))
-                       for i, r in enumerate(races)]
-            res = optimize_nonlinear(races_t, coef, sigma_model, budget=F0, cov_matrix=np.eye(n) * 1e-6,
-                                      gamma=0.0, cap_fraction=0.15, party_budget=F0, eta=eta_arr_k)
-            arrays = _precompute_race_arrays(races_t, coef, sigma_model, eta=eta_arr_k)
-            party = np.maximum(res.allocations - d_t, 0.0)
-            d = np.maximum(arrays["floors"] + party, 1.0)
-            r = _reactive_r(party, arrays)
-            t_ = d + r
-            ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
-            log_ratio = np.log(ratio)
-            log_total_pv = np.log(t_ / arrays["cvap"])
-            mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
-            mu_capped, _ = _apply_ceiling(mu_raw, arrays)
-            deployed_mu = mu_capped + trickle_drift
-        else:
-            p_win0 = norm.cdf(mu_t / sigma_arr)
-            phi0 = norm.pdf(mu_t / sigma_arr)
-            grad = np.array([margin_gradient(coef, pvi_arr[i], incumb_arr[i], d_t[i], r_t[i], eta_arr_k[i])
-                              for i in range(n)])
-            msg = phi0 / sigma_arr * grad
-            outs = [ModelOutputs(district_id=races[i].district_id, ratio=d_t[i] / (d_t[i] + r_t[i]),
-                                  mu_hat=mu_t[i], sigma_i=sigma_arr[i], p_win=p_win0[i], msg_i=msg[i])
-                    for i in range(n)]
-            res = optimize(outs, budget=F0, cov_matrix=np.eye(n) * 1e-6,
-                            gamma=0.0, cap_fraction=0.15, floor_allocations=d_t, party_budget=F0,
-                            d_total_obs=d_t)
-            delta_s = np.maximum(res.allocations - d_t, 0.0)
-            delta_mu = grad * delta_s
-            deployed_mu = mu_t + delta_mu + trickle_drift
-
-        return norm.cdf(deployed_mu / widened_sigma).sum()
+    # deploy_value_fn: this call's fixed context (races/coef/sigma_model/F0/n,
+    # the per-race arrays, and this run's allocator-choice flags) bound via
+    # functools.partial, so every per-path/per-period call site below only
+    # has to pass the state that actually varies (mu_t, r_t, widened_sigma,
+    # eta_arr_k, d_t, d_terminal) -- deploy_value() itself is now the
+    # module-level function defined above run_lsm(), extracted from what
+    # used to be this function's own closure (`_deploy_value`) so it can be
+    # unit-tested directly (see tests/test_bellman_lsm.py's
+    # TestDeployValueBranches).
+    deploy_value_fn = functools.partial(
+        deploy_value,
+        races=races, coef=coef, sigma_model=sigma_model, F0=F0, n=n,
+        is_open_arr=is_open_arr, pvi_arr=pvi_arr, incumb_arr=incumb_arr,
+        is_incumb_arr=is_incumb_arr, sigma_arr=sigma_arr, gb_national=gb_national,
+        use_nonlinear_allocator=use_nonlinear_allocator,
+        use_surrogate_allocator=use_surrogate_allocator,
+        use_robust_allocator=use_robust_allocator,
+        eta_uncertainty_by_tier=eta_uncertainty_by_tier,
+    )
 
     # --- Backward induction ---
     remaining_days = np.array([(N_PERIODS - t) * PERIOD_DAYS for t in range(N_PERIODS + 1)])
@@ -567,10 +674,23 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
     # toggles, so this is now the single formula used at every period,
     # unconditionally -- no enable_stochastic branch needed here at all.
     terminal_sigma = np.sqrt(np.maximum(remaining_variance(sigma_arr, 0.0), 1e-6))
+    allocator_label = (
+        "surrogate" if use_surrogate_allocator
+        else "nonlinear" if use_nonlinear_allocator
+        else "robust" if use_robust_allocator
+        else "lp"
+    )
+    if allocator_label == "lp":
+        print(f"  [{label}] ** allocator=lp -- this reproduces the SUPERSEDED, wrong-sign "
+              f"calculation documented in paper/paper3_final.md's Allocator-Robustness Finding. "
+              f"Pass use_surrogate_allocator=True (or use_nonlinear_allocator=True) for the "
+              f"corrected result. **")
+    else:
+        print(f"  [{label}] allocator={allocator_label}")
     print(f"  [{label}] computing terminal condition (forced deploy, {K_PATHS} paths)...")
     V_star = np.array([
-        _deploy_value(mu_paths[k, -1, :], r_paths[k, -1, :], terminal_sigma, eta_arr[k],
-                       d_paths[k, -1, :], d_paths[k, -1, :])   # at T, d_t IS d_terminal: drift=0
+        deploy_value_fn(mu_paths[k, -1, :], r_paths[k, -1, :], terminal_sigma, eta_arr[k],
+                         d_paths[k, -1, :], d_paths[k, -1, :])   # at T, d_t IS d_terminal: drift=0
         for k in range(K_PATHS)   # V=0 at T: no widening
     ])
 
@@ -603,8 +723,8 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
         widened_sigma = np.sqrt(np.maximum(v_remaining, 1e-6))
 
         deploy_vals = np.array([
-            _deploy_value(mu_paths[k, tstep, :], r_paths[k, tstep, :], widened_sigma,
-                           eta_arr[k], d_paths[k, tstep, :], d_paths[k, -1, :])
+            deploy_value_fn(mu_paths[k, tstep, :], r_paths[k, tstep, :], widened_sigma,
+                             eta_arr[k], d_paths[k, tstep, :], d_paths[k, -1, :])
             for k in range(K_PATHS)
         ])
 
@@ -664,15 +784,26 @@ def run_lsm(eta_arr_by_path: np.ndarray, resid_std_arr_by_path: np.ndarray, labe
               f"{held_out_msg}")
 
     theta_by_period = list(reversed(theta_by_period))
-    out = {"label": label, "eta_summary": eta_summary, "n_periods": N_PERIODS, "k_paths": K_PATHS,
-           "theta_by_period": theta_by_period}
+    out = {"label": label, "allocator": allocator_label, "eta_summary": eta_summary,
+           "n_periods": N_PERIODS, "k_paths": K_PATHS, "theta_by_period": theta_by_period}
     if return_period0_action:
         out["period0_action_deploy_now"] = period0_action.tolist()
     return out
 
 
 def main():
-    print(f"N_PERIODS={N_PERIODS} ({N_PERIODS*PERIOD_DAYS} days), K_PATHS={K_PATHS}\n")
+    # use_surrogate_allocator=True (fixed 2026-08): this entrypoint previously
+    # called run_lsm() with neither allocator flag set, silently defaulting to
+    # the LP allocator -- the SUPERSEDED, wrong-sign calculation per
+    # paper/paper3_final.md's "Allocator-Robustness Finding" and
+    # "Why the Corner Flipped Twice" sections. The validated fast surrogate
+    # (concave_surrogate.py) is what scripts/theta_surrogate_headline.py used
+    # for the paper's own "decisive re-solve" at full K=2000 -- this makes
+    # the standard pipeline output (outputs/theta_schedule.json) match that
+    # corrected result by default, instead of only a separately-named file
+    # that most consumers of this script would never find.
+    print(f"N_PERIODS={N_PERIODS} ({N_PERIODS*PERIOD_DAYS} days), K_PATHS={K_PATHS}, "
+          f"allocator=surrogate\n")
     races = build_universe(cycle=2026)
     tiers_per_race = [r.cook_rating for r in races]
 
@@ -684,7 +815,8 @@ def main():
         eta_arr_by_path, resid_std_arr_by_path = tile_single_cycle(
             eta_by_tier, resid_std_by_tier, tiers_per_race, K_PATHS)
         res = run_lsm(eta_arr_by_path, resid_std_arr_by_path, label,
-                       eta_summary={"single_cycle_fit": eta_by_tier})
+                       eta_summary={"single_cycle_fit": eta_by_tier},
+                       use_surrogate_allocator=True)
         results[label] = res
 
     print("=== eta_bootstrap_all_cycles ===")
@@ -694,7 +826,7 @@ def main():
         print(f"  {tier}: {s['n_cycles_available']} historical cycles {s['historical_values']}, "
               f"path draws mean={s['path_draw_mean']:+.3f} sd={s['path_draw_sd']:.3f}")
     res = run_lsm(eta_arr_by_path, resid_std_arr_by_path, "eta_bootstrap_all_cycles",
-                   eta_summary=boot_summary)
+                   eta_summary=boot_summary, use_surrogate_allocator=True)
     results["eta_bootstrap_all_cycles"] = res
 
     out_path = ROOT / "outputs/theta_schedule.json"

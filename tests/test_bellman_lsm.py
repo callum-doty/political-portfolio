@@ -17,21 +17,31 @@ where both real bugs this project has found so far actually lived:
 Both were caught by a human reading the code carefully, not by any test.
 These tests exist so a future refactor can't silently reintroduce either.
 
-Scope note: `_deploy_value` inside `solve_bellman_lsm.run_lsm()` is a
-closure, not a module-level function, and is not directly importable without
-refactoring production code (out of scope for this pass). It is exercised
-here only indirectly, through `run_lsm()` integration tests on a small
-synthetic universe. `_solve_committed_floor` in the continuous-phi script,
-by contrast, IS a module-level function and is tested directly.
+Update (2026-08): `_deploy_value`/`_mu_struct_at` were extracted out of
+`solve_bellman_lsm.run_lsm()`'s closure into module-level `deploy_value()`/
+`mu_struct_at()`, alongside a fix to a separate, real bug this extraction's
+own investigation turned up -- `main()`'s two `run_lsm()` calls never passed
+either allocator flag, so the standard pipeline output
+(`outputs/theta_schedule.json`) was still silently computing the
+SUPERSEDED, wrong-sign LP-based calculation documented in
+`paper/paper3_final.md`'s "Allocator-Robustness Finding," even though the
+corrected surrogate/nonlinear calculation had already been validated
+elsewhere. `TestDeployValueBranches` below now tests all three allocator
+branches directly; `TestMainUsesSurrogateAllocatorByDefault` guards against
+the default silently regressing back to the LP branch. `_solve_committed_floor`
+in the continuous-phi script remains a module-level function tested directly,
+as before.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 from pathlib import Path
 
 import numpy as np
 import pytest
+from scipy.stats import norm
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
@@ -938,3 +948,305 @@ class TestMuStructConsistency:
                                     + coef.alpha3 * gb_national + c_arr * log_ratio)
 
         np.testing.assert_allclose(mu_no_open_arg, mu_expected_old_formula, rtol=1e-9)
+
+
+# ─── mu_struct_at() / deploy_value() -- module-level extraction (2026-08) ──
+
+class TestMuStructAtModuleLevel:
+    def test_matches_cphi_mu_struct(self, coef_sigma, synthetic_races):
+        """lsm.mu_struct_at() (module-level, extracted from run_lsm()'s
+        former closure) must keep agreeing with solve_bellman_lsm_continuous_phi.py's
+        independently-maintained _mu_struct() copy -- the same invariant
+        TestMuStructConsistency above checks for run_lsm()'s (now removed)
+        inline formula, checked here directly against the extracted
+        function itself."""
+        coef, _ = coef_sigma
+        races = synthetic_races
+        pvi_arr = np.array([r.pvi for r in races])
+        incumb_arr = [r.incumb_status for r in races]
+        is_incumb_arr = np.array([1.0 if s == "Incumbent" else 0.0 for s in incumb_arr])
+        is_open_arr = np.array([1.0 if s == "Open" else 0.0 for s in incumb_arr])
+        d_arr = np.array([r.cand_d_total for r in races])
+        r_arr = np.array([r.r_total for r in races])
+        gb_national = races[0].generic_ballot
+
+        mu_lsm = lsm.mu_struct_at(coef, pvi_arr, is_incumb_arr, gb_national, d_arr, r_arr, is_open_arr)
+        mu_cphi = cphi._mu_struct(coef, pvi_arr, is_incumb_arr, gb_national, d_arr, r_arr, is_open_arr)
+        np.testing.assert_allclose(mu_lsm, mu_cphi, rtol=1e-9)
+
+
+@pytest.fixture
+def lsm_arrays(coef_sigma, synthetic_races):
+    """Shared setup for deploy_value()'s branch/trickle-drift tests below --
+    module-level (not class-scoped) so both TestDeployValueBranches and
+    TestTrickleDriftCorrection can use it."""
+    coef, sigma_model = coef_sigma
+    races = synthetic_races
+    n = len(races)
+    outputs0 = compute_outputs_batch(races, coef, sigma_model)
+    sigma_arr = np.array([o.sigma_i for o in outputs0])
+    pvi_arr = np.array([r.pvi for r in races])
+    incumb_arr = [r.incumb_status for r in races]
+    is_incumb_arr = np.array([1.0 if s == "Incumbent" else 0.0 for s in incumb_arr])
+    is_open_arr = np.array([1.0 if s == "Open" else 0.0 for s in incumb_arr])
+    d_t = np.array([r.cand_d_total for r in races])
+    r_t = np.array([r.r_total for r in races])
+    gb_national = races[0].generic_ballot
+    mu_t = lsm.mu_struct_at(coef, pvi_arr, is_incumb_arr, gb_national, d_t, r_t, is_open_arr)
+    return dict(coef=coef, sigma_model=sigma_model, races=races, n=n, sigma_arr=sigma_arr,
+                pvi_arr=pvi_arr, incumb_arr=incumb_arr, is_incumb_arr=is_incumb_arr,
+                is_open_arr=is_open_arr, d_t=d_t, r_t=r_t, gb_national=gb_national, mu_t=mu_t)
+
+
+class TestDeployValueBranches:
+    """Direct unit tests of deploy_value()'s three allocator branches.
+
+    Before the 2026-08 closure extraction, this module's own scope note
+    said these branches were "exercised only indirectly, through run_lsm()
+    integration tests" -- deploy_value() is now a module-level function, so
+    each branch is cross-checked here against calling its underlying
+    allocator primitive directly, with d_terminal == d_t and eta_arr_k == 0
+    so trickle_drift is exactly 0 and doesn't need to be reasoned about
+    separately (that's TestTrickleDriftCorrection's job, below)."""
+
+    def test_lp_branch_matches_direct_optimize_call(self, lsm_arrays):
+        a = lsm_arrays
+        F0 = 200_000.0
+        eta_arr_k = np.zeros(a["n"])
+        widened_sigma = a["sigma_arr"]
+
+        result = lsm.deploy_value(
+            a["mu_t"], a["r_t"], widened_sigma, eta_arr_k, a["d_t"], a["d_t"],
+            races=a["races"], coef=a["coef"], sigma_model=a["sigma_model"], F0=F0, n=a["n"],
+            is_open_arr=a["is_open_arr"], pvi_arr=a["pvi_arr"], incumb_arr=a["incumb_arr"],
+            is_incumb_arr=a["is_incumb_arr"], sigma_arr=a["sigma_arr"], gb_national=a["gb_national"],
+            use_nonlinear_allocator=False, use_surrogate_allocator=False,
+        )
+
+        p_win0 = norm.cdf(a["mu_t"] / a["sigma_arr"])
+        phi0 = norm.pdf(a["mu_t"] / a["sigma_arr"])
+        grad = np.array([lsm.margin_gradient(a["coef"], a["pvi_arr"][i], a["incumb_arr"][i],
+                                              a["d_t"][i], a["r_t"][i], eta_arr_k[i])
+                          for i in range(a["n"])])
+        msg = phi0 / a["sigma_arr"] * grad
+        outs = [lsm.ModelOutputs(district_id=a["races"][i].district_id,
+                                  ratio=a["d_t"][i] / (a["d_t"][i] + a["r_t"][i]),
+                                  mu_hat=a["mu_t"][i], sigma_i=a["sigma_arr"][i],
+                                  p_win=p_win0[i], msg_i=msg[i])
+                for i in range(a["n"])]
+        res = lsm.optimize(outs, budget=F0, cov_matrix=np.eye(a["n"]) * 1e-6, gamma=0.0,
+                            cap_fraction=0.15, floor_allocations=a["d_t"], party_budget=F0,
+                            d_total_obs=a["d_t"])
+        delta_s = np.maximum(res.allocations - a["d_t"], 0.0)
+        delta_mu = grad * delta_s
+        deployed_mu = a["mu_t"] + delta_mu   # trickle_drift == 0 here
+        expected = norm.cdf(deployed_mu / widened_sigma).sum()
+
+        assert result == pytest.approx(expected, rel=1e-9)
+
+    def test_nonlinear_branch_matches_direct_optimize_nonlinear_call(self, lsm_arrays):
+        a = lsm_arrays
+        F0 = 200_000.0
+        eta_arr_k = np.zeros(a["n"])
+        widened_sigma = a["sigma_arr"]
+
+        result = lsm.deploy_value(
+            a["mu_t"], a["r_t"], widened_sigma, eta_arr_k, a["d_t"], a["d_t"],
+            races=a["races"], coef=a["coef"], sigma_model=a["sigma_model"], F0=F0, n=a["n"],
+            is_open_arr=a["is_open_arr"], pvi_arr=a["pvi_arr"], incumb_arr=a["incumb_arr"],
+            is_incumb_arr=a["is_incumb_arr"], sigma_arr=a["sigma_arr"], gb_national=a["gb_national"],
+            use_nonlinear_allocator=True, use_surrogate_allocator=False,
+        )
+
+        races_t = [dataclasses.replace(r, cand_d_total=float(a["d_t"][i]), r_total=float(a["r_t"][i]),
+                                        d_total=float(a["d_t"][i]))
+                   for i, r in enumerate(a["races"])]
+        res = lsm.optimize_nonlinear(races_t, a["coef"], a["sigma_model"], budget=F0,
+                                      cov_matrix=np.eye(a["n"]) * 1e-6, gamma=0.0, cap_fraction=0.15,
+                                      party_budget=F0, eta=eta_arr_k)
+        arrays = lsm._precompute_race_arrays(races_t, a["coef"], a["sigma_model"], eta=eta_arr_k)
+        party = np.maximum(res.allocations - a["d_t"], 0.0)
+        d = np.maximum(arrays["floors"] + party, 1.0)
+        r = lsm._reactive_r(party, arrays)
+        t_ = d + r
+        ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
+        log_ratio = np.log(ratio)
+        log_total_pv = np.log(t_ / arrays["cvap"])
+        mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+        mu_capped, _ = lsm._apply_ceiling(mu_raw, arrays)
+        expected = norm.cdf(mu_capped / widened_sigma).sum()   # trickle_drift == 0 here
+
+        assert result == pytest.approx(expected, rel=1e-9)
+
+    def test_surrogate_branch_matches_direct_surrogate_allocate_call(self, lsm_arrays):
+        a = lsm_arrays
+        F0 = 200_000.0
+        eta_arr_k = np.zeros(a["n"])
+        widened_sigma = a["sigma_arr"]
+
+        result = lsm.deploy_value(
+            a["mu_t"], a["r_t"], widened_sigma, eta_arr_k, a["d_t"], a["d_t"],
+            races=a["races"], coef=a["coef"], sigma_model=a["sigma_model"], F0=F0, n=a["n"],
+            is_open_arr=a["is_open_arr"], pvi_arr=a["pvi_arr"], incumb_arr=a["incumb_arr"],
+            is_incumb_arr=a["is_incumb_arr"], sigma_arr=a["sigma_arr"], gb_national=a["gb_national"],
+            use_nonlinear_allocator=False, use_surrogate_allocator=True,
+        )
+
+        races_t = [dataclasses.replace(r, cand_d_total=float(a["d_t"][i]), r_total=float(a["r_t"][i]),
+                                        d_total=float(a["d_t"][i]))
+                   for i, r in enumerate(a["races"])]
+        party, arrays = lsm.surrogate_allocate(races_t, a["coef"], a["sigma_model"], F0, 0.15, eta_arr_k)
+        d = np.maximum(arrays["floors"] + party, 1.0)
+        r = lsm._reactive_r(party, arrays)
+        t_ = d + r
+        ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
+        log_ratio = np.log(ratio)
+        log_total_pv = np.log(t_ / arrays["cvap"])
+        mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+        mu_capped, _ = lsm._apply_ceiling(mu_raw, arrays)
+        expected = norm.cdf(mu_capped / widened_sigma).sum()   # trickle_drift == 0 here
+
+        assert result == pytest.approx(expected, rel=1e-9)
+
+    def test_robust_branch_matches_direct_optimize_nonlinear_robust_call(self, lsm_arrays):
+        """Fourth allocator branch (Item 4c): the allocation is chosen via
+        robust.optimize_nonlinear_robust() (hedged against each race's own
+        worst-case eta), but deployed_mu is EVALUATED at eta_arr_k -- this
+        path's own actually-realized eta, not the hypothetical worst case
+        the allocation was chosen against. eta_arr_k=0 here (matching the
+        other branch tests' baseline) makes that evaluation-eta explicit
+        and easy to reason about, while the ALLOCATION itself still reflects
+        the (nonzero, tier-based) worst-case eta from eta_uncertainty_by_tier."""
+        a = lsm_arrays
+        F0 = 200_000.0
+        eta_arr_k = np.zeros(a["n"])
+        widened_sigma = a["sigma_arr"]
+        eta_uncertainty_by_tier = {
+            r.cook_rating: {"bootstrap": {"p95": 0.5}} for r in a["races"]
+        }
+
+        result = lsm.deploy_value(
+            a["mu_t"], a["r_t"], widened_sigma, eta_arr_k, a["d_t"], a["d_t"],
+            races=a["races"], coef=a["coef"], sigma_model=a["sigma_model"], F0=F0, n=a["n"],
+            is_open_arr=a["is_open_arr"], pvi_arr=a["pvi_arr"], incumb_arr=a["incumb_arr"],
+            is_incumb_arr=a["is_incumb_arr"], sigma_arr=a["sigma_arr"], gb_national=a["gb_national"],
+            use_robust_allocator=True, eta_uncertainty_by_tier=eta_uncertainty_by_tier,
+        )
+
+        races_t = [dataclasses.replace(r, cand_d_total=float(a["d_t"][i]), r_total=float(a["r_t"][i]),
+                                        d_total=float(a["d_t"][i]))
+                   for i, r in enumerate(a["races"])]
+        from backtest.optimizer.robust import optimize_nonlinear_robust
+        res = optimize_nonlinear_robust(races_t, a["coef"], a["sigma_model"], budget=F0,
+                                         cov_matrix=np.eye(a["n"]) * 1e-6, gamma=0.0, cap_fraction=0.15,
+                                         eta_uncertainty_by_tier=eta_uncertainty_by_tier, party_budget=F0)
+        arrays = lsm._precompute_race_arrays(races_t, a["coef"], a["sigma_model"], eta=eta_arr_k)
+        party = np.maximum(res.allocations - a["d_t"], 0.0)
+        d = np.maximum(arrays["floors"] + party, 1.0)
+        r = lsm._reactive_r(party, arrays)
+        t_ = d + r
+        ratio = np.clip(d / t_, 1e-15, 1 - 1e-15)
+        log_ratio = np.log(ratio)
+        log_total_pv = np.log(t_ / arrays["cvap"])
+        mu_raw = arrays["mu_const"] + arrays["c_spend"] * log_ratio + arrays["alpha4"] * log_total_pv
+        mu_capped, _ = lsm._apply_ceiling(mu_raw, arrays)
+        expected = norm.cdf(mu_capped / widened_sigma).sum()   # trickle_drift == 0 here
+
+        assert result == pytest.approx(expected, rel=1e-9)
+
+    def test_robust_branch_requires_eta_uncertainty_by_tier(self, lsm_arrays):
+        a = lsm_arrays
+        with pytest.raises(ValueError, match="eta_uncertainty_by_tier"):
+            lsm.deploy_value(
+                a["mu_t"], a["r_t"], a["sigma_arr"], np.zeros(a["n"]), a["d_t"], a["d_t"],
+                races=a["races"], coef=a["coef"], sigma_model=a["sigma_model"], F0=200_000.0, n=a["n"],
+                is_open_arr=a["is_open_arr"], pvi_arr=a["pvi_arr"], incumb_arr=a["incumb_arr"],
+                is_incumb_arr=a["is_incumb_arr"], sigma_arr=a["sigma_arr"], gb_national=a["gb_national"],
+                use_robust_allocator=True, eta_uncertainty_by_tier=None,
+            )
+
+
+class TestTrickleDriftCorrection:
+    def test_zero_budget_isolates_trickle_drift_to_the_exact_structural_delta(self, lsm_arrays):
+        """With F0=0 (nothing to deploy), the LP branch's own delta_mu is
+        exactly zero, isolating trickle_drift as the only thing that can
+        move deployed_mu away from mu_t -- a direct regression guard for the
+        d_terminal/trickle-drift correction (see deploy_value()'s own
+        docstring) surviving the closure extraction unchanged."""
+        a = lsm_arrays
+        eta_arr_k = np.zeros(a["n"])
+        widened_sigma = a["sigma_arr"]
+        d_terminal = a["d_t"] + 50_000.0   # organic growth by Election Day
+
+        result = lsm.deploy_value(
+            a["mu_t"], a["r_t"], widened_sigma, eta_arr_k, a["d_t"], d_terminal,
+            races=a["races"], coef=a["coef"], sigma_model=a["sigma_model"], F0=0.0, n=a["n"],
+            is_open_arr=a["is_open_arr"], pvi_arr=a["pvi_arr"], incumb_arr=a["incumb_arr"],
+            is_incumb_arr=a["is_incumb_arr"], sigma_arr=a["sigma_arr"], gb_national=a["gb_national"],
+            use_nonlinear_allocator=False, use_surrogate_allocator=False,
+        )
+
+        expected_trickle_drift = (
+            lsm.mu_struct_at(a["coef"], a["pvi_arr"], a["is_incumb_arr"], a["gb_national"],
+                              d_terminal, a["r_t"], a["is_open_arr"])
+            - lsm.mu_struct_at(a["coef"], a["pvi_arr"], a["is_incumb_arr"], a["gb_national"],
+                                a["d_t"], a["r_t"], a["is_open_arr"])
+        )
+        expected = norm.cdf((a["mu_t"] + expected_trickle_drift) / widened_sigma).sum()
+        assert result == pytest.approx(expected, rel=1e-6)
+
+    def test_trickle_drift_is_exactly_zero_when_d_terminal_equals_d_t(self, lsm_arrays):
+        """Sanity check on the isolating construction above: with no organic
+        growth between t and Election Day, trickle_drift must vanish and
+        deploy_value's zero-budget result must reduce to exactly mu_t."""
+        a = lsm_arrays
+        eta_arr_k = np.zeros(a["n"])
+        widened_sigma = a["sigma_arr"]
+
+        result = lsm.deploy_value(
+            a["mu_t"], a["r_t"], widened_sigma, eta_arr_k, a["d_t"], a["d_t"],
+            races=a["races"], coef=a["coef"], sigma_model=a["sigma_model"], F0=0.0, n=a["n"],
+            is_open_arr=a["is_open_arr"], pvi_arr=a["pvi_arr"], incumb_arr=a["incumb_arr"],
+            is_incumb_arr=a["is_incumb_arr"], sigma_arr=a["sigma_arr"], gb_national=a["gb_national"],
+            use_nonlinear_allocator=False, use_surrogate_allocator=False,
+        )
+        expected = norm.cdf(a["mu_t"] / widened_sigma).sum()
+        assert result == pytest.approx(expected, rel=1e-9)
+
+
+class TestMainUsesSurrogateAllocatorByDefault:
+    """Regression guard against reintroducing the bug this session fixed:
+    main() previously called run_lsm() for all three scenarios without
+    passing either allocator flag, silently defaulting to the LP allocator
+    and reproducing the superseded, wrong-sign calculation documented in
+    paper/paper3_final.md's Allocator-Robustness Finding in the standard
+    pipeline output, outputs/theta_schedule.json."""
+
+    def test_main_passes_use_surrogate_allocator_true_to_every_run_lsm_call(
+        self, monkeypatch, synthetic_races, tmp_path
+    ):
+        monkeypatch.setattr(lsm, "build_universe", lambda cycle=2026: synthetic_races)
+        (tmp_path / "outputs").mkdir()
+        monkeypatch.setattr(lsm, "ROOT", tmp_path)
+        # fit_eta_and_resid() hits real historical IE data (per
+        # TestBootstrapEtaResidPaths's own comment above) -- canned here so
+        # this test exercises only main()'s wiring, not data availability.
+        monkeypatch.setattr(lsm, "fit_eta_and_resid",
+                             lambda fit_cycle: ({"Toss-Up": 0.4}, {"Toss-Up": 10_000.0}))
+
+        calls = []
+
+        def fake_run_lsm(eta_arr, resid_arr, label, **kwargs):
+            calls.append(kwargs)
+            return {"label": label, "allocator": "surrogate", "eta_summary": kwargs.get("eta_summary"),
+                    "n_periods": 1, "k_paths": 1, "theta_by_period": []}
+
+        monkeypatch.setattr(lsm, "run_lsm", fake_run_lsm)
+        lsm.main()
+
+        assert len(calls) == 3   # eta_fit_2022, eta_fit_2024, eta_bootstrap_all_cycles
+        for kwargs in calls:
+            assert kwargs.get("use_surrogate_allocator") is True, (
+                "main() must pass use_surrogate_allocator=True to every run_lsm() call -- "
+                "omitting it silently reproduces the superseded LP-based calculation"
+            )
